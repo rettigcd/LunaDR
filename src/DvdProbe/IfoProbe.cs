@@ -65,6 +65,7 @@ internal static class IfoProbe {
 							  $" 4:3={ctl.Stream4x3} wide={ctl.StreamWide} lb={ctl.StreamLetterbox} ps={ctl.StreamPanScan}");
 		}
 		Console.WriteLine($"      chapters: {string.Join(" ", chapters.Select(c => $"{c.PgcNumber}/{c.ProgramNumber}"))}");
+		Console.WriteLine($"      palette (00YYCrCb): {string.Join(" ", pgcs[0].Palette.Select(p => p.ToString("X6")))}");
 		foreach (var pgc in pgcs) {
 			Console.WriteLine($"      PGC {pgc.Number}: entry={pgc.IsEntryPgc} ttn={pgc.TitleNumber} time={pgc.PlaybackTime}" +
 							  $" programs(entry cells)={string.Join(",", pgc.ProgramEntryCells)} next={pgc.NextPgc} prev={pgc.PreviousPgc}");

@@ -92,7 +92,7 @@ public sealed class TitleRipper {
 		// Each declared stream names a physical substream per display mode; for 16:9 video the "wide" one is used, else the 4:3 one.
 		// Streams that point at the same substream are listed once (MakeMKV does the same).
 		var subtitleTracks = new Dictionary<int, (MkvTrack Track, SubpictureAssembler Assembler)>();   // key: substream number
-		string vobSubHeader = VobSubHeader.Build(_vts.Video.Width, _vts.Video.Height, pgc.Palette);
+		string vobSubHeader = VobSubHeader.Build(_vts.Video.Width, _vts.Video.Height, pgc.Palette, AppName);
 		for (int i = 0; i < _vts.Subpictures.Count; i++) {
 			var ctl = pgc.SubpictureControl[i];
 			if (!ctl.Available) continue;
