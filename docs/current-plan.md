@@ -6,7 +6,8 @@ Process rules for this file are in [CLAUDE.md](../CLAUDE.md).
 - **Ripping works end to end.** Main CLI `src/RipDvd.Cli` (executable `rip-dvd`), modeled on makemkvcon:
 	`rip-dvd info [disc]` lists titles (MakeMKV-style ids over titles ≥ 120 s);
 	`rip-dvd mkv <disc> <id|all> <folder>` writes `title_tNN.mkv`. Disc = `disc:0`, `E:` or a folder. Option `--minlength=N`.
-- Output checked against MakeMKV on the test disc: episode 1 and extra 6 have identical video/audio bytes, frames, durations, chapters; the CC→text track matches in text (timing within a few ms).
+- **Second test disc** `A_VERY_LONG_ENGAGEMENT_DISC1` (film, 2:13:20, dual layer, French audio, 4 VobSub subtitle tracks, CC): the movie matches MakeMKV's file on every track, including all 4 subtitle tracks (log 12:10). Trailer matches too, with MakeMKV's rules for dropping empty tracks and single chapters.
+- Output checked against MakeMKV on the first test disc: episode 1 and extra 6 have identical video/audio bytes, frames, durations, chapters; the CC→text track matches in text (timing within a few ms).
 	The files play (owner) and decode with 0 errors (ffmpeg). Speed: at least as fast as MakeMKV (title 2: 341 s vs 434 s).
 - Repo created. Process documents (CLAUDE.md, this plan, log) in place.
 - Probe console app `src/DvdProbe` (net10.0): commands `drives`, `files`, `titles [-v]`,
@@ -87,8 +88,7 @@ interfaces in `RipDvd.Core`, with one implementation per OS.
 ## Next steps
 1. Matroska polish: ReferenceBlock values are a placeholder (-1); we write more clusters than MakeMKV (291 vs 270 on title 6). Files already play (owner) and decode cleanly (ffmpeg).
 2. CLI polish: rip all titles of this disc with `rip-dvd mkv E: all` as an end-to-end test; MakeMKV-style output naming prefix (step 5); options for track selection later.
-3. Subpicture (VobSub) tracks, DTS/LPCM/MPEG audio: needed for other discs (test disc has
-	none). Find a disc with subtitles to test.
+3. DTS/LPCM/MPEG audio: neither test disc has them. Need a disc with DTS (or LPCM) audio to test. VobSub subtitles are done (see Status).
 4. Drive authentication through Windows DVD IOCTLs, only if a disc/drive refuses to read
 	scrambled sectors (this drive reads them fine; MakeMKV had run before, so check again
 	after a fresh disc insert). Alternative: libdvdcss as an optional fallback.

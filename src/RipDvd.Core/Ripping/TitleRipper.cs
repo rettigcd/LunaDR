@@ -39,7 +39,8 @@ public sealed class TitleRipper {
 	}
 
 	/// <summary>Rip to <paramref name="outputPath"/>. <paramref name="progress"/> gets (sectors done, total).</summary>
-	public RipResult Rip(string outputPath, Action<long, long>? progress = null) {
+	/// <param name="maxCells">For testing: rip only the first cells of the title.</param>
+	public RipResult Rip(string outputPath, Action<long, long>? progress = null, int maxCells = int.MaxValue) {
 		var started = DateTime.UtcNow;
 		var warnings = new List<string>();
 		var pgc = _pgcs[0];
@@ -47,7 +48,7 @@ public sealed class TitleRipper {
 
 		using var vobs = VobReader.ForTitleSet(_videoTs, _title.TitleSetNumber);
 		var key = TitleSectorReader.FindKey(vobs);
-		var cells = _pgcs.SelectMany(p => p.Cells).ToList();
+		var cells = _pgcs.SelectMany(p => p.Cells).Take(maxCells).ToList();
 		var reader = new TitleSectorReader(vobs, cells, key);
 
 		// ---- Tracks ----
@@ -244,24 +245,24 @@ public sealed class TitleRipper {
 		}
 		progress?.Invoke(total, total);
 
-		long durationNs = video.LastEndNs;
+		// Like MakeMKV: the end of whichever audio/video track runs longest (on the film disc the audio ends 9 ms after the video).
+		long durationNs = tracks.Where(t => t.Type != MkvTrackType.Subtitle).Max(t => t.LastEndNs);
 		mkv.Finish(durationNs);
 		return new RipResult(outputPath, durationNs, total, DateTime.UtcNow - started, warnings);
 	}
 
 	/// <summary>
 	/// Feed a GOP's caption byte pairs to the decoder.
-	/// The pairs carried in the GOP's user data belong to its pictures in display order: pair k is shown with the k-th displayed picture.
-	/// Extra pairs (more than pictures) follow at one frame per pair.
+	/// Line-21 captions belong to the broadcast frame rate: one byte pair per 1/29.97 s video frame (two fields), starting when the GOP is first shown.
+	/// With 3:2 pulldown (film) a GOP shows fewer pictures than frames, so pairs are timed by frame slot, not by picture.
+	/// Timing by picture was 50–67 ms late on a film disc; on video content (no pulldown) both are the same.
 	/// </summary>
 	private static void FeedCaptions(Captions.Eia608Decoder decoder, List<VideoFrame> gop) {
 		var pairs = gop.SelectMany(f => f.Captions).ToList();
 		if (pairs.Count == 0) return;
-		var times = gop.Select(f => f.Pts).Order().ToList();
-		long frame = VideoFrame.FieldsToNs(2);
+		long start = gop.Min(f => f.Pts);
 		for (int k = 0; k < pairs.Count; k++) {
-			long t = k < times.Count ? times[k] : times[^1] + (k - times.Count + 1) * frame;
-			decoder.Feed(t, pairs[k].Item1, pairs[k].Item2);
+			decoder.Feed(start + VideoFrame.FieldsToNs(2L * k), pairs[k].Item1, pairs[k].Item2);
 		}
 	}
 

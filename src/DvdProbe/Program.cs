@@ -122,12 +122,14 @@ public static class Commands {
 		return 0;
 	}
 
-	[ProbeCommand("rip", "Rip a title to MKV with RipDvd.Core TitleRipper. Args: <drive> <title> <output.mkv>")]
+	[ProbeCommand("rip", "Rip a title to MKV with RipDvd.Core TitleRipper. Args: <drive> <title> <output.mkv> [-cells N]")]
 	public static int Rip(string[] args) {
 		string videoTs = IfoProbe.ResolveVideoTs(args[0]);
 		var ripper = new RipDvd.Core.Ripping.TitleRipper(videoTs, int.Parse(args[1]));
 		int lastPercent = -1;
-		var result = ripper.Rip(args[2], (done, total) => {
+		int ci = Array.IndexOf(args, "-cells");
+		int maxCells = ci >= 0 ? int.Parse(args[ci + 1]) : int.MaxValue;
+		var result = ripper.Rip(args[2], maxCells: maxCells, progress: (done, total) => {
 			int pct = (int)(done * 100 / total);
 			if (pct / 10 != lastPercent / 10) { Console.Write($"{pct}% "); lastPercent = pct; }
 		});
