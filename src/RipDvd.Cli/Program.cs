@@ -19,13 +19,15 @@ public static class Program {
 			[
 				"Titles are listed by the disc's own title numbers; use those numbers with 'mkv'.",
 				"Titles shorter than --minlength are only named at the end (use --all to list them in full).",
+				"Compilations (\"play all\" titles made of other titles) and duplicates (same video as another title) are marked.",
 			],
 			["rip-dvd info", "rip-dvd info E:", "rip-dvd info E: --all"]),
 		new("mkv", "<disc> <titles|all> <output folder>",
 			"Rip titles to MKV files named \"<Disc name> - title NN.mkv\".",
 			[
 				"<titles> is one title number or a comma-separated list (e.g. 1 or 1,3,6), as listed by 'info'.",
-				"Any title can be ripped by number, even a short one. 'all' rips every title at least --minlength seconds long.",
+				"Any title can be ripped by number, even a short one. 'all' rips every title at least --minlength seconds long",
+				"(minus compilations and duplicates with --no-compilations / --no-duplicates).",
 				"By default every audio and subtitle track is kept, closed captions become a text subtitle track, and chapters are written",
 				"(MakeMKV's defaults). Existing files are skipped unless --overwrite is given.",
 			],
@@ -33,6 +35,7 @@ public static class Program {
 				"rip-dvd mkv E: all C:\\Rips",
 				"rip-dvd mkv E: 1 C:\\Rips --name=\"The Dead Zone S4D1\"",
 				"rip-dvd mkv E: 1,2 C:\\Rips --audio=eng --subtitles=none",
+				"rip-dvd mkv E: all C:\\Rips --no-compilations --no-duplicates",
 				"rip-dvd mkv E: all C:\\Rips --dry-run",
 			]),
 		new("help", "[command]", "Show this help, or the help for one command.", [], ["rip-dvd help mkv"]),
@@ -47,6 +50,8 @@ public static class Program {
 		new("subtitles", "LANGS", ["mkv"], "Bitmap subtitle tracks to keep, by language, as for --audio. (Closed captions are controlled by --captions.)", "all"),
 		new("captions", "on|off", ["mkv"], "Convert closed captions to a text subtitle track. With 'off' the caption data stays inside the video.", "on"),
 		new("chapters", "on|off", ["mkv"], "Write the disc's chapters.", "on"),
+		new("no-compilations", null, ["mkv"], "With 'all', skip compilations: \"play all\" titles made of parts of other titles (marked in 'info')."),
+		new("no-duplicates", null, ["mkv"], "With 'all', skip titles that play the same video as an earlier title, e.g. the same movie with other chapters (marked in 'info')."),
 		new("overwrite", null, ["mkv"], "Replace output files that already exist (otherwise they are skipped)."),
 		new("dry-run", null, ["mkv"], "Show which files and tracks would be written, without ripping."),
 		new("help", null, ["info", "mkv", "help"], "Show help (also -h)."),
@@ -78,7 +83,8 @@ public static class Program {
 						Chapters = !values.TryGetValue("chapters", out var ch) || OnOff(ch!, "chapters"),
 					};
 					return Mkv(positional[1], positional[2], positional[3], minLength, values.GetValueOrDefault("name"), options,
-						overwrite: values.ContainsKey("overwrite"), dryRun: values.ContainsKey("dry-run"));
+						overwrite: values.ContainsKey("overwrite"), dryRun: values.ContainsKey("dry-run"),
+						skipCompilations: values.ContainsKey("no-compilations"), skipDuplicates: values.ContainsKey("no-duplicates"));
 			}
 			return 0;
 		} catch (OptionException ex) {
@@ -186,6 +192,7 @@ public static class Program {
 			Console.WriteLine($"            audio: {(t.Audio.Count == 0 ? "none" : string.Join(", ", t.Audio))}");
 			if (t.Subtitles.Count > 0) Console.WriteLine($"            subtitles: {string.Join(", ", t.Subtitles)}");
 			if (t.ClosedCaptions) Console.WriteLine("            closed captions");
+			if (Relation(t) is { } rel) Console.WriteLine($"            {rel}");
 		}
 		var skipped = disc.Titles.Except(listed).ToList();
 		if (skipped.Count > 0)
@@ -194,13 +201,24 @@ public static class Program {
 		return 0;
 	}
 
+	/// <summary>"compilation of titles 7, 8, …" or "same video as title 1", or null.</summary>
+	private static string? Relation(TitleSummary t) =>
+		t.CompilationOf is { } c ? $"compilation (\"play all\") of titles {string.Join(", ", c)}" :
+		t.DuplicateOf is { } d ? $"same video as title {d}" : null;
+
 	private static int Mkv(string discArg, string which, string outputFolder, TimeSpan minLength, string? name, RipOptions options,
-		bool overwrite, bool dryRun) {
+		bool overwrite, bool dryRun, bool skipCompilations, bool skipDuplicates) {
 		string videoTs = DiscScanner.ResolveVideoTs(discArg);
 		var disc = DiscScanner.Scan(videoTs);
 		List<TitleSummary> selected;
 		if (which == "all") {
 			selected = disc.Titles.Where(t => LongEnough(t, minLength)).ToList();
+			foreach (var t in selected.ToList()) {
+				bool skip = (skipCompilations && t.CompilationOf is not null) || (skipDuplicates && t.DuplicateOf is not null);
+				if (!skip) continue;
+				Console.WriteLine($"Title {t.TitleNumber} ({Format(t.DurationNs)}) skipped: {Relation(t)}");
+				selected.Remove(t);
+			}
 		} else {
 			var numbers = which.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(int.Parse).ToList();
 			var unknown = numbers.Where(n => disc.Titles.All(t => t.TitleNumber != n)).ToList();

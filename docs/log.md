@@ -338,3 +338,10 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	- Free alternatives: TVmaze (no key, aired order only), TMDB (free key, DVD order only where episode groups exist); terms not yet verified. TheDiscDB maps specific discs' titles to episodes (identification method/API not verified).
 	- Runtime cannot tell episodes apart (seconds apart on disc, whole minutes in TheTVDB); order is the main signal.
 - **Open questions added:** data source (TheTVDB paid vs free) and episode file naming.
+
+## 2026-11-18 15:45
+- **Owner questions:** why does MakeMKV list duplicate titles; are chapters different from cells; a titles-vs-cells table. **Answers:** DVDs define titles as playlists of cells, and several titles can play the same cells (play-all titles, the same movie with other chapters/subtitles, alternate paths, decoy titles); MakeMKV drops only exact duplicates. Chapters point at programs (groups of cells); not every cell starts a chapter. Probe `cellmap` prints one whole-disc table (a row per cell, a column per title); maps saved in `reference/cellmaps/`.
+- **Finding (BUTTERFLY_EFFECT, 143 cells, 23 titles):** titles 1 and 2 play the same 57 cells (22 vs 56 chapters); title 14 = titles 15–23 in a row; title 13 = parts of titles 7–11 (without their first/last cells and some chapter continuations), in a different order; many titles share a 0.5 s end cell.
+- **Note:** the drive could not read the disc on one insert (Windows: no disc; drive noises); re-inserting fixed it. Probe now prints a one-line "no disc is ready" error instead of a stack trace.
+- **Owner request:** a flag to skip compilations ("I never want to watch all episodes together"). **Step:** `DiscScanner` classifies titles (duplicate / compilation, rules in the plan); CLI `--no-compilations` and `--no-duplicates` for `mkv … all`; `info` marks such titles. On Butterfly Effect: title 2 = duplicate of 1; titles 13 and 14 = compilations; titles 15–23 (each inside 14) correctly not flagged. Dry run skips 2, 13, 14 with reasons.
+- **Decision:** default stays MakeMKV's (keep them); the flags opt in. Explicitly numbered titles are always ripped.

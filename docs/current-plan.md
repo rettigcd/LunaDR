@@ -7,7 +7,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 - **Ripping works end to end on Windows.** CLI `src/RipDvd.Cli` (executable `rip-dvd`), modeled on makemkvcon; `rip-dvd help` / `help <command>` / `-h` explain everything:
 	`info [disc] [--all] [--minlength=N]` lists titles by the disc's own title numbers (length, chapters, size, audio, subtitles, CC);
 	`mkv <disc> <titles|all> <folder>` writes `<Disc name> - title NN.mkv`, titles like `1` or `1,3,6` (`all` = titles ≥ 120 s).
-	`mkv` options: `--name`, `--audio=LANGS|all|none`, `--subtitles=LANGS|all|none`, `--captions=on|off`, `--chapters=on|off`, `--overwrite` (default: skip existing files), `--dry-run`, `--minlength`.
+	`mkv` options: `--name`, `--audio=LANGS|all|none`, `--subtitles=LANGS|all|none`, `--captions=on|off`, `--chapters=on|off`, `--overwrite` (default: skip existing files), `--dry-run`, `--minlength`, `--no-compilations`, `--no-duplicates`.
 	Disc = `disc:0`, `E:` or a folder.
 - **Verified against MakeMKV on five discs** (byte-level comparisons with `mkvinfo`, plus ffmpeg decoding with no errors; the owner has played the files):
 
@@ -48,6 +48,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 - CSS code is ported from libdvdcss rather than linked: readable, no native DLL. libdvdcss could be an optional fallback if a disc defeats the port.
 - License: GPL v2 or later because of the libdvdcss port. GPL-derived files: `src/RipDvd.Core/Css/Css.cs`, `Css/CssTables.cs`, `Css/CssAuthentication.cs`; each starts with a "LICENSE NOTE" block listing all of them.
 	Any further GPL-derived file gets the same note and goes on this list.
+- Overlapping titles (`DiscScanner`, from cell lists; cells under 2 s ignored): a **duplicate** plays the same cells as an earlier title; a **compilation** ("play all") consists only of cells of 2+ other titles and isn't inside any single one. `info` marks both; `mkv … all --no-compilations / --no-duplicates` skips them (default keeps them, like MakeMKV). Probe `cellmap` shows the titles-vs-cells table.
 - Reading the disc: through the file system (`<drive>\VIDEO_TS\*.VOB`), after drive authentication.
 
 ## Platform (Windows 11 now, Linux possible later)
