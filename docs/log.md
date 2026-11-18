@@ -77,3 +77,22 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 - **Decision:** accept a key only when several sectors agree on it (5 votes). Reason: a
   wrong plaintext guess yields a wrong key; voting filters those out.
 - **Open questions added:** GPL license of the ported libdvdcss code; legal note on CSS.
+
+## 2026-11-18 10:08
+- **Step:** added `Dvd/NavPack` (parses each VOBU's nav pack) and probe `duration`, which
+  walks nav packs from VOBU to VOBU (reads ~5000 sectors, not the whole title).
+- **Finding:** title 1's VOBU timestamps sum to 42:33.017, matching the IFO cell times
+  (converted at 30000/1001 fps) cell for cell. MakeMKV shows 0:42:27, so its figure is not
+  the stream length either; the difference (~6 s on episodes, <1 s on extras) is not a
+  constant ratio. Next: rip with MakeMKV and inspect the file.
+- **Owner question:** would parts written in C be more efficient? **Answer:** no. Measured
+  (probe `bench`, Release build): descrambling 430 MB/s on one core; key recovery ~6 ms of
+  CPU per 2000 sectors. A DVD drive gives at most ~22 MB/s, so the drive is the bottleneck.
+  C would add native build/interop work per platform and make the code harder to read.
+- **Decision:** all C#, no native code; optimize in C# if a hot spot ever appears.
+- **Owner request:** the app must run on Windows 11; identify what would allow or prevent
+  Linux. **Answer:** added a "Platform" section to the plan. Everything so far is portable
+  C# except disc location (drive letters) and, later, drive authentication/raw reads
+  (different OS calls) and the GUI toolkit.
+- **Decision:** OS-specific code goes behind interfaces in `RipDvd.Core` with one
+  implementation per OS; if Linux matters, the GUI uses Avalonia.

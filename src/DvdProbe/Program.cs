@@ -82,6 +82,51 @@ public static class Commands
         return 0;
     }
 
+    [ProbeCommand("duration", "Measure title durations from nav-pack timestamps. Args: <drive> <title numbers...> [-c per cell]")]
+    public static int Duration(string[] args)
+    {
+        string videoTs = IfoProbe.ResolveVideoTs(args[0]);
+        bool perCell = args.Contains("-c");
+        foreach (var t in args.Skip(1).Where(a => !a.StartsWith('-')).Select(int.Parse))
+            DurationProbe.Measure(videoTs, t, perCell);
+        return 0;
+    }
+
+    [ProbeCommand("bench", "Time CSS descrambling and key recovery in memory (no drive I/O). Args: <drive> <vts>")]
+    public static int Bench(string[] args)
+    {
+        string videoTs = IfoProbe.ResolveVideoTs(args[0]);
+        int vts = int.Parse(args[1]);
+        using var reader = RipDvd.Core.Dvd.VobReader.ForTitleSet(videoTs, vts);
+        // Collect 2000 scrambled sectors into memory first, so only CPU work is timed.
+        var sectors = new List<byte[]>();
+        var buf = new byte[2048 * 64];
+        for (long s = 0; s < reader.SectorCount && sectors.Count < 2000; s += 64)
+        {
+            int n = (int)Math.Min(64, reader.SectorCount - s);
+            reader.Read(s, n, buf);
+            for (int k = 0; k < n && sectors.Count < 2000; k++)
+                if (RipDvd.Core.Css.Css.IsScrambled(buf.AsSpan(k * 2048, 2048))) sectors.Add(buf.AsSpan(k * 2048, 2048).ToArray());
+        }
+        var key = CssProbe.CrackTitleSet(videoTs, vts, 200_000, 3, print: false)!.Value;
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        int rounds = 0;
+        while (sw.ElapsedMilliseconds < 2000)
+        {
+            foreach (var s in sectors) { var copy = (byte[])s.Clone(); RipDvd.Core.Css.Css.Unscramble(key, copy); }
+            rounds++;
+        }
+        double mb = rounds * sectors.Count * 2048 / 1e6;
+        Console.WriteLine($"Descramble: {mb / sw.Elapsed.TotalSeconds:F0} MB/s on one core ({sectors.Count} sectors x {rounds} rounds)");
+
+        sw.Restart();
+        int attacks = 0, hits = 0;
+        foreach (var s in sectors) { attacks++; if (RipDvd.Core.Css.Css.AttackPattern(s) is not null) hits++; if (sw.ElapsedMilliseconds > 3000) break; }
+        Console.WriteLine($"Key attack: {attacks} sectors in {sw.ElapsedMilliseconds} ms ({hits} gave a key)");
+        return 0;
+    }
+
     [ProbeCommand("crack", "Recover CSS title keys from VOB data and verify them. Args: <drive> [vts numbers...]")]
     public static int Crack(string[] args)
     {

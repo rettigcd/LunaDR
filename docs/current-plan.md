@@ -41,6 +41,24 @@ Process rules for this file are in [CLAUDE.md](../CLAUDE.md).
   authentication (and the player-key / disc-key route) is only added if a disc or drive
   needs it.
 - Reading the disc: through the Windows file system (`E:\VIDEO_TS\*.VOB`) for now.
+- All C#, no native C code. Measured: descrambling runs at 430 MB/s on one core and key
+  recovery uses ~6 ms CPU per 2000 sectors, while a DVD drive delivers at most ~22 MB/s.
+  The drive is the bottleneck; if a hot spot appears, optimize it in C# (Span, SIMD,
+  parallelism) before considering native code.
+
+## Platform (Windows 11 now, Linux possible later)
+Target is Windows 11. Keep Linux possible by putting OS-specific code behind small
+interfaces in `RipDvd.Core`, with one implementation per OS.
+
+| Area | Status | Linux impact |
+|---|---|---|
+| .NET 10, C# | portable | none |
+| IFO parsing, CSS, demux, MKV writing | portable (pure C#, byte arrays/streams) | none |
+| Locating the disc (`E:\VIDEO_TS`, `DriveInfo`) | Windows-style paths in the probe | Linux mounts at e.g. `/media/<user>/<label>`; device is `/dev/sr0`. Take a path or device argument; don't assume drive letters. |
+| Reading scrambled sectors via the file system | works on this Windows drive | Linux usually needs CSS drive authentication first (kernel `DVD_AUTH` ioctl), otherwise reads of scrambled sectors fail. |
+| Drive authentication / raw sector reads (future) | not written yet | Windows: `DeviceIoControl` with `IOCTL_DVD_*` on `\\.\E:`. Linux: `ioctl` `DVD_AUTH`/`DVD_READ_STRUCT` on `/dev/sr0`. Needs an `IDiscDevice` interface with two implementations. |
+| GUI (future) | not chosen | WinForms/WPF are Windows-only; MAUI has no Linux desktop. Use **Avalonia** if Linux matters. |
+| Notification-sound hook | Claude Code settings only, not part of the app | none |
 - Closed captions (EIA-608 in the MPEG-2 video user data) become a text subtitle track
   when the VTS video attributes have the line-21 flag set, as MakeMKV does ("CC→Text").
 - Command-line app first. A MakeMKV-style GUI comes later and is secondary, so keep the ripping
@@ -49,8 +67,10 @@ Process rules for this file are in [CLAUDE.md](../CLAUDE.md).
 ## Next steps
 1. Demux MPEG-2 program stream (video, AC3/DTS/LPCM/MPEG audio, subpictures) by following the
    program chain's cell order.
-2. Measure real durations from the stream timestamps and compare with MakeMKV's episode
-   durations (IFO says 42:30.46 for title 1, MakeMKV says 0:42:27).
+2. Episode durations: the stream's own timestamps (nav packs) give 42:33.017 for title 1,
+   exactly the IFO cell times at 29.97 fps, yet MakeMKV shows 0:42:27. Rip title 1 with
+   `makemkvcon` into a folder outside the repo and inspect the MKV (duration, tracks,
+   chapters, codec private data). This also gives a reference file for the muxer.
 3. Matroska muxer: tracks, chapters, track language tags, VobSub subtitles, CC→text.
 4. Main CLI (`rip-dvd info`, `rip-dvd mkv <titles> <outdir>`), similar to `makemkvcon`.
 5. Speed up key recovery (VTS 9 took 49 s, mostly reading the drive): stop at the first
