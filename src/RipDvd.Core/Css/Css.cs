@@ -8,6 +8,7 @@
 // GPL-derived files in this repo (replace all of them to drop the GPL requirement):
 //   src/RipDvd.Core/Css/Css.cs        (this file)
 //   src/RipDvd.Core/Css/CssTables.cs
+//   src/RipDvd.Core/Css/CssAuthentication.cs
 // ================================================================
 //
 // How CSS scrambles a sector:

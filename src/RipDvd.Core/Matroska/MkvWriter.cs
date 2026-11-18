@@ -11,7 +11,7 @@ public sealed class MkvTrack {
 	public required string CodecId { get; init; }
 	public byte[]? CodecPrivate { get; set; }
 	public string? Language { get; init; }          // ISO 639-2, e.g. "eng"
-	public string? Name { get; init; }
+	public string? Name { get; set; }
 	public bool Default { get; init; }
 	public bool Lacing { get; init; }
 	public long DefaultDurationNs { get; init; }

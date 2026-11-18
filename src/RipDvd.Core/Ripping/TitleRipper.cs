@@ -47,6 +47,8 @@ public sealed class TitleRipper {
 		if (_pgcs.Count > 1) warnings.Add($"Title uses {_pgcs.Count} PGCs; only cells of all PGCs are concatenated (chapters from the first).");
 
 		using var vobs = VobReader.ForTitleSet(_videoTs, _title.TitleSetNumber);
+		// A drive only returns scrambled sectors after the CSS handshake (unless something, e.g. MakeMKV, already did it).
+		if (DriveUnlocker.TryUnlock(_videoTs) is { } unlockError) warnings.Add($"Drive authentication failed: {unlockError}");
 		var key = TitleSectorReader.FindKey(vobs);
 		var cells = _pgcs.SelectMany(p => p.Cells).Take(maxCells).ToList();
 		var reader = new TitleSectorReader(vobs, cells, key);
@@ -66,27 +68,36 @@ public sealed class TitleRipper {
 		};
 		SetDisplaySize(video, _vts.Video.AspectRatio);
 		var tracks = new List<MkvTrack> { video };
-		var audioTracks = new Dictionary<int, (MkvTrack Track, Ac3Framer Framer)>();   // key: AC3 substream number
+		var audioTracks = new Dictionary<StreamId, (MkvTrack Track, AudioFramer Framer)>();
 		for (int i = 0; i < _vts.Audio.Count; i++) {
 			var ctl = pgc.AudioControl[i];
 			if (!ctl.Available) continue;
 			var a = _vts.Audio[i];
-			if (a.Coding != "AC3") { warnings.Add($"Audio stream {i} is {a.Coding}; not supported yet, skipped."); continue; }
+			// AC3 is substream 0x80+n of private stream 1, DTS 0x88+n.
+			(StreamKind kind, string codecId, AudioFramer audioFramer, int substreamBase) = a.Coding switch {
+				"AC3" => (StreamKind.Ac3, "A_AC3", (AudioFramer)new Ac3Framer(), 0x80),
+				"DTS" => (StreamKind.Dts, "A_DTS", new DtsFramer(), 0x88),
+				_ => (StreamKind.Other, "", null!, 0),
+			};
+			if (kind == StreamKind.Other) {
+				warnings.Add($"Audio stream {i} is {a.Coding}; not supported yet, skipped.");
+				continue;
+			}
 			var track = new MkvTrack {
 				Number = tracks.Count + 1,
 				Type = MkvTrackType.Audio,
-				CodecId = "A_AC3",
+				CodecId = codecId,
 				Language = Languages.ToIso6392(a.Language),
 				Name = ChannelName(a.Channels),
 				Default = audioTracks.Count == 0,
 				Lacing = true,
-				DefaultDurationNs = Ac3Framer.FrameNs,
+				DefaultDurationNs = kind == StreamKind.Dts ? 512 * 1_000_000_000L / a.SampleRate : Ac3Framer.FrameNs32,
 				SamplingFrequency = a.SampleRate,
 				Channels = a.Channels,
-				SourceId = $"01{0x80 + ctl.StreamNumber:X2}BD",
+				SourceId = $"01{substreamBase + ctl.StreamNumber:X2}BD",
 			};
 			tracks.Add(track);
-			audioTracks[ctl.StreamNumber] = (track, new Ac3Framer());
+			audioTracks[new StreamId(kind, ctl.StreamNumber)] = (track, audioFramer);
 		}
 
 		// Subpicture (bitmap subtitle) streams become S_VOBSUB tracks.
@@ -155,7 +166,7 @@ public sealed class TitleRipper {
 		var framer = new Mpeg2VideoFramer { ExtractCaptions = captionDecoder is not null };
 		bool headerWritten = false;
 		var pendingVideo = new List<VideoFrame>();
-		var audioQueues = audioTracks.Values.Select(v => (v.Track, Queue: new Queue<AudioFrame>())).ToList();
+		var audioQueues = audioTracks.Values.Select(v => (v.Track, v.Framer, Queue: new Queue<AudioFrame>())).ToList();
 		var subtitleQueues = subtitleTracks.Values.ToDictionary(v => v.Track, v => new Queue<SubpictureUnit>());
 
 		// Subtitles are written into the cluster of the GOP they start in.
@@ -177,13 +188,20 @@ public sealed class TitleRipper {
 		void WriteGop(List<VideoFrame> gop, long audioUntilNs) {
 			if (!headerWritten) {
 				video.CodecPrivate = framer.SequenceHeader;
+				// Channel counts come from the audio stream once seen: the IFO says 5 for 5.1 DTS, where MakeMKV (and the stream) say 6.
+				foreach (var (track, af, _) in audioQueues) {
+					if (af.Channels > 0) {
+						track.Channels = af.Channels;
+						track.Name = ChannelName(af.Channels);
+					}
+				}
 				mkv.WriteHeader(chapters, null);
 				headerWritten = true;
 			}
 			var keyFrame = gop[0];
 			mkv.StartCluster(keyFrame.Pts, addCue: true);
 			foreach (var f in gop) mkv.AddVideoFrame(video, f.Pts, f.DurationNs, f.IsKeyFrame, f.Data);
-			foreach (var (track, queue) in audioQueues) WriteAudio(mkv, track, queue, audioUntilNs);
+			foreach (var (track, af, queue) in audioQueues) WriteAudio(mkv, track, af, queue, audioUntilNs);
 			WriteSubtitles(audioUntilNs);
 			if (captionDecoder is not null) {
 				FeedCaptions(captionDecoder, gop);
@@ -212,7 +230,7 @@ public sealed class TitleRipper {
 				long? pts = p.Pts is { } raw ? ToNs90k(raw) + cellOffsetNs : null;
 				if (p.Stream.Kind == StreamKind.Video) {
 					framer.Feed(p.Payload.Span, pts);
-				} else if (p.Stream.Kind == StreamKind.Ac3 && audioTracks.TryGetValue(p.Stream.Number, out var at)) {
+				} else if (audioTracks.TryGetValue(p.Stream, out var at)) {
 					at.Framer.Feed(p.Payload.Span, pts, p.FirstAccessUnit);
 					var q = audioQueues.First(x => x.Track == at.Track).Queue;
 					foreach (var af in at.Framer.TakeReady()) q.Enqueue(af);
@@ -237,7 +255,7 @@ public sealed class TitleRipper {
 		framer.Flush();
 		pendingVideo.AddRange(framer.TakeReady());
 		if (pendingVideo.Count > 0) WriteGop(pendingVideo, long.MaxValue);
-		foreach (var (track, queue) in audioQueues) if (queue.Count > 0) WriteAudio(mkv, track, queue, long.MaxValue);
+		foreach (var (track, af, queue) in audioQueues) if (queue.Count > 0) WriteAudio(mkv, track, af, queue, long.MaxValue);
 		if (headerWritten) WriteSubtitles(long.MaxValue);
 		if (captionDecoder is not null && headerWritten) {
 			captionDecoder.Finish(video.LastEndNs);
@@ -266,20 +284,24 @@ public sealed class TitleRipper {
 		}
 	}
 
-	/// <summary>Write queued audio frames that start before <paramref name="untilNs"/>, 3 per laced block like MakeMKV.</summary>
-	private static void WriteAudio(MkvWriter mkv, MkvTrack track, Queue<AudioFrame> queue, long untilNs) {
-		var group = new List<AudioFrame>(3);
+	/// <summary>
+	/// Write queued audio frames that start before <paramref name="untilNs"/>, laced like MakeMKV: 96 ms per block (3 AC3 or 9 DTS frames).
+	/// </summary>
+	private static void WriteAudio(MkvWriter mkv, MkvTrack track, AudioFramer framer, Queue<AudioFrame> queue, long untilNs) {
+		int perBlock = framer.FramesPerBlock;
+		long frameNs = framer.FrameNs;
+		var group = new List<AudioFrame>(perBlock);
 		void Emit() {
 			if (group.Count == 0) return;
-			mkv.AddLacedFrames(track, group[0].Pts, Ac3Framer.FrameNs, group.Select(f => f.Data).ToList());
+			mkv.AddLacedFrames(track, group[0].Pts, frameNs, group.Select(f => f.Data).ToList());
 			group.Clear();
 		}
 		while (queue.Count > 0 && queue.Peek().Pts < untilNs) {
 			var f = queue.Dequeue();
-			// Lace only frames that are contiguous in time and equal in size.
-			if (group.Count > 0 && (f.Data.Length != group[0].Data.Length || f.Pts != group[^1].Pts + Ac3Framer.FrameNs)) Emit();
+			// Lace only frames that are contiguous in time (within 1 µs; DTS frames are 10,666,666.67 ns) and equal in size.
+			if (group.Count > 0 && (f.Data.Length != group[0].Data.Length || Math.Abs(f.Pts - group[^1].Pts - frameNs) > 1000)) Emit();
 			group.Add(f);
-			if (group.Count == 3) Emit();
+			if (group.Count == perBlock) Emit();
 		}
 		Emit();
 	}
