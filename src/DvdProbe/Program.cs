@@ -149,6 +149,9 @@ public static class Commands {
 		return 0;
 	}
 
+	[ProbeCommand("mkvcompare", "Compare two MKV files track by track (frames, bytes, SHA-256 of payloads, times, chapters). Args: <a.mkv> <b.mkv>")]
+	public static int MkvCompareCommand(string[] args) => MkvCompare.Run(args[0], args[1]);
+
 	[ProbeCommand("key", "Find CSS title keys with the library's TitleKeyFinder and verify them. Args: <drive> [vts numbers...]")]
 	public static int Key(string[] args) {
 		string videoTs = IfoProbe.ResolveVideoTs(args.Length > 0 ? args[0] : "E:");
