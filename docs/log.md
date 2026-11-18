@@ -345,3 +345,6 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 - **Note:** the drive could not read the disc on one insert (Windows: no disc; drive noises); re-inserting fixed it. Probe now prints a one-line "no disc is ready" error instead of a stack trace.
 - **Owner request:** a flag to skip compilations ("I never want to watch all episodes together"). **Step:** `DiscScanner` classifies titles (duplicate / compilation, rules in the plan); CLI `--no-compilations` and `--no-duplicates` for `mkv … all`; `info` marks such titles. On Butterfly Effect: title 2 = duplicate of 1; titles 13 and 14 = compilations; titles 15–23 (each inside 14) correctly not flagged. Dry run skips 2, 13, 14 with reasons.
 - **Decision:** default stays MakeMKV's (keep them); the flags opt in. Explicitly numbered titles are always ripped.
+
+## 2026-11-18 15:47
+- **Question answered:** make skipping compilations a saved or built-in default? **Answer (owner):** no, leave it as is: compilations and duplicates are kept by default; `--no-compilations` / `--no-duplicates` opt in.
