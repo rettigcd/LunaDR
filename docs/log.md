@@ -364,3 +364,7 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 ## 2026-11-18 16:07
 - **Question answered:** GUI framework. **Answer (owner):** WPF is fine. **Decision:** WPF on .NET 10 with the built-in Fluent theme, no third-party packages. Removed from open questions.
 - **Next:** start G0 (library groundwork), which doesn't depend on the remaining GUI questions (cell-map widths, auto-scan, track options, sound).
+
+## 2026-11-18 16:20
+- **Step (G0.1, done but not committed by request):** `Ripping/CellMap` in the library (cells, per-title playlists and chapter starts, `ClassifyOverlaps`); `DiscScanner` returns it in `DiscSummary.CellMap` and uses it for duplicates/compilations; probe `cellmap` renders it. Checked: probe output identical to the saved BUTTERFLY_EFFECT table; `info` flags unchanged. The owner then said "stop"; the code changes are left uncommitted until the owner decides.
+- **Owner request:** split the design decisions into core and UI. **Step:** current-plan.md now has "Design decisions → Core" (library and CLI) and "→ UI" (WPF + Fluent, Windows only, plain MVVM, no ripping logic in the GUI); the framework sentence moved out of the Next steps header. Also fixed a control character (from a PowerShell backtick escape) that had turned `all` into "ll" in the plan.

@@ -29,9 +29,12 @@ This file describes the present state only; the history is in [log.md](log.md).
 - References: MakeMKV output listings in `reference/makemkv/`; reference rips in git-ignored `reference/rips/`; the owner's Plex library (D:) holds MakeMKV rips of many of the owner's DVDs.
 
 ## Design decisions
+
+### Core (ripping library `RipDvd.Core` and the CLI)
 - C# on .NET 10, all managed code (no native C). The drive is the bottleneck (descrambling 430 MB/s vs ≤ 22 MB/s from a drive).
 - Self-contained like MakeMKV: no external tools at run time. ffmpeg is used only as a development check.
-- DVD only; Blu-ray is out of scope. Command-line app first; a GUI later on top of the same library.
+- DVD only; Blu-ray is out of scope.
+- All ripping logic lives in the library; the CLI and the GUI only call it.
 - Output: Matroska, laid out like MakeMKV's files (log 10:22, 12:10); streams copied unchanged except where MakeMKV converts:
 	LPCM → little-endian `A_PCM/INT/LIT` in 1/30 s blocks; closed captions → `S_TEXT/UTF8`, and the CC data is removed from the video.
 - Accepted differences from MakeMKV's files (owner: not important, not to be worked on): audio lacing breaks in slightly different places;
@@ -42,7 +45,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 - Chapters: one per PGC program, from IFO cell times; none for a single-chapter title.
 - Timing: each cell's stream time mapped to one title timeline (handles STC resets); times computed from field/sample counts so they don't drift.
 	Duration = end of the longest audio/video track, whole milliseconds. CC pairs timed one per 1/29.97 s frame.
-- Defaults as MakeMKV: keep all tracks and chapters; ll skips titles under 120 s (they can still be ripped by number).
+- Defaults as MakeMKV: keep all tracks and chapters; `all` skips titles under 120 s (they can still be ripped by number).
 - Output naming (owner: clearer than MakeMKV's): `<Disc name> - title NN.mkv`, e.g. `Dead Zone S4 D1 - title 01.mkv`. Disc name = volume label with `_` → space, all-caps words capitalized, words with digits kept as written, `DVD` if no label; `--name` overrides.
 	NN and the CLI's title arguments are the disc's own title numbers (as a DVD player numbers them), not MakeMKV's renumbered ids.
 - CSS: recover title keys from the scrambled data (libdvdcss "AttackPattern"), accepting the first key that descrambles to valid MPEG.
@@ -52,6 +55,12 @@ This file describes the present state only; the history is in [log.md](log.md).
 	Any further GPL-derived file gets the same note and goes on this list.
 - Overlapping titles (`DiscScanner`, from cell lists; cells under 2 s ignored): a **duplicate** plays the same cells as an earlier title; a **compilation** ("play all") consists only of cells of 2+ other titles and isn't inside any single one. `info` marks both; `mkv … all --no-compilations / --no-duplicates` skips them (default keeps them, like MakeMKV). Probe `cellmap` shows the titles-vs-cells table.
 - Reading the disc: through the file system (`<drive>\VIDEO_TS\*.VOB`), after drive authentication.
+
+### UI (Windows GUI `RipDvd.Gui`)
+- Windows only (owner). The command-line app came first; the GUI is built on the same library.
+- WPF on .NET 10 with the built-in Fluent (Windows 11) theme, `ThemeMode="System"` (owner: WPF is fine; WinUI 3 was considered but its table control is still experimental and it needs extra runtime/packaging).
+- Plain MVVM: view models with `INotifyPropertyChanged`, no third-party packages, so all code is readable C# and XAML.
+- The GUI shows and calls library types (`DiscScanner`, `CellMap`, `TitleRipper`, the batch runner); it contains no ripping logic of its own.
 
 ## Platform (Windows 11 now, Linux possible later)
 Target is Windows 11. Keep Linux possible by putting OS-specific code behind small interfaces in `RipDvd.Core`, with one implementation per OS.
@@ -67,7 +76,7 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 ## Next steps: the GUI (Windows only)
 Owner's phases: (1) scan the disc and show what's on it, including which titles share cells, in a compact graphical cell map;
 (2) the user selects titles and clicks Start; (3) ripping with progress and remaining time for the current title and for all titles, then an optional sound.
-Framework (owner: WPF is fine): WPF on .NET 10 with the built-in Fluent theme (`ThemeMode="System"`), project `src/RipDvd.Gui` on top of `RipDvd.Core`; plain MVVM (view models with INotifyPropertyChanged), no third-party packages. Items marked (Q) depend on the open questions.
+Framework and approach: see Design decisions → UI. Items marked (Q) depend on the open questions.
 
 **G0 – Groundwork in the library (testable without a GUI)**
 1. Move the cell-map model into `RipDvd.Core` (`Ripping/CellMap`: cells with title set, VOB/cell id, sectors, length; per title: playlist positions and chapter starts; shared-cell and duplicate/compilation info). Probe `cellmap` and the GUI both use it.
