@@ -24,6 +24,7 @@ public sealed class MkvTrack {
 	// Audio
 	public double SamplingFrequency { get; init; }
 	public int Channels { get; set; }
+	public int BitDepth { get; init; }
 	/// <summary>SOURCE_ID statistics tag, e.g. "0100E0" (MakeMKV's form).</summary>
 	public string? SourceId { get; init; }
 
@@ -155,6 +156,7 @@ public sealed class MkvWriter : IDisposable {
 			e.Master(Audio, a => {
 				a.Float(SamplingFrequency, t.SamplingFrequency);
 				a.UInt(Channels, (ulong)t.Channels);
+				if (t.BitDepth > 0) a.UInt(BitDepth, (ulong)t.BitDepth);
 			});
 		}
 	}

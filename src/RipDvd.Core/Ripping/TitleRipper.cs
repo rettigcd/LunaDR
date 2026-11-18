@@ -48,8 +48,14 @@ public sealed class TitleRipper {
 
 		using var vobs = VobReader.ForTitleSet(_videoTs, _title.TitleSetNumber);
 		// A drive only returns scrambled sectors after the CSS handshake (unless something, e.g. MakeMKV, already did it).
-		if (DriveUnlocker.TryUnlock(_videoTs) is { } unlockError) warnings.Add($"Drive authentication failed: {unlockError}");
-		var key = TitleSectorReader.FindKey(vobs);
+		// Unprotected discs make the drive reject the handshake ("Incorrect function"), so a failure only matters if reading then fails.
+		string? unlockError = DriveUnlocker.TryUnlock(_videoTs);
+		CssKey? key;
+		try {
+			key = TitleSectorReader.FindKey(vobs);
+		} catch (IOException ex) when (unlockError is not null) {
+			throw new IOException($"{ex.Message} (drive authentication failed: {unlockError})", ex);
+		}
 		var cells = _pgcs.SelectMany(p => p.Cells).Take(maxCells).ToList();
 		var reader = new TitleSectorReader(vobs, cells, key);
 
@@ -77,6 +83,8 @@ public sealed class TitleRipper {
 			(StreamKind kind, string codecId, AudioFramer audioFramer, int substreamBase) = a.Coding switch {
 				"AC3" => (StreamKind.Ac3, "A_AC3", (AudioFramer)new Ac3Framer(), 0x80),
 				"DTS" => (StreamKind.Dts, "A_DTS", new DtsFramer(), 0x88),
+				// LPCM is substream 0xA0+n; MakeMKV converts it to little-endian PCM in 1/30 s blocks.
+				"LPCM" when a.BitsPerSample == 16 => (StreamKind.Lpcm, "A_PCM/INT/LIT", new LpcmFramer(a.Channels, a.SampleRate, 16), 0xA0),
 				_ => (StreamKind.Other, "", null!, 0),
 			};
 			if (kind == StreamKind.Other) {
@@ -87,11 +95,12 @@ public sealed class TitleRipper {
 				Number = tracks.Count + 1,
 				Type = MkvTrackType.Audio,
 				CodecId = codecId,
-				Language = Languages.ToIso6392(a.Language),
+				Language = a.Language is null ? null : Languages.ToIso6392(a.Language),   // MakeMKV writes no Language when the disc gives none
 				Name = ChannelName(a.Channels),
 				Default = audioTracks.Count == 0,
-				Lacing = true,
-				DefaultDurationNs = kind == StreamKind.Dts ? 512 * 1_000_000_000L / a.SampleRate : Ac3Framer.FrameNs32,
+				DefaultDurationNs = audioFramer.FrameNs > 0 ? audioFramer.FrameNs : 512 * 1_000_000_000L / a.SampleRate,   // DTS: known once the stream is read
+				BitDepth = kind == StreamKind.Lpcm ? a.BitsPerSample : 0,
+				Lacing = kind != StreamKind.Lpcm,
 				SamplingFrequency = a.SampleRate,
 				Channels = a.Channels,
 				SourceId = $"01{substreamBase + ctl.StreamNumber:X2}BD",
@@ -255,7 +264,11 @@ public sealed class TitleRipper {
 		framer.Flush();
 		pendingVideo.AddRange(framer.TakeReady());
 		if (pendingVideo.Count > 0) WriteGop(pendingVideo, long.MaxValue);
-		foreach (var (track, af, queue) in audioQueues) if (queue.Count > 0) WriteAudio(mkv, track, af, queue, long.MaxValue);
+		foreach (var (track, af, queue) in audioQueues) {
+			af.Flush();
+			foreach (var f in af.TakeReady()) queue.Enqueue(f);
+			if (queue.Count > 0) WriteAudio(mkv, track, af, queue, long.MaxValue);
+		}
 		if (headerWritten) WriteSubtitles(long.MaxValue);
 		if (captionDecoder is not null && headerWritten) {
 			captionDecoder.Finish(video.LastEndNs);

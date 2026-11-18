@@ -31,7 +31,8 @@ public sealed record AudioAttributes(
 	string? Language,         // ISO 639-1 two-letter code, e.g. "en"
 	int SampleRate,
 	int Channels,
-	int CodeExtension)        // 1 normal, 2 visually impaired, 3 director's comments, 4 alt. comments
+	int CodeExtension,        // 1 normal, 2 visually impaired, 3 director's comments, 4 alt. comments
+	int BitsPerSample)        // LPCM only: 16, 20 or 24 (quantization, bits 7-6 of byte 1)
 {
 	public static AudioAttributes Parse(ReadOnlySpan<byte> b) {
 		string coding = (b[0] >> 5) switch {
@@ -45,7 +46,8 @@ public sealed record AudioAttributes(
 		bool hasLang = ((b[0] >> 2) & 3) == 1;
 		string? lang = hasLang && b[2] != 0 ? $"{(char)b[2]}{(char)b[3]}" : null;
 		int rate = ((b[1] >> 4) & 3) == 1 ? 96000 : 48000;
-		return new AudioAttributes(coding, (b[0] & 0x10) != 0, lang, rate, (b[1] & 7) + 1, b[5]);
+		int bits = (b[1] >> 6) switch { 0 => 16, 1 => 20, 2 => 24, _ => 0 };
+		return new AudioAttributes(coding, (b[0] & 0x10) != 0, lang, rate, (b[1] & 7) + 1, b[5], bits);
 	}
 }
 

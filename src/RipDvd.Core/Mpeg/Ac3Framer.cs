@@ -20,7 +20,7 @@ public abstract class AudioFramer {
 	private long _bufferBase;
 	private long _anchorPts = -1;
 	private long _samplesSinceAnchor;
-	private readonly List<AudioFrame> _ready = [];
+	protected readonly List<AudioFrame> _ready = [];
 
 	public int Channels { get; protected set; }
 	public int SampleRate { get; protected set; } = 48000;
@@ -42,7 +42,7 @@ public abstract class AudioFramer {
 	protected abstract int ReadHeader(List<byte> b, int pos);
 
 	/// <param name="firstAccessUnit">1-based offset in the payload of the frame the PTS is for (0 = none).</param>
-	public void Feed(ReadOnlySpan<byte> payload, long? ptsNs, int firstAccessUnit) {
+	public virtual void Feed(ReadOnlySpan<byte> payload, long? ptsNs, int firstAccessUnit) {
 		if (ptsNs is { } p && firstAccessUnit > 0)
 			_ptsMarks.Add((_bufferBase + _buffer.Count + firstAccessUnit - 1, p));
 		foreach (byte b in payload) _buffer.Add(b);
@@ -74,6 +74,9 @@ public abstract class AudioFramer {
 		_buffer.RemoveRange(0, pos);
 		_bufferBase += pos;
 	}
+
+	/// <summary>End of stream: emit anything still buffered (only formats without frame headers need this).</summary>
+	public virtual void Flush() { }
 
 	public List<AudioFrame> TakeReady() {
 		var r = new List<AudioFrame>(_ready);

@@ -6,6 +6,7 @@ Process rules for this file are in [CLAUDE.md](../CLAUDE.md).
 - **Ripping works end to end.** Main CLI `src/RipDvd.Cli` (executable `rip-dvd`), modeled on makemkvcon:
 	`rip-dvd info [disc]` lists titles (MakeMKV-style ids over titles ≥ 120 s);
 	`rip-dvd mkv <disc> <id|all> <folder>` writes `title_tNN.mkv`. Disc = `disc:0`, `E:` or a folder. Option `--minlength=N`.
+- **Fourth test disc** Gypsy (2004) vol. 1 (LPCM, not CSS-protected): 16-bit LPCM → A_PCM/INT/LIT matches the owner's MakeMKV rip (log 12:58).
 - **Third test disc** `LOST_IN_TRANSLATION` (DTS): needed CSS drive authentication (now done, Windows) and DTS audio (now done); the movie's opening matches the owner's MakeMKV rip on the Plex drive (log 12:34).
 - **Second test disc** `A_VERY_LONG_ENGAGEMENT_DISC1` (film, 2:13:20, dual layer, French audio, 4 VobSub subtitle tracks, CC): the movie matches MakeMKV's file on every track, including all 4 subtitle tracks (log 12:10). Trailer matches too, with MakeMKV's rules for dropping empty tracks and single chapters.
 - Output checked against MakeMKV on the first test disc: episode 1 and extra 6 have identical video/audio bytes, frames, durations, chapters; the CC→text track matches in text (timing within a few ms).
@@ -89,7 +90,7 @@ interfaces in `RipDvd.Core`, with one implementation per OS.
 ## Next steps
 1. Matroska polish: ReferenceBlock values are a placeholder (-1); we write more clusters than MakeMKV (291 vs 270 on title 6). Files already play (owner) and decode cleanly (ffmpeg).
 2. CLI polish: rip all titles of this disc with `rip-dvd mkv E: all` as an end-to-end test; MakeMKV-style output naming prefix (step 5); options for track selection later.
-3. LPCM and MPEG audio: not yet supported (DTS is done). Test disc candidates from the owner's library: Celtic Women: A New Journey (LPCM + AC3 + DTS), Gypsy (2004) (LPCM). Also a DTS-ES 6.1 disc (Se7en, Dirty Dancing, The Mask, X-Men: The Last Stand, Butterfly Effect DC).
+3. Audio still missing: 20/24-bit LPCM (16-bit done) and MPEG audio (no disc in the owner's library has it). Worth testing: a DTS-ES 6.1 disc (Se7en, Dirty Dancing, The Mask, X-Men: The Last Stand, Butterfly Effect DC).
 4. Drive authentication on Linux (`ioctl` DVD_AUTH on /dev/sr0) behind `ICssDrive`. Windows is done (`WindowsCssDrive`).
 5. Work out MakeMKV's file name prefix (`C1`, `B2`, ...). It is MakeMKV's per-title
 	"comment" attribute (TINFO id 49). Guess: derived from the menus that link to each title.

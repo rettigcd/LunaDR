@@ -268,3 +268,14 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 - **Step:** DTS audio. `Mpeg/Ac3Framer.cs` now holds a shared `AudioFramer` base (frame splitting, PTS from the first-access-unit pointer, times counted in samples from the last PTS so fractional frame lengths don't drift) with `Ac3Framer` and `DtsFramer` (sync 7FFE8001; NBLKS, FSIZE, AMODE, SFREQ, LFF). Audio tracks are keyed by stream kind + number; channel counts and names are taken from the stream once seen.
 - **Result (first 3 cells, 8.5 min, of title 16 vs the Plex MakeMKV copy):** DTS track `A_DTS`, 6 channels, "Surround 5.1", DefaultDuration 10,666,666, 9 frames per laced block (96 ms, like 3 AC3 frames); first blocks byte-identical to MakeMKV's. AC3 blocks and subtitle start times identical. ffmpeg decodes it all (dts 5.1(side)) with no errors.
 - **Decision:** DTS: lace 9 frames per block and use the stream's channel count, as MakeMKV does.
+
+## 2026-11-18 12:58
+- **Owner question:** Celtic Women can't be found; which other DVDs would work? **Answer:** for LPCM only Gypsy (2004); also scanned D:\TV Shows (2,518 files, 1,726 DVD rips): no LPCM, MPEG or DTS audio there. No disc in the library has MPEG audio. DTS-ES candidates: Se7en, Dirty Dancing, The Mask, X-Men: The Last Stand, Butterfly Effect DC.
+- **Fourth test disc:** Gypsy (2004) volume 1: no volume label, one title (1:13:20, 11 chapters), one LPCM 16-bit stereo 48 kHz stream with no language; not CSS-protected. Reference: the owner's Plex copy `D:\Theater\Gypsy (2004)\Gypsy (2004) - Act 1.mkv` (MakeMKV 1.15.3).
+- **Finding (MakeMKV LPCM):** converted to `A_PCM/INT/LIT` (little-endian), BitDepth 16, one block per 1/30 s (1,600 samples, 6,400 bytes), DefaultDuration 33,333,333, no lacing, name "Stereo", no Language element when the disc gives none.
+- **Step:** `Mpeg/LpcmFramer` (16-bit: byte swap per sample, 1/30 s blocks timed by sample count from the first PTS, flush of the last partial block); `AudioAttributes.BitsPerSample` from the IFO; `MkvTrack.BitDepth`; audio framers get a `Flush()`.
+	20/24-bit LPCM (grouped sample packing) is reported as unsupported for now.
+- **Bug found:** the LPCM samples first came out one byte off. The first-access-unit pointer counts from the byte after itself; for LPCM the payload we receive starts 3 bytes later (LPCM header), so the skip is pointer − 4 (for AC3/DTS the payload starts right after the pointer).
+- **Result (first cell vs MakeMKV):** first blocks byte-identical, same 1/30 s timing; ffmpeg decodes it (pcm_s16le, 2 ch, 48 kHz) with no errors.
+- **Finding:** on this unprotected disc the drive rejects the CSS handshake ("Incorrect function"). **Decision:** run the handshake anyway, but report its failure only if reading then fails.
+- **Decision:** omit the Language element when the disc gives no language (MakeMKV does).
