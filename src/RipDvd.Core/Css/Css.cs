@@ -1,8 +1,14 @@
 // CSS descrambling and title-key recovery.
 //
-// Ported to C# from libdvdcss src/css.c (dvdcss_unscramble, RecoverTitleKey, AttackPattern):
-//   Copyright (C) 1999-2001 VideoLAN; licensed under the GNU GPL v2 or later.
-//   The key-recovery attack is Ethan Hawke's DeCSSPlus attack as modified in libdvdcss.
+// ==== LICENSE NOTE: GPL v2 or later (ported from libdvdcss) ====
+// This file is a C# port of libdvdcss src/css.c (dvdcss_unscramble, RecoverTitleKey,
+// AttackPattern), Copyright (C) 1999-2001 VideoLAN, licensed under the GNU GPL v2 or later.
+// The key-recovery attack is Ethan Hawke's DeCSSPlus attack as modified in libdvdcss.
+// Because of this file, the program as a whole must be distributed under the GPL.
+// GPL-derived files in this repo (replace all of them to drop the GPL requirement):
+//   src/RipDvd.Core/Css/Css.cs        (this file)
+//   src/RipDvd.Core/Css/CssTables.cs
+// ================================================================
 //
 // How CSS scrambles a sector:
 //   * Each 2048-byte sector is an MPEG-2 pack. If the PES_scrambling_control bits

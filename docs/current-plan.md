@@ -40,6 +40,10 @@ Process rules for this file are in [CLAUDE.md](../CLAUDE.md).
 	scrambled sectors, take the key that several sectors agree on, then descramble. Drive
 	authentication (and the player-key / disc-key route) is only added if a disc or drive
 	needs it.
+- License: the program is GPL (v2 or later) because the CSS code is ported from libdvdcss.
+	GPL-derived files: `src/RipDvd.Core/Css/Css.cs`, `src/RipDvd.Core/Css/CssTables.cs`; each
+	starts with a "LICENSE NOTE" block. Any further code ported from GPL sources must get the
+	same note and be added to this list and to those notes.
 - Reading the disc: through the Windows file system (`E:\VIDEO_TS\*.VOB`) for now.
 - All C#, no native C code. Measured: descrambling runs at 430 MB/s on one core and key
 	recovery uses ~6 ms CPU per 2000 sectors, while a DVD drive delivers at most ~22 MB/s.
@@ -88,9 +92,5 @@ interfaces in `RipDvd.Core`, with one implementation per OS.
 	(by order and running time), and name the output files with the episode titles.
 
 ## Open questions
-- **License.** The CSS code (`src/RipDvd.Core/Css`) is ported from libdvdcss, which is GPL
-	v2+. That is fine for personal use, but if this program is ever distributed it would have
-	to be released under the GPL. OK, or should CSS be rewritten from the published
-	algorithm description instead? (The substitution table itself can't be avoided either way.)
 - **Legal note.** Bypassing CSS may be restricted where you live (e.g. the US DMCA), even for
 	discs you own. MakeMKV and libdvdcss do the same thing; noting it so it's your call.

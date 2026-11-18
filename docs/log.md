@@ -106,3 +106,13 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	to tabs. Collection-expression tables now open with `=> [` on the same line. Build passes,
 	`titles` output unchanged, `dotnet format --verify-no-changes` is clean. Rule recorded in
 	CLAUDE.md.
+
+## 2026-11-18 10:13
+- **Question answered:** the CSS code is ported from libdvdcss (GPL v2+); is distributing
+	this program under the GPL OK? **Answer:** yes, GPL redistribution is fine.
+- **Decision:** the program is GPL v2+. Every file derived from GPL code starts with a
+	"LICENSE NOTE" block that names the source and lists all GPL-derived files, so they can
+	be found and replaced later. Currently: `src/RipDvd.Core/Css/Css.cs` and
+	`src/RipDvd.Core/Css/CssTables.cs`. The same list is in the plan's design decisions.
+- **Step:** added the LICENSE NOTE blocks to both files. Also corrected a comment in
+	CssTables.cs that described Tab4/Tab5 more precisely than I had verified.

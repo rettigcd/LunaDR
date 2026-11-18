@@ -1,11 +1,17 @@
 // CSS (Content Scrambling System) lookup tables.
 //
-// Copied from libdvdcss src/csstables.h (p_css_tab1 .. p_css_tab5):
-//   Copyright (C) 1999-2001 VideoLAN, author Stéphane Borel, based on css-auth by
-//   Derek Fawcus, DeCSSPlus by Ethan Hawke, and Frank A. Stevenson's attack.
-//   libdvdcss is licensed under the GNU GPL v2 or later.
-// Tab1 is the cipher's substitution table. Tab2/Tab3 step the 17-bit LFSR, Tab4 is a
-// bit-reversal of each byte and Tab5 is the bit-reversal of the complement.
+// ==== LICENSE NOTE: GPL v2 or later (copied from libdvdcss) ====
+// The tables below are copied from libdvdcss src/csstables.h (p_css_tab1 .. p_css_tab5),
+// Copyright (C) 1999-2001 VideoLAN, author Stéphane Borel, based on css-auth by Derek
+// Fawcus, DeCSSPlus by Ethan Hawke, and Frank A. Stevenson's attack.
+// libdvdcss is licensed under the GNU GPL v2 or later, so the program as a whole must be
+// distributed under the GPL.
+// GPL-derived files in this repo (replace all of them to drop the GPL requirement):
+//   src/RipDvd.Core/Css/Css.cs
+//   src/RipDvd.Core/Css/CssTables.cs  (this file)
+// ================================================================
+//
+// Tab1 is the cipher's substitution table; Tab2..Tab5 drive the keystream LFSRs.
 
 namespace RipDvd.Core.Css;
 
