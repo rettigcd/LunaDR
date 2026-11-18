@@ -414,3 +414,8 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	Library: `RipJob.Run` takes an `itemFinished` callback so the list fills in as each title finishes.
 - **Result:** GUI test-mode rip of Butterfly Effect titles 3 and 6 identical to the CLI rips (`mkvcompare`, all properties incl. payload SHA-256 and ReferenceBlocks). Screenshot `docs/gui-phase3-butterfly-effect.png`.
 - **Correction:** the timestamps of the three entries before this one (17:20, 17:45, 17:50) were estimated instead of read from the clock and are too late; the commits show they were written at 16:40, 16:45 and 16:47 (the 16:50 entry likewise belongs at 16:34). From now on the time is read from the system clock.
+
+## 2026-11-18 16:56
+- **Step (G4, part):** Butterfly Effect (the disc in the drive) tested in the GUI: scan, cell map with its shared cells and "play all" titles, rip of titles 3 and 6 identical to the CLI (see 16:54). The other four test discs need the owner to insert them; left in Next steps.
+- **Step (G4.2):** `README.md` at the repo root: what the program does, requirements, build, CLI commands and options, a walk-through of the Windows app with the phase-3 screenshot, project layout, license (GPL v2+ because of the libdvdcss port; legality is the user's to determine).
+- **Not done:** adding the GPL v2 text as `LICENSE`; downloading it from gnu.org failed (connection reset). Added to Next steps.
