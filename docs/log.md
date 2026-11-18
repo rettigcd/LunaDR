@@ -116,3 +116,18 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	`src/RipDvd.Core/Css/CssTables.cs`. The same list is in the plan's design decisions.
 - **Step:** added the LICENSE NOTE blocks to both files. Also corrected a comment in
 	CssTables.cs that described Tab4/Tab5 more precisely than I had verified.
+
+## 2026-11-18 10:17
+- **Owner question:** why port CSS from libdvdcss instead of using libdvdcss directly?
+	**Answer:** (1) the owner wants readable .NET code; a native DLL would be a black box;
+	(2) consistent with the self-contained decision (MakeMKV does its own CSS too);
+	(3) libdvdcss has no official Windows build, so it would need building or extracting
+	from VLC, per-architecture shipping and a P/Invoke layer; (4) only ~200 lines were needed
+	(the data-based key attack). Cost of the choice: libdvdcss is far more battle-tested and
+	also does drive authentication, player keys and disc-key cracking. Licensing is not a
+	difference: libdvdcss is GPL (not LGPL), so linking it would also make the program GPL.
+	This choice was made without asking the owner at the time; now recorded.
+- **Decision (owner agreed):** keep the C# port; if a disc or drive defeats it, add
+	libdvdcss as an optional fallback behind the same interface.
+- **Plan tidy-up:** two design-decision bullets had ended up below the Platform table;
+	moved back. Status updated (probe commands, duration gap).
