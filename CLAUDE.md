@@ -41,4 +41,6 @@ running an installed MakeMKV (`makemkvcon`) to compare results, is allowed.
 	at the end of the line that starts the block (`if (x) {`, `class Foo {`, `} else {`),
 	never on a line by themselves. The rules are in [.editorconfig](.editorconfig); after
 	editing C#, run `dotnet format whitespace RipDvd.slnx` (or `--verify-no-changes` to check).
+- **Comments and `<summary>` docs (owner's rule):** wrap at up to ~140 characters (about 50%
+	longer than the ~95 used at first), and start each new sentence on a new line.
 - Build: `dotnet build` from the repo root. Run the probe: `dotnet run --project src/DvdProbe -- <command>`.

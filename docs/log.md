@@ -186,3 +186,22 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 - **Blocked:** downloaded an ffmpeg build to the session scratchpad to decode-test our
 	output; running it was denied by the permission system (running a freshly downloaded
 	binary). Asking the owner. Until then the check is structural (mkvinfo vs MakeMKV).
+
+## 2026-11-18 10:46
+- **Question answered (closed):** legal note on bypassing CSS. **Answer:** the user of the
+	program is responsible for determining legality. Removed from open questions.
+- **Owner rule (formatting):** comments and `<summary>` docs may wrap at up to ~140 chars
+	(first said "twice", corrected to "up to 50% longer"); start each new sentence on a new
+	line. Recorded in CLAUDE.md. Applies to new and edited comments.
+- **Result (episode, title 1 vs MakeMKV's C1_t00.mkv):** same Duration (2553017 ms), same 9
+	chapter times, same track names/flags ("Surround 5.1", "Stereo"), display 853×480, same
+	CodecPrivate, identical audio frames and bytes, same 76,514 video frames and 5,429 key
+	frames. Video bytes differ by 507,945 (~94 per GOP): MakeMKV removes the closed-caption
+	user data from the video when it converts CC to its text track (track 4, `S_TEXT/UTF8`,
+	FlagDefault 1, 839 blocks, e.g. "I HAD THE PERFEC..." with leading spaces). We don't do
+	CC yet.
+- **Finding (speed):** raw drive read 6.7 MB/s (dual-layer disc, outer area); demux alone
+	6.1 MB/s; first rip of title 1 3.4 MB/s (488 s). Added a read-ahead thread in
+	`TitleSectorReader.ReadAll` (8 × 1 MB chunks) and `FileOptions.SequentialScan` in
+	`VobReader`: title 2 ripped at 4.6 MB/s (341 s). Timing MakeMKV on the same title for
+	comparison.

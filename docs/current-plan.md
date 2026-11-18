@@ -110,5 +110,3 @@ interfaces in `RipDvd.Core`, with one implementation per OS.
 	Claude Code's permission system. Options: allow it (a PowerShell permission rule for
 	that ffmpeg/ffprobe path), install ffmpeg or MKVToolNix yourself, or play the test files
 	in a player. It is a development check only, not a runtime dependency.
-- **Legal note.** Bypassing CSS may be restricted where you live (e.g. the US DMCA), even for
-	discs you own. MakeMKV and libdvdcss do the same thing; noting it so it's your call.

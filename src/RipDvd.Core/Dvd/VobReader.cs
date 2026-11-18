@@ -15,7 +15,7 @@ public sealed class VobReader : IDisposable {
 	public VobReader(IEnumerable<string> vobFiles) {
 		long next = 0;
 		foreach (var path in vobFiles) {
-			var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 1, FileOptions.None);
+			var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 1, FileOptions.SequentialScan);
 			long count = fs.Length / SectorSize;
 			_parts.Add((fs, next, count));
 			next += count;
