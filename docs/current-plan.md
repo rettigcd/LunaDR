@@ -81,21 +81,15 @@ interfaces in `RipDvd.Core`, with one implementation per OS.
 | Notification-sound hook | Claude Code settings only, not part of the app | none |
 
 ## Next steps
-1. Finish checking MakeMKV's episode rip (`C1_t00.mkv`, in progress): duration (expect
-	42:33.017), the CC→text subtitle track (codec, format), 5.1 audio track name, chapters.
-	Demux title 1 with our probe and compare byte counts.
-2. Matroska muxer: first version works (title 6 matches MakeMKV's file structurally).
-	Still to do: decode-test with ffmpeg (needs owner OK, see open questions); rip an
-	episode (title 1, has a 5.1 track and an STC discontinuity in cell 1) and compare with
-	MakeMKV's `C1_t00.mkv`; ReferenceBlock values are a placeholder (-1); cluster count.
-3. Closed captions → text track (EIA-608 decoding from video user data).
-4. Main CLI (`rip-dvd info`, `rip-dvd mkv <titles> <outdir>`), similar to `makemkvcon`.
-5. Subpicture (VobSub) tracks, DTS/LPCM/MPEG audio: needed for other discs (test disc has
+1. Matroska muxer: works. Titles 1 (episode) and 6 (extra) match MakeMKV's files: identical video/audio bytes, frames, durations and chapters; captions identical in text (±1–4 ms timing).
+	Still to do: decode-test with ffmpeg or a player (needs owner, see open questions); ReferenceBlock values are a placeholder (-1); we write more clusters than MakeMKV (291 vs 270 on title 6).
+2. Main CLI (`rip-dvd info`, `rip-dvd mkv <titles> <outdir>`), similar to `makemkvcon`.
+3. Subpicture (VobSub) tracks, DTS/LPCM/MPEG audio: needed for other discs (test disc has
 	none). Find a disc with subtitles to test.
-6. Drive authentication through Windows DVD IOCTLs, only if a disc/drive refuses to read
+4. Drive authentication through Windows DVD IOCTLs, only if a disc/drive refuses to read
 	scrambled sectors (this drive reads them fine; MakeMKV had run before, so check again
 	after a fresh disc insert). Alternative: libdvdcss as an optional fallback.
-7. Work out MakeMKV's file name prefix (`C1`, `B2`, ...). It is MakeMKV's per-title
+5. Work out MakeMKV's file name prefix (`C1`, `B2`, ...). It is MakeMKV's per-title
 	"comment" attribute (TINFO id 49). Guess: derived from the menus that link to each title.
 
 ## Future (desirable, not scheduled)

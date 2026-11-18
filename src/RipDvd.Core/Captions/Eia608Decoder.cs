@@ -100,7 +100,8 @@ public sealed class Eia608Decoder {
 				case 0x2F:                                                                   // EOC end of caption: swap
 					(_displayed, _hidden) = (_hidden, _displayed);
 					_mode = Mode.PopOn;
-					ScreenChanged(t, force: true);
+					// A new pop-on caption starts a new event even if its text is the same (MakeMKV does the same, e.g. repeated "[RING]").
+					ScreenChanged(t, force: true, restart: true);
 					break;
 			}
 			return;
@@ -120,7 +121,8 @@ public sealed class Eia608Decoder {
 		}
 		if ((b1 == 0x12 || b1 == 0x13) && b2 >= 0x20 && b2 <= 0x3F) {   // extended characters replace the previous one
 			if (_col > 0) _col--;
-			Put(b1 == 0x12 ? "ÁÉÓÚÜü‘¡*’—©℠•“”ÀÂÇÈÊËëÎÏïÔÙùÛ«»"[b2 - 0x20] : "ÃãÍÌìÒòÕõ{}\\^_|~ÄäÖöß¥¤│ÅåØø┌┐└┘"[b2 - 0x20]);
+			// Curly quotes are output as ASCII ' and " like MakeMKV (seen for ’ on the test disc; the others assumed).
+			Put(b1 == 0x12 ? "ÁÉÓÚÜü'¡*'—©℠•\"\"ÀÂÇÈÊËëÎÏïÔÙùÛ«»"[b2 - 0x20] : "ÃãÍÌìÒòÕõ{}\\^_|~ÄäÖöß¥¤│ÅåØø┌┐└┘"[b2 - 0x20]);
 			return;
 		}
 		if (b2 >= 0x40 && b2 <= 0x7F) {   // preamble address code: row, indent, style
@@ -177,12 +179,13 @@ public sealed class Eia608Decoder {
 
 	/// <summary>
 	/// The screen may have changed: if its text differs from what is being shown, close the current event and start a new one.
+	/// With <paramref name="restart"/>, a new event starts even when the text is unchanged.
 	/// </summary>
-	private void ScreenChanged(long t, bool force = false, string? clearedText = null) {
+	private void ScreenChanged(long t, bool force = false, string? clearedText = null, bool restart = false) {
 		if (!force && !_dirty) return;
 		_dirty = false;
 		string text = clearedText ?? Render(_displayed);
-		if (text == _shownText) return;
+		if (text == _shownText && !(restart && text.Length > 0)) return;
 		if (_shownText.Length > 0 && t > _shownSince) _events.Add(new CaptionEvent(_shownSince, t, _shownText));
 		_shownText = text;
 		_shownSince = t;

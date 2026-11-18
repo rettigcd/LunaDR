@@ -205,3 +205,15 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	`TitleSectorReader.ReadAll` (8 × 1 MB chunks) and `FileOptions.SequentialScan` in
 	`VobReader`: title 2 ripped at 4.6 MB/s (341 s). Timing MakeMKV on the same title for
 	comparison.
+
+## 2026-11-18 10:55
+- **Result (speed):** MakeMKV ripped title 2 in 434 s (includes its disc scan); ours took 341 s. We are at least as fast as MakeMKV on this drive/disc.
+- **Step:** closed captions → text track.
+	New `Captions/DvdCaptionData` (takes the "CC" user data out of each GOP's first picture and returns the CC1/CC2 byte pairs) and `Captions/Eia608Decoder` (two 15×32 screens; pop-on, roll-up, paint-on; PACs, tabs, mid-row italics, special/extended characters).
+	`TitleRipper` adds an `S_TEXT/UTF8` track (language eng, default, after the audio) when the VTS video attributes have the line-21 flag; pair k of a GOP is timed at the GOP's k-th displayed picture.
+	Probe `mkvinfo -dumptrack N` prints a track's blocks as text.
+- **Result (title 1 vs MakeMKV's C1_t00.mkv):** video track now byte-identical (1,407,923,592 bytes; the CC user data is stripped as MakeMKV does). Caption track: all 839 events have identical text; start times within ±1 ms; MakeMKV's durations are 1–4 ms shorter (mostly 2). Left as is: not visible.
+- **Findings while matching captions:**
+	MakeMKV starts a new event whenever a pop-on caption is swapped in (EOC), even with identical text (e.g. repeated "[RING]"); we now do the same.
+	MakeMKV writes the 608 extended character ’ as ASCII `'`; we now map ’ and ‘ to `'` and “ ” to `"` (only ’ was seen on this disc).
+- **Note:** the 5.5 s rip time of title 1 here is from the Windows file cache (data read minutes earlier), not the drive.
