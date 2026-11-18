@@ -4,7 +4,12 @@ namespace RipDvd.Gui.ViewModels;
 
 /// <summary>One row of the title list: a <see cref="TitleSummary"/> formatted for display.</summary>
 public sealed class TitleRow(TitleSummary title, TimeSpan minimumLength) : ViewModelBase {
+	private bool _isChecked;
+
 	public TitleSummary Title { get; } = title;
+
+	/// <summary>Checked titles are ripped when Start is clicked.</summary>
+	public bool IsChecked { get => _isChecked; set => Set(ref _isChecked, value); }
 
 	public int Number => Title.TitleNumber;
 	public string Length => Format(Title.DurationNs);

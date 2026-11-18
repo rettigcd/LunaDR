@@ -2,7 +2,11 @@
 		xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 		xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 		xmlns:c="clr-namespace:RipDvd.Gui.Controls"
-		Title="rip-dvd" Width="1280" Height="860" MinWidth="800" MinHeight="500">
+		xmlns:g="clr-namespace:RipDvd.Gui"
+		Title="rip-dvd" Width="1280" Height="900" MinWidth="800" MinHeight="560">
+	<Window.Resources>
+		<g:NotConverter x:Key="Not" />
+	</Window.Resources>
 	<Grid Margin="12">
 		<Grid.RowDefinitions>
 			<RowDefinition Height="Auto" />  <!-- drive picker, scan, disc name -->
@@ -10,6 +14,7 @@
 			<RowDefinition Height="Auto" />  <!-- splitter -->
 			<RowDefinition Height="*" />     <!-- cell map -->
 			<RowDefinition Height="Auto" />  <!-- status line -->
+			<RowDefinition Height="Auto" />  <!-- phase 2: output folder, file name, start -->
 		</Grid.RowDefinitions>
 
 		<!-- Phase 1: pick the drive; scanning starts by itself when a disc is inserted. -->
@@ -35,6 +40,15 @@
 				</Style>
 			</DataGrid.RowStyle>
 			<DataGrid.Columns>
+				<!-- Phase 2: check the titles to rip. A template column, so the checkbox works with one click although the grid is read-only. -->
+				<DataGridTemplateColumn Header="Rip">
+					<DataGridTemplateColumn.CellTemplate>
+						<DataTemplate>
+							<CheckBox IsChecked="{Binding IsChecked, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center"
+									  IsEnabled="{Binding DataContext.IsRipping, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource Not}}" />
+						</DataTemplate>
+					</DataGridTemplateColumn.CellTemplate>
+				</DataGridTemplateColumn>
 				<DataGridTextColumn Header="Title" Binding="{Binding Number}" />
 				<DataGridTextColumn Header="Length" Binding="{Binding Length}" />
 				<DataGridTextColumn Header="Chapters" Binding="{Binding Chapters}" />
@@ -69,5 +83,36 @@
 		</DockPanel>
 
 		<TextBlock Grid.Row="4" Text="{Binding Status}" Margin="0,8,0,0" Opacity="0.8" />
+
+		<!-- Phase 2: where and under what name to save, then Start. -->
+		<Border Grid.Row="5" Margin="0,10,0,0" Padding="0,10,0,0" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}">
+			<StackPanel>
+				<Grid>
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="Auto" />
+						<ColumnDefinition Width="3*" />
+						<ColumnDefinition Width="Auto" />
+						<ColumnDefinition Width="Auto" />
+						<ColumnDefinition Width="2*" />
+						<ColumnDefinition Width="Auto" />
+					</Grid.ColumnDefinitions>
+					<TextBlock Grid.Column="0" Text="Save to" VerticalAlignment="Center" Margin="0,0,8,0" />
+					<TextBox Grid.Column="1" Text="{Binding OutputFolder, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center" />
+					<Button Grid.Column="2" Content="Browse…" Command="{Binding BrowseCommand}" Margin="6,0,0,0" />
+					<TextBlock Grid.Column="3" Text="File names" VerticalAlignment="Center" Margin="20,0,8,0" />
+					<TextBox Grid.Column="4" Text="{Binding FileName, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center"
+							 ToolTip="Files are named &quot;&lt;this&gt; - title NN.mkv&quot;" />
+					<TextBlock Grid.Column="5" Text=" - title NN.mkv" VerticalAlignment="Center" Opacity="0.7" />
+				</Grid>
+				<DockPanel Margin="0,10,0,0" LastChildFill="True">
+					<Button DockPanel.Dock="Left" Content="Select all" Command="{Binding SelectAllCommand}" />
+					<Button DockPanel.Dock="Left" Content="None" Command="{Binding SelectNoneCommand}" Margin="6,0,0,0" />
+					<Button DockPanel.Dock="Right" Content="Cancel" Command="{Binding CancelCommand}" Margin="6,0,0,0" MinWidth="90" />
+					<Button DockPanel.Dock="Right" Content="Start" Command="{Binding StartCommand}" MinWidth="110"
+							Style="{DynamicResource AccentButtonStyle}" />
+					<TextBlock Text="{Binding RipStatus}" VerticalAlignment="Center" Margin="16,0" TextTrimming="CharacterEllipsis" />
+				</DockPanel>
+			</StackPanel>
+		</Border>
 	</Grid>
 </Window>

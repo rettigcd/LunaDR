@@ -396,3 +396,10 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	- Test mode `--screenshot file.png [--drive E]`: scans, renders the window to PNG, exits. Screenshot of Butterfly Effect saved as `docs/gui-phase1-butterfly-effect.png`.
 - **Not yet verified:** automatic scan on disc insert needs a physical eject/insert; to be tried by the owner (not a blocker).
 
+## 2026-11-18 17:45
+- **Step (G2 done):** a "Rip" checkbox column (initially checked: at least 120 s, not duplicate/compilation); Select all / None; output folder with Browse (`OpenFolderDialog`) and an editable file-name start (from the disc name), the folder remembered in `%APPDATA%\rip-dvd\gui-settings.json` (`GuiSettings`); Start validates (something checked, folder creatable and writable, existing files → Yes replace / No skip / Cancel) and runs `RipJob` in the background with a one-line status (phase, % and time left for the title and overall, MB/s) and Cancel. Dialogs are passed into the view model by the window, so the view model has no window code.
+- **Step:** test mode `--rip 6 --to <folder>` (with `--screenshot`) checks those titles, starts the rip, and saves a picture when done; it doesn't change the saved folder.
+- **Result:** the GUI's rip of Butterfly Effect title 6 is identical to the CLI's (`mkvcompare`).
+- **Bug found and fixed:** after a rip the buttons stayed disabled (WPF re-evaluates commands only after user input); now `CommandManager.InvalidateRequerySuggested` runs whenever scanning/ripping starts or stops.
+- **Owner question (during G2):** is current-plan.md updated as I go? **Answer:** at each milestone (G1 was recorded when committed; G2 is recorded with this commit).
+

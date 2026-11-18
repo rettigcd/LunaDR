@@ -25,7 +25,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 	`Ifo/` (IFO parsing), `Css/` (descrambling, title-key recovery, drive authentication), `Dvd/` (VOB reading with read-ahead, nav packs, Windows drive commands),
 	`Mpeg/` (PES parsing; MPEG-2 video, AC3, DTS, LPCM framers; subpicture assembler), `Captions/` (EIA-608 decoder),
 	`Matroska/` (EBML reader/writer, MKV writer), `Ripping/` (disc scanner, title ripper, VobSub header, languages).
-- **GUI** `src/RipDvd.Gui` (`rip-dvd-gui.exe`, WPF): phase 1 done: drive picker, automatic scan on disc insert, title list (all titles, short ones dimmed, duplicate/compilation notes), compact cell map with selection highlighting and hover details. Test mode `--screenshot file.png [--drive E]`.
+- **GUI** `src/RipDvd.Gui` (`rip-dvd-gui.exe`, WPF): phases 1–2 done: drive picker, automatic scan on disc insert, title list (all titles, short ones dimmed, duplicate/compilation notes), compact cell map with selection highlighting and hover details; a checkbox per title, output folder and file name (remembered in %APPDATA%\rip-dvd\gui-settings.json), Start/Cancel. Test mode `--screenshot file.png [--drive E] [--rip 6 --to folder]`.
 - Probe `src/DvdProbe`: `drives`, `files`, `titles [-v]`, `scramble`, `crack` (old), `key`, `duration`, `bench`, `demux`, `mkvinfo [-dumptrack]`, `rip [-cells N]`.
 - References: MakeMKV output listings in `reference/makemkv/`; reference rips in git-ignored `reference/rips/`; the owner's Plex library (D:) holds MakeMKV rips of many of the owner's DVDs.
 
@@ -96,7 +96,7 @@ Framework and approach: see Design decisions → UI.
 3. Compact graphical cell map (rows = titles, columns = cells in disc order, grouped by title set), every cell the same narrow width: a filled block where a title uses a cell, a mark where a chapter starts, cells used by several titles highlighted. Hovering shows cell details (id, sectors, length, which titles use it); selecting a title highlights its cells and the other titles that share them.
 4. Scan automatically when a disc is inserted; clear the view when it is removed.
 
-**G2 – Phase 2: select and start**
+**G2 – Phase 2: select and start** *(done: Start also begins the rip, with a one-line status and Cancel; G3 adds the full progress view)*
 1. A checkbox per title; initially checked: titles ≥ 120 s that are not duplicates or compilations; quick buttons "select all" / "none".
 2. Output folder (with Browse) and disc name used in the file names (editable, from the volume label); remembered between runs (settings file in %APPDATA%).
 3. Start button: validates (something selected, folder writable, existing files → ask overwrite/skip).

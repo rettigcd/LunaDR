@@ -20,10 +20,28 @@ public partial class MainWindow : Window {
 
 	private readonly MainViewModel _vm = new();
 	private readonly string? _screenshotPath;
+	private readonly (int[] Titles, string Folder)? _testRip;
 
-	public MainWindow(string? screenshotPath = null, string? startDrive = null) {
+	public MainWindow(string? screenshotPath = null, string? startDrive = null, (int[] Titles, string Folder)? testRip = null) {
+		_testRip = testRip;
 		InitializeComponent();
 		DataContext = _vm;
+		_vm.PickFolder = start => {
+			var dialog = new Microsoft.Win32.OpenFolderDialog { Title = "Save the MKV files to", InitialDirectory = Directory.Exists(start) ? start : "" };
+			return dialog.ShowDialog(this) == true ? dialog.FolderName : null;
+		};
+		_vm.ShowMessage = text => MessageBox.Show(this, text, "rip-dvd", MessageBoxButton.OK, MessageBoxImage.Warning);
+		_vm.AskAboutExistingFiles = files => {
+			string list = string.Join("\n", files.Take(10)) + (files.Count > 10 ? $"\n… and {files.Count - 10} more" : "");
+			var answer = MessageBox.Show(this,
+				$"{files.Count} file(s) already exist:\n\n{list}\n\nYes: replace them.   No: skip those titles.   Cancel: don't start.",
+				"rip-dvd", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+			return answer switch {
+				MessageBoxResult.Yes => ExistingFilesChoice.Overwrite,
+				MessageBoxResult.No => ExistingFilesChoice.Skip,
+				_ => ExistingFilesChoice.Cancel,
+			};
+		};
 		_screenshotPath = screenshotPath;
 		if (startDrive is not null) _vm.SelectDrive(startDrive);
 		SourceInitialized += (_, _) => HwndSource.FromHwnd(new WindowInteropHelper(this).Handle)?.AddHook(WndProc);
@@ -54,6 +72,12 @@ public partial class MainWindow : Window {
 		}
 		await Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
 		if (_vm.Titles.Count > 0) _vm.SelectedTitleNumber = _vm.Titles[0].Number;   // show the selection highlighting
+		if (_testRip is { } rip) {
+			// Test mode: rip the given titles as if Start had been clicked; existing files are replaced.
+			_vm.AskAboutExistingFiles = _ => ExistingFilesChoice.Overwrite;
+			_vm.PrepareTestRip(rip.Titles, rip.Folder);
+			await _vm.StartAsync();
+		}
 		await Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
 
 		// The content has a margin; include it so nothing at the edges is cut off.
