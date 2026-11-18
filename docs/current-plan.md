@@ -84,10 +84,10 @@ interfaces in `RipDvd.Core`, with one implementation per OS.
 1. Finish checking MakeMKV's episode rip (`C1_t00.mkv`, in progress): duration (expect
 	42:33.017), the CC→text subtitle track (codec, format), 5.1 audio track name, chapters.
 	Demux title 1 with our probe and compare byte counts.
-2. Matroska muxer, copying MakeMKV's layout (see log 2026-11-18 10:22): EBML writer,
-	video BlockGroups per frame with reference/duration, AC3 laced SimpleBlocks,
-	chapters from PGC programs, statistics tags, clusters ≈ per GOP, cues. Then compare our
-	file against MakeMKV's with `mkvinfo`.
+2. Matroska muxer: first version works (title 6 matches MakeMKV's file structurally).
+	Still to do: decode-test with ffmpeg (needs owner OK, see open questions); rip an
+	episode (title 1, has a 5.1 track and an STC discontinuity in cell 1) and compare with
+	MakeMKV's `C1_t00.mkv`; ReferenceBlock values are a placeholder (-1); cluster count.
 3. Closed captions → text track (EIA-608 decoding from video user data).
 4. Main CLI (`rip-dvd info`, `rip-dvd mkv <titles> <outdir>`), similar to `makemkvcon`.
 5. Subpicture (VobSub) tracks, DTS/LPCM/MPEG audio: needed for other discs (test disc has
@@ -105,5 +105,10 @@ interfaces in `RipDvd.Core`, with one implementation per OS.
 	(by order and running time), and name the output files with the episode titles.
 
 ## Open questions
+- **Decode testing with ffmpeg.** To check our MKVs really play, I downloaded a standard
+	ffmpeg build (BtbN, from GitHub) into the session scratchpad. Running it was blocked by
+	Claude Code's permission system. Options: allow it (a PowerShell permission rule for
+	that ffmpeg/ffprobe path), install ffmpeg or MKVToolNix yourself, or play the test files
+	in a player. It is a development check only, not a runtime dependency.
 - **Legal note.** Bypassing CSS may be restricted where you live (e.g. the US DMCA), even for
 	discs you own. MakeMKV and libdvdcss do the same thing; noting it so it's your call.

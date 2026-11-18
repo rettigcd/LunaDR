@@ -122,6 +122,22 @@ public static class Commands {
 		return 0;
 	}
 
+	[ProbeCommand("rip", "Rip a title to MKV with RipDvd.Core TitleRipper. Args: <drive> <title> <output.mkv>")]
+	public static int Rip(string[] args) {
+		string videoTs = IfoProbe.ResolveVideoTs(args[0]);
+		var ripper = new RipDvd.Core.Ripping.TitleRipper(videoTs, int.Parse(args[1]));
+		int lastPercent = -1;
+		var result = ripper.Rip(args[2], (done, total) => {
+			int pct = (int)(done * 100 / total);
+			if (pct / 10 != lastPercent / 10) { Console.Write($"{pct}% "); lastPercent = pct; }
+		});
+		Console.WriteLine();
+		Console.WriteLine($"Wrote {result.OutputPath}: duration {TimeSpan.FromTicks(result.DurationNs / 100):h\\:mm\\:ss\\.fff}, " +
+						  $"{result.Sectors:N0} sectors in {result.Elapsed.TotalSeconds:F1} s");
+		foreach (var w in result.Warnings) Console.WriteLine($"  warning: {w}");
+		return 0;
+	}
+
 	[ProbeCommand("mkvinfo", "Print a Matroska file's structure and per-track block summary. Args: <file.mkv> [-blocks N]")]
 	public static int MkvInfo(string[] args) {
 		int bi = Array.IndexOf(args, "-blocks");

@@ -167,3 +167,22 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 		NUMBER_OF_BYTES, SOURCE_ID ("0100E0" video, "0180BD"/"0181BD" AC3), plus
 		_STATISTICS_WRITING_APP/_DATE_UTC/_TAGS.
 	- 270 clusters (≈ one per GOP), one Cue per cluster on the video track.
+
+## 2026-11-18 10:29
+- **Step:** first working MKV writer. New in `RipDvd.Core`: `Matroska/EbmlWriter`,
+	`Matroska/MkvWriter` (MakeMKV's layout), `Mpeg/Mpeg2VideoFramer` (pictures + display
+	times from temporal_reference and field counts, anchored on PES PTS per GOP),
+	`Mpeg/Ac3Framer`, `Ripping/TitleRipper` (tracks, chapters, cell-by-cell timeline from
+	nav-pack VOBU start times), `Ripping/Languages` (ISO 639-1 → 639-2). Probe `rip`.
+- **Result (title 6 vs MakeMKV's B2_t04.mkv):** identical video blocks (4,189, 292 key,
+	75,134,800 bytes, same timestamps incl. B-frame order), identical audio frames/bytes,
+	same Duration (139772), same chapter times to the nanosecond, same tags except BPS
+	(4300391 vs 4300420). Small differences left: 291 vs 270 clusters, audio lacing breaks
+	in slightly different places (1,564 vs 1,563 blocks). Rip time 1.3 s (data cached).
+- **Fixes on the way:** framer scan limit must be re-read after a frame is removed from the
+	buffer; times are now computed from whole field/frame counts (1001/60000 s per field)
+	and converted to ns once, which made chapter ends exact.
+- **Decision:** MKV Duration is written in whole milliseconds, truncated, as MakeMKV does.
+- **Blocked:** downloaded an ffmpeg build to the session scratchpad to decode-test our
+	output; running it was denied by the permission system (running a freshly downloaded
+	binary). Asking the owner. Until then the check is structural (mkvinfo vs MakeMKV).

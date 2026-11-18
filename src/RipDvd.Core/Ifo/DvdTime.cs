@@ -26,6 +26,13 @@ public readonly record struct DvdTime(int Hours, int Minutes, int Seconds, int F
 		return TimeSpan.FromSeconds(seconds);
 	}
 
+	/// <summary>Real duration in nanoseconds, computed exactly from the frame count (30 fps means 30000/1001).</summary>
+	public long ToNanoseconds() => FrameRate switch {
+		30 => ToFrames(30) * 1_001_000_000_000 / 30_000,
+		25 => ToFrames(25) * 40_000_000,
+		_ => ((Hours * 60L + Minutes) * 60 + Seconds) * 1_000_000_000,
+	};
+
 	/// <summary>Nominal time, exactly as stored on the disc (ignores the 1000/1001 NTSC factor).</summary>
 	public TimeSpan Nominal =>
 		new TimeSpan(Hours, Minutes, Seconds) + TimeSpan.FromSeconds(FrameRate > 0 ? Frames / (double)FrameRate : 0);
