@@ -144,6 +144,8 @@ public sealed class TitleRipper {
 			long end = i + 1 < chapterStarts.Count ? chapterStarts[i + 1] : ifoDurationNs;
 			chapters.Add(new MkvChapter(chapterStarts[i], end, $"Chapter {i + 1:00}"));
 		}
+		// A single chapter carries no information; MakeMKV writes no Chapters element then.
+		if (chapters.Count == 1) chapters.Clear();
 
 		// ---- Mux ----
 		Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(outputPath))!);

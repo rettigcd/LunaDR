@@ -48,7 +48,7 @@ public sealed class MkvWriter : IDisposable {
 	private readonly IReadOnlyList<MkvTrack> _tracks;
 	private readonly string _writingApp;
 	private long _segmentSizePos, _segmentDataStart, _seekHeadPos, _durationPos;
-	private long _infoPos, _tracksPos, _chaptersPos;
+	private long _infoPos, _tracksPos, _tracksEnd, _chaptersPos;
 	private readonly List<(long TimeMs, long ClusterPos)> _cues = [];
 
 	private MemoryStream? _cluster;
@@ -106,6 +106,7 @@ public sealed class MkvWriter : IDisposable {
 		_w.Master(Tracks, t => {
 			foreach (var track in _tracks) t.Master(TrackEntry, e => WriteTrack(e, track));
 		});
+		_tracksEnd = _w.Position;
 
 		_chaptersPos = -1;
 		if (chapters.Count > 0) {
@@ -261,7 +262,7 @@ public sealed class MkvWriter : IDisposable {
 		long tagsPos = _w.Position;
 		string date = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
 		_w.Master(Tags, tags => {
-			foreach (var t in _tracks) {
+			foreach (var t in _tracks.Where(t => t.FrameCount > 0)) {
 				long trackDuration = t.LastEndNs - (t.FirstPtsNs == long.MaxValue ? 0 : t.FirstPtsNs);
 				long bps = trackDuration > 0 ? (long)Math.Round(t.ByteCount * 8 / (trackDuration / 1e9)) : 0;
 				tags.Master(Tag, tag => {
@@ -286,6 +287,8 @@ public sealed class MkvWriter : IDisposable {
 			}
 		});
 		long end = _w.Position;
+
+		RemoveEmptyTracks();
 
 		// SeekHead into the reserved space, padded with a Void.
 		_out.Position = _seekHeadPos;
@@ -318,6 +321,37 @@ public sealed class MkvWriter : IDisposable {
 		_w.Size(end - _segmentDataStart, 8);
 		_out.Position = end;
 		_out.Flush();
+	}
+
+	/// <summary>
+	/// Tracks that got no blocks are removed from the Tracks element, as MakeMKV does (a stream can be declared but carry no data).
+	/// The Tracks element was written before the data, so it is rewritten in place and the freed bytes are filled with a Void.
+	/// </summary>
+	private void RemoveEmptyTracks() {
+		if (_tracks.All(t => t.FrameCount > 0)) return;
+		var content = new MemoryStream();
+		var cw = new EbmlWriter(content);
+		foreach (var track in _tracks.Where(t => t.FrameCount > 0)) cw.Master(TrackEntry, e => WriteTrack(e, track));
+
+		long available = _tracksEnd - _tracksPos;
+		var tracks = new MemoryStream();
+		var tw = new EbmlWriter(tracks);
+		tw.Id(Tracks);
+		long idLength = tracks.Length;
+		tw.Size(content.Length);
+		int sizeLength = (int)(tracks.Length - idLength);
+		if (available - (tracks.Length + content.Length) == 1) {
+			// A Void needs at least 2 bytes: spend the one spare byte on a longer size field instead.
+			tracks.SetLength(idLength);
+			tracks.Position = idLength;
+			tw.Size(content.Length, sizeLength + 1);
+		}
+		tracks.Write(content.GetBuffer(), 0, (int)content.Length);
+
+		_out.Position = _tracksPos;
+		_out.Write(tracks.GetBuffer(), 0, (int)tracks.Length);
+		long gap = available - tracks.Length;
+		if (gap > 0) _w.Void((int)gap);
 	}
 
 	private static string FormatDuration(long ns) {

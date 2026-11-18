@@ -237,3 +237,11 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 - **Finding (naming):** MakeMKV's title name here is "A VERY LONG ENGAGEMENT DISC 1" (volume label, `_` → space, "DISC1" → "DISC 1"); files are `<name>-<comment>_tNN.mkv`, e.g. `A VERY LONG ENGAGEMENT DISC 1-B1_t00.mkv`. On the Dead Zone disc the name was empty, giving `C1_t00.mkv`. Why one label gives a name and the other doesn't is still open.
 - **Finding:** MakeMKV's displayed duration (2:12:54) is 25 s less than the IFO time; to be checked against its file, as on the first disc.
 - **Step:** MakeMKV ripping the trailer and the main title into `reference/rips/makemkv/avle/` (background) as references for VobSub.
+
+## 2026-11-18 11:33
+- **Step:** VobSub support written: `Mpeg/SubpictureAssembler` (joins an SPU from its PES packets by its 2-byte size; duration from the stop-display command; forced flag), `Ripping/VobSubHeader` (CodecPrivate "size:" + 16-color palette, YCrCb → RGB with BT.601), S_VOBSUB tracks in `TitleRipper` (16:9 video uses each stream's "wide" substream, 4:3 the 4:3 one; duplicates merged; first is default; the CC text track is default only when there are no VobSub tracks). `rip-dvd info` lists subtitle languages; on this disc it shows exactly MakeMKV's track set.
+- **Finding (trailer, title 5):** MakeMKV's file has no subtitle and no CC track although its title list shows them: those streams carry no data in this title. MakeMKV drops tracks that end up empty.
+	**Decision:** do the same. `MkvWriter` rewrites the Tracks element in place at the end without empty tracks (freed space becomes a Void) and writes no tags for them. Track numbers of later tracks are not changed (gaps are allowed).
+- **Finding:** MakeMKV writes no Chapters element for a single-chapter title. **Decision:** same.
+- **Result (trailer vs MakeMKV):** identical video (3,000 frames incl. pulldown, 69,249,336 bytes) and audio (3,910 frames); tags equal except BPS (±1); Duration 125124 vs MakeMKV 125125 (1 ms, rounding; on the first disc MakeMKV truncated: open detail).
+- **Finding:** `ffmpeg -f null` reports "non monotonically increasing dts" once per GOP on pulldown content, for MakeMKV's file and ours alike. It's a warning from ffmpeg's null muxer, not a decode error.
