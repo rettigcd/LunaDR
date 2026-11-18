@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using RipDvd.Gui;
 using System.Windows.Input;
 using RipDvd.Core.Ripping;
 
@@ -35,6 +36,11 @@ public sealed class MainViewModel : ViewModelBase {
 	private string _hoverInfo = "";
 	private string? _videoTs;
 	private CancellationTokenSource? _cancel;
+	// Phase 3: progress of the current title and of all titles, shown in the progress panel.
+	private bool _showProgress;
+	private double _titleProgress, _overallProgress;
+	private string _titleProgressText = "", _overallProgressText = "";
+	private string? _lastOutputFolder;
 
 	public MainViewModel() {
 		_outputFolder = _settings.OutputFolder;
@@ -46,8 +52,44 @@ public sealed class MainViewModel : ViewModelBase {
 		}, () => !IsRipping);
 		StartCommand = new RelayCommand(() => _ = StartAsync(),
 			() => !IsScanning && !IsRipping && Titles.Any(t => t.IsChecked) && !string.IsNullOrWhiteSpace(OutputFolder));
-		CancelCommand = new RelayCommand(() => _cancel?.Cancel(), () => IsRipping);
+		CancelCommand = new RelayCommand(() => {
+			if (ConfirmCancel?.Invoke() ?? true) _cancel?.Cancel();
+		}, () => IsRipping);
+		OpenFolderCommand = new RelayCommand(() => {
+			if (_lastOutputFolder is { } folder && Directory.Exists(folder))
+				System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", $"\"{folder}\"") { UseShellExecute = true });
+		}, () => !IsRipping && _lastOutputFolder is not null);
 		RefreshDrives();
+	}
+
+	public ICommand OpenFolderCommand { get; }
+
+	/// <summary>Supplied by the window: asks "Stop ripping?"; true = yes.</summary>
+	public Func<bool>? ConfirmCancel { get; set; }
+
+	/// <summary>Files written (or titles that failed) in the current/last rip, in order.</summary>
+	public ObservableCollection<ResultRow> Results { get; } = [];
+
+	/// <summary>The progress panel is shown once a rip has started (and stays to show the results).</summary>
+	public bool ShowProgress { get => _showProgress; private set => Set(ref _showProgress, value); }
+
+	/// <summary>Current title, 0..1.</summary>
+	public double TitleProgress { get => _titleProgress; private set => Set(ref _titleProgress, value); }
+	public string TitleProgressText { get => _titleProgressText; private set => Set(ref _titleProgressText, value); }
+
+	/// <summary>All titles of the rip, 0..1 (weighted by size).</summary>
+	public double OverallProgress { get => _overallProgress; private set => Set(ref _overallProgress, value); }
+	public string OverallProgressText { get => _overallProgressText; private set => Set(ref _overallProgressText, value); }
+
+	/// <summary>Play the Windows notification sound when a rip finishes; remembered between runs.</summary>
+	public bool PlaySoundWhenDone {
+		get => _settings.PlaySoundWhenDone;
+		set {
+			if (_settings.PlaySoundWhenDone == value) return;
+			_settings.PlaySoundWhenDone = value;
+			_settings.Save();
+			Raise(nameof(PlaySoundWhenDone));
+		}
 	}
 
 	public ObservableCollection<DriveItem> Drives { get; } = [];
@@ -270,33 +312,51 @@ public sealed class MainViewModel : ViewModelBase {
 
 		var items = planned.Select(p => new RipJobItem(p.Row.Number, p.Path, p.Row.Title.SizeBytes / 2048)).ToList();
 		IsRipping = true;
+		Results.Clear();
+		TitleProgress = OverallProgress = 0;
+		TitleProgressText = "Starting…";
+		OverallProgressText = $"All titles: 0 of {items.Count} done";
+		ShowProgress = true;
+		RipStatus = $"Ripping {items.Count} title(s)…";
+		_lastOutputFolder = folder;
 		_cancel = new CancellationTokenSource();
-		var progress = new Progress<RipJobProgress>(OnRipProgress);   // reports arrive on the UI thread
+		// Progress<T> delivers the reports on the UI thread, so the bindings can update.
+		IProgress<RipJobProgress> progress = new Progress<RipJobProgress>(OnRipProgress);
+		IProgress<RipJobItemResult> finished = new Progress<RipJobItemResult>(r => Results.Add(new ResultRow(r)));
 		string videoTs = _videoTs;
+		bool cancelled = false;
 		try {
-			var results = await Task.Run(() => new RipJob(videoTs, items).Run(p => ((IProgress<RipJobProgress>)progress).Report(p), _cancel.Token));
+			var results = await Task.Run(() => new RipJob(videoTs, items).Run(progress.Report, _cancel.Token, finished.Report));
 			int failed = results.Count(r => r.Error is not null);
 			RipStatus = failed == 0
 				? $"Done: {results.Count} title(s) ripped to {folder}."
-				: $"Done with errors: {results.Count - failed} ripped, {failed} failed ({string.Join("; ", results.Where(r => r.Error is not null).Select(r => $"title {r.Item.TitleNumber}: {r.Error!.Message}"))}).";
+				: $"Done with errors: {results.Count - failed} ripped, {failed} failed (see the list).";
+			OverallProgress = 1;
+			OverallProgressText = $"All titles: {results.Count - failed} of {items.Count} ripped" + (failed > 0 ? $", {failed} failed" : "");
 		} catch (OperationCanceledException) {
+			cancelled = true;
 			RipStatus = "Cancelled; the unfinished file was removed.";
+			TitleProgressText = "Cancelled";
 		} finally {
 			IsRipping = false;
 			_cancel.Dispose();
 			_cancel = null;
 		}
+		if (!cancelled && PlaySoundWhenDone) NotificationSound.Play();
 	}
 
 	private void OnRipProgress(RipJobProgress p) {
-		string Time(TimeSpan? t) => t is { } r ? $"{(int)r.TotalHours}:{r.Minutes:00}:{r.Seconds:00}" : "-:--:--";
-		string phase = p.Title.Phase switch {
+		string Time(TimeSpan? t) => t is { } r ? $"{(int)r.TotalHours}:{r.Minutes:00}:{r.Seconds:00} left" : "estimating time…";
+		string state = p.Title.Phase switch {
 			RipPhase.Unlocking => "unlocking the drive",
 			RipPhase.FindingKey => "finding the title key",
 			RipPhase.Finishing => "finishing the file",
 			RipPhase.Done => "done",
-			_ => $"{p.TitleFraction:P0}, {Time(p.TitleRemaining)} left",
+			_ => $"{p.TitleFraction:P0}   ·   {Time(p.TitleRemaining)}   ·   {p.BytesPerSecond / 1e6:F1} MB/s",
 		};
-		RipStatus = $"Title {p.Item.TitleNumber} ({p.Index + 1} of {p.Count}): {phase}.   All: {p.OverallFraction:P0}, {Time(p.OverallRemaining)} left.   {p.BytesPerSecond / 1e6:F1} MB/s";
+		TitleProgress = p.TitleFraction;
+		TitleProgressText = $"Title {p.Item.TitleNumber}: {state}";
+		OverallProgress = p.OverallFraction;
+		OverallProgressText = $"All titles ({p.Index + 1} of {p.Count}): {p.OverallFraction:P0}   ·   {Time(p.OverallRemaining)}";
 	}
 }

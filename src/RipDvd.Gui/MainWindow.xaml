@@ -6,6 +6,7 @@
 		Title="rip-dvd" Width="1280" Height="900" MinWidth="800" MinHeight="560">
 	<Window.Resources>
 		<g:NotConverter x:Key="Not" />
+		<BooleanToVisibilityConverter x:Key="Visible" />
 	</Window.Resources>
 	<Grid Margin="12">
 		<Grid.RowDefinitions>
@@ -110,8 +111,33 @@
 					<Button DockPanel.Dock="Right" Content="Cancel" Command="{Binding CancelCommand}" Margin="6,0,0,0" MinWidth="90" />
 					<Button DockPanel.Dock="Right" Content="Start" Command="{Binding StartCommand}" MinWidth="110"
 							Style="{DynamicResource AccentButtonStyle}" />
+					<CheckBox DockPanel.Dock="Right" Content="Play a sound when done" IsChecked="{Binding PlaySoundWhenDone}"
+							  VerticalAlignment="Center" Margin="0,0,16,0" />
 					<TextBlock Text="{Binding RipStatus}" VerticalAlignment="Center" Margin="16,0" TextTrimming="CharacterEllipsis" />
 				</DockPanel>
+
+				<!-- Phase 3: progress of the current title and of all titles, then the files written. Appears when a rip starts. -->
+				<StackPanel Margin="0,12,0,0" Visibility="{Binding ShowProgress, Converter={StaticResource Visible}}">
+					<TextBlock Text="{Binding TitleProgressText}" />
+					<ProgressBar Value="{Binding TitleProgress, Mode=OneWay}" Maximum="1" Height="8" Margin="0,4,0,10" />
+					<TextBlock Text="{Binding OverallProgressText}" />
+					<ProgressBar Value="{Binding OverallProgress, Mode=OneWay}" Maximum="1" Height="8" Margin="0,4,0,10" />
+					<DockPanel>
+						<Button DockPanel.Dock="Right" Content="Open folder" Command="{Binding OpenFolderCommand}" VerticalAlignment="Top" Margin="12,0,0,0" />
+						<ScrollViewer MaxHeight="110" VerticalScrollBarVisibility="Auto">
+							<ItemsControl ItemsSource="{Binding Results}">
+								<ItemsControl.ItemTemplate>
+									<DataTemplate>
+										<StackPanel Orientation="Horizontal" Margin="0,1">
+											<TextBlock Text="{Binding Icon}" Width="18" FontWeight="Bold" />
+											<TextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+										</StackPanel>
+									</DataTemplate>
+								</ItemsControl.ItemTemplate>
+							</ItemsControl>
+						</ScrollViewer>
+					</DockPanel>
+				</StackPanel>
 			</StackPanel>
 		</Border>
 	</Grid>

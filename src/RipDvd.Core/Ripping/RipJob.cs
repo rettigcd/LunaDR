@@ -33,8 +33,10 @@ public sealed class RipJob(string videoTsFolder, IReadOnlyList<RipJobItem> items
 	/// <summary>
 	/// Runs the job. Returns one result per item that was started; on cancellation the current title's partial file is removed
 	/// and <see cref="OperationCanceledException"/> is thrown.
+	/// <paramref name="itemFinished"/> is called as each title finishes (or fails), so a window can list results during the job.
 	/// </summary>
-	public List<RipJobItemResult> Run(Action<RipJobProgress>? progress = null, CancellationToken cancel = default) {
+	public List<RipJobItemResult> Run(Action<RipJobProgress>? progress = null, CancellationToken cancel = default,
+		Action<RipJobItemResult>? itemFinished = null) {
 		var results = new List<RipJobItemResult>();
 		long allSectors = Items.Sum(i => i.Sectors);
 		long finishedSectors = 0;                  // sectors of the titles already done (or failed)
@@ -69,10 +71,12 @@ public sealed class RipJob(string videoTsFolder, IReadOnlyList<RipJobItem> items
 			try {
 				var result = new TitleRipper(videoTsFolder, item.TitleNumber).Rip(item.OutputPath, OnProgress, options: options, cancel: cancel);
 				results.Add(new RipJobItemResult(item, result, null));
+				itemFinished?.Invoke(results[^1]);
 			} catch (OperationCanceledException) {
 				throw;
 			} catch (Exception ex) when (ex is IOException or InvalidDataException or NotSupportedException or UnauthorizedAccessException) {
 				results.Add(new RipJobItemResult(item, null, ex));
+				itemFinished?.Invoke(results[^1]);
 			}
 
 			// Carry this title's reading into the speed measurement for the next ones.

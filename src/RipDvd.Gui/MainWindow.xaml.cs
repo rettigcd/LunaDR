@@ -31,6 +31,8 @@ public partial class MainWindow : Window {
 			return dialog.ShowDialog(this) == true ? dialog.FolderName : null;
 		};
 		_vm.ShowMessage = text => MessageBox.Show(this, text, "rip-dvd", MessageBoxButton.OK, MessageBoxImage.Warning);
+		_vm.ConfirmCancel = () => MessageBox.Show(this, "Stop ripping? The title being ripped is not saved; titles already finished are kept.",
+			"rip-dvd", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;
 		_vm.AskAboutExistingFiles = files => {
 			string list = string.Join("\n", files.Take(10)) + (files.Count > 10 ? $"\n… and {files.Count - 10} more" : "");
 			var answer = MessageBox.Show(this,

@@ -25,7 +25,10 @@ This file describes the present state only; the history is in [log.md](log.md).
 	`Ifo/` (IFO parsing), `Css/` (descrambling, title-key recovery, drive authentication), `Dvd/` (VOB reading with read-ahead, nav packs, Windows drive commands),
 	`Mpeg/` (PES parsing; MPEG-2 video, AC3, DTS, LPCM framers; subpicture assembler), `Captions/` (EIA-608 decoder),
 	`Matroska/` (EBML reader/writer, MKV writer), `Ripping/` (disc scanner, cell map with duplicate/compilation detection, title ripper with progress phases and cancellation, batch runner `RipJob` with remaining-time estimates, options, naming, VobSub header, languages).
-- **GUI** `src/RipDvd.Gui` (`rip-dvd-gui.exe`, WPF): phases 1–2 done: drive picker, automatic scan on disc insert, title list (all titles, short ones dimmed, duplicate/compilation notes), compact cell map with selection highlighting and hover details; a checkbox per title, output folder and file name (remembered in %APPDATA%\rip-dvd\gui-settings.json), Start/Cancel. Test mode `--screenshot file.png [--drive E] [--rip 6 --to folder]`.
+- **GUI** `src/RipDvd.Gui` (`rip-dvd-gui.exe`, WPF): all three phases built: drive picker, automatic scan on disc insert, title list (all titles, short ones dimmed, duplicate/compilation notes), compact cell map with selection highlighting and hover details;
+	a checkbox per title, output folder and file name (remembered in %APPDATA%\rip-dvd\gui-settings.json), Start/Cancel (Cancel asks first);
+	progress bars with % / time left / MB/s for the title and for all titles, a list of finished files (or per-title errors), Open folder, and "Play a sound when done" (remembered).
+	Output identical to the CLI's (Butterfly Effect titles 3 and 6). Test mode `--screenshot file.png [--drive E] [--rip 3,6 --to folder]`. Screenshot: [gui-phase3-butterfly-effect.png](gui-phase3-butterfly-effect.png).
 - Probe `src/DvdProbe`: `drives`, `files`, `titles [-v]`, `scramble`, `crack` (old), `key`, `duration`, `bench`, `demux`, `mkvinfo [-dumptrack]`, `rip [-cells N]`.
 - References: MakeMKV output listings in `reference/makemkv/`; reference rips in git-ignored `reference/rips/`; the owner's Plex library (D:) holds MakeMKV rips of many of the owner's DVDs.
 
@@ -83,13 +86,7 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 ## Next steps: the GUI (Windows only)
 Owner's phases: (1) scan the disc and show what's on it, including which titles share cells, in a compact graphical cell map;
 (2) the user selects titles and clicks Start; (3) ripping with progress and remaining time for the current title and for all titles, then an optional sound.
-Framework and approach: see Design decisions → UI. Phases 1–2 are built (see Status); remaining:
-
-**G3 – Phase 3: rip with progress**
-1. Progress view: current title (name, % done, remaining time, MB/s) and all titles (% done, remaining time, n of m); a list of finished files with any warnings.
-2. Ask for confirmation before cancelling (Cancel itself already works and removes the partial file).
-3. When done: summary, "Open folder" button, optional sound (checkbox, remembered): the Windows default notification sound.
-4. Errors (e.g. unreadable disc) shown per title without stopping the other titles.
+Framework and approach: see Design decisions → UI. All three phases are built (see Status); remaining:
 
 **G4 – Finish**
 1. Test on the five test discs (incl. Butterfly Effect's shared cells), check output equals the CLI's (`mkvcompare`).
