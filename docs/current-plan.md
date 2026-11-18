@@ -25,6 +25,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 	`Ifo/` (IFO parsing), `Css/` (descrambling, title-key recovery, drive authentication), `Dvd/` (VOB reading with read-ahead, nav packs, Windows drive commands),
 	`Mpeg/` (PES parsing; MPEG-2 video, AC3, DTS, LPCM framers; subpicture assembler), `Captions/` (EIA-608 decoder),
 	`Matroska/` (EBML reader/writer, MKV writer), `Ripping/` (disc scanner, title ripper, VobSub header, languages).
+- **GUI** `src/RipDvd.Gui` (`rip-dvd-gui.exe`, WPF): phase 1 done: drive picker, automatic scan on disc insert, title list (all titles, short ones dimmed, duplicate/compilation notes), compact cell map with selection highlighting and hover details. Test mode `--screenshot file.png [--drive E]`.
 - Probe `src/DvdProbe`: `drives`, `files`, `titles [-v]`, `scramble`, `crack` (old), `key`, `duration`, `bench`, `demux`, `mkvinfo [-dumptrack]`, `rip [-cells N]`.
 - References: MakeMKV output listings in `reference/makemkv/`; reference rips in git-ignored `reference/rips/`; the owner's Plex library (D:) holds MakeMKV rips of many of the owner's DVDs.
 
@@ -89,7 +90,7 @@ Framework and approach: see Design decisions → UI.
 2. *(done)* Ripping progress and cancelling: `TitleRipper.Rip` reports a progress record (phase: unlocking / finding key / ripping / finishing; sectors done and total; bytes; elapsed) and takes a `CancellationToken`; a cancelled rip deletes its partial file.
 3. *(done)* A small batch runner (`Ripping/RipJob`): rips a list of titles in order and reports per-title and overall progress, including remaining-time estimates from the measured read speed (weighted by sectors, so short and long titles count fairly).
 
-**G1 – Phase 1: scan and present**
+**G1 – Phase 1: scan and present** *(done; screenshot: [gui-phase1-butterfly-effect.png](gui-phase1-butterfly-effect.png); auto-scan on insert still to be tried by the owner)*
 1. WPF project and main window: drive picker (optical drives with their disc names), Scan button, status line; scanning runs in the background so the window stays responsive.
 2. Title list with **all** titles: number, length, chapters, size, audio, subtitles, CC, and a flag column (duplicate of N / compilation of …); short titles shown dimmed.
 3. Compact graphical cell map (rows = titles, columns = cells in disc order, grouped by title set), every cell the same narrow width: a filled block where a title uses a cell, a mark where a chapter starts, cells used by several titles highlighted. Hovering shows cell details (id, sectors, length, which titles use it); selecting a title highlights its cells and the other titles that share them.

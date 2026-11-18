@@ -3,5 +3,6 @@
 		<Project Path="src/DvdProbe/DvdProbe.csproj" />
 		<Project Path="src/RipDvd.Cli/RipDvd.Cli.csproj" />
 		<Project Path="src/RipDvd.Core/RipDvd.Core.csproj" />
+		<Project Path="src/RipDvd.Gui/RipDvd.Gui.csproj" />
 	</Folder>
 </Solution>

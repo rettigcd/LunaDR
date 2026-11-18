@@ -388,3 +388,11 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 - **Step (G0.3):** `Ripping/RipJob` rips a list of titles; reports per-title and overall % and remaining time from the measured read speed (reading time only, over the whole job, after 3 s); a failing title is recorded and the job continues; cancellation stops it. The CLI `mkv` now uses it (status line with % and time left per title and overall, MB/s; Ctrl+C cancels cleanly, exit code 3; exit code 2 if a title failed).
 - **Result:** Butterfly Effect titles 3 and 6 through the CLI: estimates appear after 3 s and settle (overall estimate 0:47 at 7%, actual ~42 s), carry over to the second title; both files written.
 
+## 2026-11-18 17:20
+- **Step (G1 done):** WPF app `src/RipDvd.Gui` (assembly `rip-dvd-gui`), .NET 10, Fluent theme (`ThemeMode="System"`; warning WPF0001 suppressed since the theme is still marked experimental), plain MVVM (`ViewModelBase`, `RelayCommand`, `MainViewModel`, `TitleRow`).
+	- Drive picker; scanning on a background thread; automatic scan when Windows reports a disc inserted (`WM_DEVICECHANGE` / `DBT_DEVICEARRIVAL` with `DBTF_MEDIA`), cleared on removal.
+	- Title list (DataGrid): all titles, short ones dimmed, Note column "same video as title N" / "compilation of titles 7–11".
+	- `Controls/CellMapView`: custom-drawn map, rows = titles, columns = cells (same width, grouped by title set); blue = played by one title, orange = shared; notch = chapter start; selected row and rows sharing its cells highlighted; hover text with the cell's details; clicking a row selects the title (kept in step with the list).
+	- Test mode `--screenshot file.png [--drive E]`: scans, renders the window to PNG, exits. Screenshot of Butterfly Effect saved as `docs/gui-phase1-butterfly-effect.png`.
+- **Not yet verified:** automatic scan on disc insert needs a physical eject/insert; to be tried by the owner (not a blocker).
+

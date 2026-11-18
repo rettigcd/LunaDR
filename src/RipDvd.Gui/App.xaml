@@ -1,0 +1,6 @@
+<Application x:Class="RipDvd.Gui.App"
+			 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+			 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+			 ThemeMode="System">
+	<!-- ThemeMode="System": WPF's built-in Fluent (Windows 11) theme, following Windows' light/dark setting. -->
+</Application>
