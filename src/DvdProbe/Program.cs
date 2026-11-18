@@ -23,7 +23,18 @@ public static class Program {
 			return args.Length == 0 ? 0 : 1;
 		}
 
-		return (int)cmd.Method.Invoke(null, [args[1..]])!;
+		try {
+			return (int)cmd.Method.Invoke(null, [args[1..]])!;
+		} catch (TargetInvocationException ex) when (ex.InnerException is IOException or UnauthorizedAccessException) {
+			// File and drive problems (no disc, drive not ready, disc unreadable) get a one-line message instead of a stack trace.
+			string? drive = args.Skip(1).FirstOrDefault(a => a.Length <= 3 && a.TrimEnd(':', '\\').Length == 1);
+			bool noDisc = drive is not null && DriveInfo.GetDrives().Any(d =>
+				d.Name.StartsWith(drive.TrimEnd(':', '\\'), StringComparison.OrdinalIgnoreCase) && d.DriveType == DriveType.CDRom && !d.IsReady);
+			Console.Error.WriteLine(noDisc
+				? $"Error: no disc is ready in drive {drive.TrimEnd(':', '\\')}: (still spinning up, tray open, or the disc can't be read)."
+				: $"Error: {ex.InnerException!.Message}");
+			return 2;
+		}
 	}
 }
 
