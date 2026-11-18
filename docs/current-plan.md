@@ -17,6 +17,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 	| Gypsy (2004) vol. 1 | 16-bit LPCM; disc without CSS | opening identical to owner's MakeMKV rip |
 	| BUTTERFLY_EFFECT | DTS-ES 6.1 | opening identical to owner's MakeMKV rip |
 
+- **Full-disc test passed** (CLI `mkv E: all` on DEAD_ZONE_S4_D1, 8 titles, 30 min): the 3 titles with MakeMKV rips match on every compared property, including SHA-256 of all video/audio/caption payloads (one title: two caption times 1 ms off); all 8 decode with ffmpeg (log 14:34). Compare tool: probe `mkvcompare`.
 - Speed: drive-bound and at least as fast as MakeMKV (e.g. 6.4 GB movie in 1,583 s vs MakeMKV 1,836 s).
 - Library `src/RipDvd.Core`:
 	`Ifo/` (IFO parsing), `Css/` (descrambling, title-key recovery, drive authentication), `Dvd/` (VOB reading with read-ahead, nav packs, Windows drive commands),
@@ -58,11 +59,10 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 | GUI (future) | not chosen | WinForms/WPF are Windows-only; MAUI has no Linux desktop. Use **Avalonia** if Linux matters. |
 
 ## Next steps
-Not finished: 1–4 below.
-1. **Full-disc end-to-end test:** `rip-dvd mkv <disc> all <folder>` on a whole disc (all titles, through the CLI), then compare every file with MakeMKV's or the owner's Plex rip.
-2. **MakeMKV file naming:** work out the name part (why `DEAD_ZONE_S4_D1` gave no name but `A_VERY_LONG_ENGAGEMENT_DISC1` gave "A VERY LONG ENGAGEMENT DISC 1") and the comment part (`C1`, `B1`, `B2`, ...: MakeMKV's TINFO 49; guess: derived from the menus that lead to each title), then name files `<name>-<comment>_tNN.mkv`.
-3. **Matroska details still differing from MakeMKV:** ReferenceBlock values are a placeholder (-1); we write more clusters (291 vs 270 on one title); audio lacing breaks in slightly different places; caption durations 1–4 ms longer; Duration can differ by 1 ms. None affects playback.
-4. **CLI options** like makemkvcon's (track selection, etc.), once the defaults are settled.
+Not finished: 1–3 below.
+1. **MakeMKV file naming:** work out the name part (why `DEAD_ZONE_S4_D1` gave no name but `A_VERY_LONG_ENGAGEMENT_DISC1` gave "A VERY LONG ENGAGEMENT DISC 1") and the comment part (`C1`, `B1`, `B2`, ...: MakeMKV's TINFO 49; guess: derived from the menus that lead to each title), then name files `<name>-<comment>_tNN.mkv`.
+2. **Matroska details still differing from MakeMKV:** ReferenceBlock values are a placeholder (-1); we write more clusters (291 vs 270 on one title); audio lacing breaks in slightly different places; caption durations 1–4 ms longer; Duration can differ by 1 ms. None affects playback.
+3. **CLI options** like makemkvcon's (track selection, etc.), once the defaults are settled.
 
 ## Future (desirable, not scheduled)
 - **Audio not yet supported:** 20/24-bit LPCM and MPEG audio. Needs a disc with one of them to test (MPEG audio is most likely on PAL or home-made DVDs); the owner has none.

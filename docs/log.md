@@ -293,3 +293,11 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 
 ## 2026-11-18 14:00
 - **Decision (owner):** move 20/24-bit LPCM + MPEG audio, and Linux drive authentication, from Next steps to Future. Reason: the owner has no disc with those audio formats and no Linux machine with a DVD drive to test on.
+
+## 2026-11-18 14:34
+- **Step:** probe `mkvcompare <a> <b>`: compares two MKVs track by track (tracks matched by codec + order): language/name, frame count, payload bytes, SHA-256 over all frame payloads (laced frames split, so lacing differences don't count), first/last frame time; plus Duration and chapter starts.
+- **Step (plan step 1 done):** full-disc test through the CLI: `rip-dvd mkv E: all` on DEAD_ZONE_S4_D1 (owner re-inserted the disc). 8 titles in 1,816 s (episodes 3.3–4.8 MB/s, extras 2.1–2.9 MB/s; small titles read slower).
+- **Result:** title_t00 (episode 1) and title_t04 (extra) identical to MakeMKV's files in every compared property, including the SHA-256 of all video, audio and caption payloads. title_t01 (episode 2) identical except the first and last caption times, 1 ms off (3,403 vs 3,404 ms). The other 5 titles have no MakeMKV rip to compare against.
+	All 8 files decode with ffmpeg with no problems (video, all audio, caption text).
+- **Correction:** I had told the owner MakeMKV references existed for every title of this disc; only 3 titles had full MakeMKV rips (the rest have only MakeMKV's title listing). Corrected before the run.
+
