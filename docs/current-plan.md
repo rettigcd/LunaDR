@@ -4,7 +4,12 @@ Process rules for this file are in [CLAUDE.md](../CLAUDE.md).
 
 ## Status
 - Repo created. Process documents (CLAUDE.md, this plan, log) in place.
-- Probe console app `src/DvdProbe` (net10.0): commands `drives`, `files`, `titles [-v]`.
+- Probe console app `src/DvdProbe` (net10.0): commands `drives`, `files`, `titles [-v]`,
+  `scramble`, `crack`.
+- CSS works on the test disc: `RipDvd.Core/Css` recovers each title set's key from the
+  scrambled data (no drive authentication needed) and descrambles sectors. All 14 title
+  sets cracked and verified. `RipDvd.Core/Dvd/VobReader` reads a title set's VOBs as one
+  run of sectors.
 - Library `src/RipDvd.Core` started. `Ifo/` parses VIDEO_TS.IFO (title table) and
   VTS_xx_0.IFO (stream attributes, chapters, program chains, cells).
 - `titles` output matches MakeMKV on the test disc for: title list, cell counts, chapter
@@ -31,20 +36,28 @@ Process rules for this file are in [CLAUDE.md](../CLAUDE.md).
 - A stream is real only if the title's program chain marks it "available"; the stream
   counts in the VTS attribute table are not trusted (the test disc declares 8 audio and
   32 subtitle streams but uses 1–2 audio and none).
+- CSS: recover title keys with libdvdcss's known-plaintext attack ("AttackPattern") on the
+  scrambled sectors, take the key that several sectors agree on, then descramble. Drive
+  authentication (and the player-key / disc-key route) is only added if a disc or drive
+  needs it.
+- Reading the disc: through the Windows file system (`E:\VIDEO_TS\*.VOB`) for now.
 - Closed captions (EIA-608 in the MPEG-2 video user data) become a text subtitle track
   when the VTS video attributes have the line-21 flag set, as MakeMKV does ("CC→Text").
 - Command-line app first. A MakeMKV-style GUI comes later and is secondary, so keep the ripping
   logic in a library the GUI can reuse.
 
 ## Next steps
-1. Read raw sectors from the drive and detect CSS-scrambled sectors.
-2. CSS: drive authentication through Windows DVD IOCTLs, title key recovery, descrambling.
-3. Demux MPEG-2 program stream (video, AC3/DTS/LPCM/MPEG audio, subpictures) by following the
+1. Demux MPEG-2 program stream (video, AC3/DTS/LPCM/MPEG audio, subpictures) by following the
    program chain's cell order.
-4. Measure real durations from the stream timestamps and compare with MakeMKV's episode
+2. Measure real durations from the stream timestamps and compare with MakeMKV's episode
    durations (IFO says 42:30.46 for title 1, MakeMKV says 0:42:27).
-5. Matroska muxer: tracks, chapters, track language tags, VobSub subtitles, CC→text.
-6. Main CLI (`rip-dvd info`, `rip-dvd mkv <titles> <outdir>`), similar to `makemkvcon`.
+3. Matroska muxer: tracks, chapters, track language tags, VobSub subtitles, CC→text.
+4. Main CLI (`rip-dvd info`, `rip-dvd mkv <titles> <outdir>`), similar to `makemkvcon`.
+5. Speed up key recovery (VTS 9 took 49 s, mostly reading the drive): stop at the first
+   key that descrambles to valid MPEG, or recover the key while ripping.
+6. Drive authentication through Windows DVD IOCTLs, only if a disc/drive refuses to read
+   scrambled sectors (this drive reads them fine; MakeMKV had run before, so check again
+   after a fresh disc insert).
 7. Work out MakeMKV's file name prefix (`C1`, `B2`, ...). It is MakeMKV's per-title
    "comment" attribute (TINFO id 49). Guess: derived from the menus that link to each title.
 
@@ -55,4 +68,9 @@ Process rules for this file are in [CLAUDE.md](../CLAUDE.md).
   (by order and running time), and name the output files with the episode titles.
 
 ## Open questions
-- (none)
+- **License.** The CSS code (`src/RipDvd.Core/Css`) is ported from libdvdcss, which is GPL
+  v2+. That is fine for personal use, but if this program is ever distributed it would have
+  to be released under the GPL. OK, or should CSS be rewritten from the published
+  algorithm description instead? (The substitution table itself can't be avoided either way.)
+- **Legal note.** Bypassing CSS may be restricted where you live (e.g. the US DMCA), even for
+  discs you own. MakeMKV and libdvdcss do the same thing; noting it so it's your call.

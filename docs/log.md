@@ -60,3 +60,20 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
   49). Source unknown; moved to the end of the next steps.
 - **Finding:** MakeMKV adds a "CC→Text" subtitle track (codec `S_CC608/DVD`) for titles whose
   VTS video attributes have the line-21 closed-caption flag. Added as a design decision.
+
+## 2026-11-18 10:01
+- **Step:** probe `scramble` samples VOB sectors. The test disc is CSS-protected: ~15% of
+  sectors have PES_scrambling_control set. Windows reads every sector without error
+  (MakeMKV had already run in this session, so the drive may have been authenticated).
+- **Step:** downloaded libdvdcss `css.c`/`csstables.h` (to the session scratchpad, not the
+  repo) as a reference. Ported the CSS tables, the descrambler and the title-key attack to
+  C# in `src/RipDvd.Core/Css` with attribution. Added `Dvd/VobReader` and probe `crack`.
+- **Result:** title keys recovered for all 14 title sets; every key was agreed on by 4–5
+  independent sectors. Check: in 50 scrambled video sectors per VTS, MPEG start codes
+  appear in 0 before descrambling and 39–50 after. Recovery took 0.6–49 s per VTS.
+- **Decision:** recover title keys from the data (libdvdcss "title" method) instead of
+  drive authentication + player keys. Reason: needs no authentication or key lists and
+  works on this drive; authentication is added later only if needed.
+- **Decision:** accept a key only when several sectors agree on it (5 votes). Reason: a
+  wrong plaintext guess yields a wrong key; voting filters those out.
+- **Open questions added:** GPL license of the ported libdvdcss code; legal note on CSS.

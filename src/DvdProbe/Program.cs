@@ -70,4 +70,30 @@ public static class Commands
         IfoProbe.PrintTitles(videoTs, verbose);
         return 0;
     }
+
+    [ProbeCommand("scramble", "Sample sectors of VOB files and count CSS-scrambled ones. Args: <vob path>... [-n samples]")]
+    public static int Scramble(string[] args)
+    {
+        int n = 200;
+        int ni = Array.IndexOf(args, "-n");
+        if (ni >= 0) n = int.Parse(args[ni + 1]);
+        foreach (var path in args.Where((a, i) => !a.StartsWith('-') && (ni < 0 || i != ni + 1)))
+            SectorProbe.Scan(path, n);
+        return 0;
+    }
+
+    [ProbeCommand("crack", "Recover CSS title keys from VOB data and verify them. Args: <drive> [vts numbers...]")]
+    public static int Crack(string[] args)
+    {
+        string videoTs = IfoProbe.ResolveVideoTs(args.Length > 0 ? args[0] : "E:");
+        var titleSets = args.Skip(1).Select(int.Parse).ToList();
+        if (titleSets.Count == 0)
+            titleSets = Enumerable.Range(1, 99).TakeWhile(n => File.Exists(Path.Combine(videoTs, $"VTS_{n:00}_1.VOB"))).ToList();
+        foreach (int vts in titleSets)
+        {
+            var key = CssProbe.CrackTitleSet(videoTs, vts, maxSectors: 200_000, votesNeeded: 5, print: true);
+            if (key is not null) CssProbe.Verify(videoTs, vts, key.Value, samples: 50);
+        }
+        return 0;
+    }
 }
