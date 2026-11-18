@@ -226,3 +226,14 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	`info E:` lists the same 8 kept titles as MakeMKV, with the same ids (e.g. id 4 = disc title 6). `mkv E: 4 <folder>` wrote `title_t04.mkv`.
 - **Decision:** output name prefix `title` until MakeMKV's `C1`/`B2` rule is understood. Reason: MakeMKV's usual name is `title_tNN.mkv`.
 - **Note for future sessions:** ffmpeg was downloaded to the session scratchpad only (BtbN build, GitHub); a new session must download it again. Owner allows running it for testing.
+
+## 2026-11-18 11:08
+- **Owner question:** how do I know if a disc has subtitles? **Answer:** the case lists "Subtitles: …" (the CC logo means closed captions, which is different); MakeMKV shows "Subtitles" tracks with codec VobSub; probe `titles -v` prints `subp` lines.
+- **Second test disc:** owner inserted `A_VERY_LONG_ENGAGEMENT_DISC1` (film). 7 titles, all but one in VTS 1.
+	Main title: 2:13:19 (IFO), 39 chapters, 40 cells, 6.42 GB (dual layer). Audio: AC3 5.1 French, AC3 stereo French (code extension 3 = director's comments). Subpictures: en, fr, es, en, each with a widescreen stream (0..3) and a letterbox stream (4..7). Closed captions too.
+- **MakeMKV reference** (`reference/makemkv/A_VERY_LONG_ENGAGEMENT_DISC1-info.txt`): keeps title 1 (40 cells, shown as 2:12:54) and title 5 (trailer, 2:05).
+	Title 1 tracks: video; AC3 5.1 fre (default); AC3 stereo fre; S_VOBSUB eng (default), fre, spa, eng; CC→Text eng (not default here, because a VobSub track is default).
+	Title 5: the IFO marks all 4 subpicture streams available but they all point to substream 0; MakeMKV lists one VobSub track only (duplicates merged).
+- **Finding (naming):** MakeMKV's title name here is "A VERY LONG ENGAGEMENT DISC 1" (volume label, `_` → space, "DISC1" → "DISC 1"); files are `<name>-<comment>_tNN.mkv`, e.g. `A VERY LONG ENGAGEMENT DISC 1-B1_t00.mkv`. On the Dead Zone disc the name was empty, giving `C1_t00.mkv`. Why one label gives a name and the other doesn't is still open.
+- **Finding:** MakeMKV's displayed duration (2:12:54) is 25 s less than the IFO time; to be checked against its file, as on the first disc.
+- **Step:** MakeMKV ripping the trailer and the main title into `reference/rips/makemkv/avle/` (background) as references for VobSub.

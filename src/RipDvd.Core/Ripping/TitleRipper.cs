@@ -88,7 +88,32 @@ public sealed class TitleRipper {
 			audioTracks[ctl.StreamNumber] = (track, new Ac3Framer());
 		}
 
+		// Subpicture (bitmap subtitle) streams become S_VOBSUB tracks.
+		// Each declared stream names a physical substream per display mode; for 16:9 video the "wide" one is used, else the 4:3 one.
+		// Streams that point at the same substream are listed once (MakeMKV does the same).
+		var subtitleTracks = new Dictionary<int, (MkvTrack Track, SubpictureAssembler Assembler)>();   // key: substream number
+		string vobSubHeader = VobSubHeader.Build(_vts.Video.Width, _vts.Video.Height, pgc.Palette);
+		for (int i = 0; i < _vts.Subpictures.Count; i++) {
+			var ctl = pgc.SubpictureControl[i];
+			if (!ctl.Available) continue;
+			int substream = _vts.Video.AspectRatio == "16:9" ? ctl.StreamWide : ctl.Stream4x3;
+			if (subtitleTracks.ContainsKey(substream)) continue;
+			var track = new MkvTrack {
+				Number = tracks.Count + 1,
+				Type = MkvTrackType.Subtitle,
+				CodecId = "S_VOBSUB",
+				CodecPrivate = System.Text.Encoding.ASCII.GetBytes(vobSubHeader),
+				Language = Languages.ToIso6392(_vts.Subpictures[i].Language),
+				Default = subtitleTracks.Count == 0,
+				Lacing = false,
+				SourceId = $"01{0x20 + substream:X2}BD",
+			};
+			tracks.Add(track);
+			subtitleTracks[substream] = (track, new SubpictureAssembler());
+		}
+
 		// Closed captions (line 21 data in the video) become a text track, as MakeMKV's "CC→Text".
+		// It is the default subtitle track only when there are no bitmap subtitles.
 		MkvTrack? captionTrack = null;
 		Captions.Eia608Decoder? captionDecoder = null;
 		if (_vts.Video.Line21Field1 || _vts.Video.Line21Field2) {
@@ -97,7 +122,7 @@ public sealed class TitleRipper {
 				Type = MkvTrackType.Subtitle,
 				CodecId = "S_TEXT/UTF8",
 				Language = "eng",
-				Default = true,
+				Default = subtitleTracks.Count == 0,
 				Lacing = false,
 				SourceId = "0100E0",
 			};
@@ -128,6 +153,17 @@ public sealed class TitleRipper {
 		bool headerWritten = false;
 		var pendingVideo = new List<VideoFrame>();
 		var audioQueues = audioTracks.Values.Select(v => (v.Track, Queue: new Queue<AudioFrame>())).ToList();
+		var subtitleQueues = subtitleTracks.Values.ToDictionary(v => v.Track, v => new Queue<SubpictureUnit>());
+
+		// Subtitles are written into the cluster of the GOP they start in.
+		void WriteSubtitles(long untilNs) {
+			foreach (var (track, queue) in subtitleQueues) {
+				while (queue.Count > 0 && queue.Peek().Pts < untilNs) {
+					var u = queue.Dequeue();
+					mkv.AddSubtitleBlock(track, u.Pts, u.DurationNs, u.Data);
+				}
+			}
+		}
 
 		Cell? currentCell = null;
 		long cellOffsetNs = 0;          // title time − stream time for the current cell
@@ -145,6 +181,7 @@ public sealed class TitleRipper {
 			mkv.StartCluster(keyFrame.Pts, addCue: true);
 			foreach (var f in gop) mkv.AddVideoFrame(video, f.Pts, f.DurationNs, f.IsKeyFrame, f.Data);
 			foreach (var (track, queue) in audioQueues) WriteAudio(mkv, track, queue, audioUntilNs);
+			WriteSubtitles(audioUntilNs);
 			if (captionDecoder is not null) {
 				FeedCaptions(captionDecoder, gop);
 				foreach (var ev in captionDecoder.TakeEvents()) mkv.AddTextBlock(captionTrack!, ev.StartNs, ev.EndNs - ev.StartNs, ev.Text);
@@ -176,6 +213,9 @@ public sealed class TitleRipper {
 					at.Framer.Feed(p.Payload.Span, pts, p.FirstAccessUnit);
 					var q = audioQueues.First(x => x.Track == at.Track).Queue;
 					foreach (var af in at.Framer.TakeReady()) q.Enqueue(af);
+				} else if (p.Stream.Kind == StreamKind.Subpicture && subtitleTracks.TryGetValue(p.Stream.Number, out var st)) {
+					st.Assembler.Feed(p.Payload.Span, pts);
+					foreach (var unit in st.Assembler.TakeReady()) subtitleQueues[st.Track].Enqueue(unit);
 				}
 			}
 
@@ -195,6 +235,7 @@ public sealed class TitleRipper {
 		pendingVideo.AddRange(framer.TakeReady());
 		if (pendingVideo.Count > 0) WriteGop(pendingVideo, long.MaxValue);
 		foreach (var (track, queue) in audioQueues) if (queue.Count > 0) WriteAudio(mkv, track, queue, long.MaxValue);
+		if (headerWritten) WriteSubtitles(long.MaxValue);
 		if (captionDecoder is not null && headerWritten) {
 			captionDecoder.Finish(video.LastEndNs);
 			foreach (var ev in captionDecoder.TakeEvents()) mkv.AddTextBlock(captionTrack!, ev.StartNs, ev.EndNs - ev.StartNs, ev.Text);

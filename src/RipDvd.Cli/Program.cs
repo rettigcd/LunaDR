@@ -60,7 +60,9 @@ public static class Program {
 		for (int i = 0; i < kept.Count; i++) {
 			var t = kept[i];
 			Console.WriteLine($"  {i,2}: title {t.TitleNumber,2}  {Format(t.DurationNs)}  {t.Chapters,2} chapters  {t.SizeBytes / 1e9,5:F2} GB  {t.Video}");
-			Console.WriteLine($"      audio: {string.Join(", ", t.Audio)}{(t.ClosedCaptions ? "; closed captions" : "")}");
+			Console.WriteLine($"      audio: {string.Join(", ", t.Audio)}");
+			if (t.Subtitles.Count > 0) Console.WriteLine($"      subtitles: {string.Join(", ", t.Subtitles)}");
+			if (t.ClosedCaptions) Console.WriteLine("      closed captions");
 		}
 		var skipped = disc.Titles.Except(kept).ToList();
 		if (skipped.Count > 0)

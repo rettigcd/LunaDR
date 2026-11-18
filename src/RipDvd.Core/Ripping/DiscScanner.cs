@@ -12,6 +12,7 @@ public sealed record TitleSummary(
 	long SizeBytes,           // sum of cell sectors × 2048 (matches MakeMKV)
 	string Video,             // e.g. "720x480 16:9"
 	IReadOnlyList<string> Audio,
+	IReadOnlyList<string> Subtitles,   // languages of the bitmap subtitle tracks that would be ripped
 	bool ClosedCaptions);
 
 /// <summary>Disc-level information and the title list.</summary>
@@ -66,11 +67,22 @@ public static class DiscScanner {
 				audio.Add($"{a.Coding} {(a.Channels == 6 ? "5.1" : a.Channels == 2 ? "stereo" : a.Channels + "ch")} {Languages.ToIso6392(a.Language)}");
 			}
 
+			// Bitmap subtitles: one per physical substream (declared streams that point at the same substream count once).
+			var subtitles = new List<string>();
+			var seen = new HashSet<int>();
+			for (int i = 0; i < vts.Subpictures.Count; i++) {
+				var ctl = pgcs[0].SubpictureControl[i];
+				if (!ctl.Available) continue;
+				int substream = vts.Video.AspectRatio == "16:9" ? ctl.StreamWide : ctl.Stream4x3;
+				if (seen.Add(substream)) subtitles.Add(Languages.ToIso6392(vts.Subpictures[i].Language));
+			}
+
 			titles.Add(new TitleSummary(
 				t.TitleNumber, t.TitleSetNumber, chapters.Count, cells.Count, time.ToNanoseconds(),
 				cells.Sum(c => c.SectorCount) * 2048,
 				$"{vts.Video.Width}x{vts.Video.Height} {vts.Video.AspectRatio}",
 				audio,
+				subtitles,
 				vts.Video.Line21Field1 || vts.Video.Line21Field2));
 		}
 
