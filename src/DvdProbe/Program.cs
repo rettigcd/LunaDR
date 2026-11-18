@@ -61,4 +61,13 @@ public static class Commands
             Console.WriteLine($"{f.Name,-14} {f.Length,14:N0}");
         return 0;
     }
+
+    [ProbeCommand("titles", "Parse the IFO files and list titles like MakeMKV. Args: <drive or VIDEO_TS path> [-v]")]
+    public static int Titles(string[] args)
+    {
+        string videoTs = IfoProbe.ResolveVideoTs(args.FirstOrDefault(a => !a.StartsWith('-')) ?? "E:");
+        bool verbose = args.Contains("-v");
+        IfoProbe.PrintTitles(videoTs, verbose);
+        return 0;
+    }
 }

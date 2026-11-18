@@ -40,3 +40,23 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 - **Owner request:** added to the plan's new "Future" section: look up episode titles on
   thetvdb.com and match them to the ripped titles. The MakeMKV-style GUI moved to the same
   section.
+
+## 2026-11-18 09:53
+- **Step:** created library `src/RipDvd.Core` with an IFO parser (`Ifo/`: `VmgIfo`, `VtsIfo`,
+  `Pgc`, `Cell`, stream attributes, `DvdTime`). Added probe command `titles [-v]`.
+- **Result on test disc:** matches MakeMKV for the title list, cells (9/9/10/9 episodes, 2
+  per extra), chapters, sizes to the byte, titles under 120 s, audio track counts
+  (2/1/1/1 episodes, 2 per extra), aspect ratio (16:9 episodes, 4:3 extras) and
+  closed-caption presence (episodes only).
+- **Finding:** the disc's VTS attribute tables declare 8 audio and 32 subtitle streams; only
+  the streams marked available in the program chain are real. MakeMKV follows the PGC.
+- **Decision:** trust PGC stream availability, not the declared stream counts. Reason: that
+  is what MakeMKV shows.
+- **Finding:** for extras, MakeMKV's duration equals the IFO's stored (nominal 30 fps) time,
+  truncated to whole seconds (e.g. 3:35.86 → 3:35). For the episodes MakeMKV is 3–5 s
+  shorter than the IFO time (title 1: 42:30.46 vs 0:42:27), so it probably measures the
+  actual stream. Deferred until we can read the video (plan step 4).
+- **Finding:** MakeMKV's file name prefix (`C1`, `B2`, …) is its "comment" attribute (TINFO
+  49). Source unknown; moved to the end of the next steps.
+- **Finding:** MakeMKV adds a "CC→Text" subtitle track (codec `S_CC608/DVD`) for titles whose
+  VTS video attributes have the line-21 closed-caption flag. Added as a design decision.
