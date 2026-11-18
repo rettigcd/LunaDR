@@ -360,3 +360,7 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 
 ## 2026-11-18 16:05
 - **Owner question:** does Windows have a more modern UI than WPF? **Answer:** WinUI 3 (Windows App SDK) is the newest; but its first-party table control (TableView) is still experimental as of late 2026, and apps usually need the Windows App SDK runtime / MSIX packaging. WPF has had a built-in Fluent (Windows 11) theme since .NET 9 (`ThemeMode`), giving a modern look with WPF's mature DataGrid and a single .exe. Recommended WPF + Fluent; open question updated.
+
+## 2026-11-18 16:07
+- **Question answered:** GUI framework. **Answer (owner):** WPF is fine. **Decision:** WPF on .NET 10 with the built-in Fluent theme, no third-party packages. Removed from open questions.
+- **Next:** start G0 (library groundwork), which doesn't depend on the remaining GUI questions (cell-map widths, auto-scan, track options, sound).

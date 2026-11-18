@@ -67,7 +67,7 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 ## Next steps: the GUI (Windows only)
 Owner's phases: (1) scan the disc and show what's on it, including which titles share cells, in a compact graphical cell map;
 (2) the user selects titles and clicks Start; (3) ripping with progress and remaining time for the current title and for all titles, then an optional sound.
-Framework: WPF on .NET 10, project `src/RipDvd.Gui` on top of `RipDvd.Core`; plain MVVM (view models with INotifyPropertyChanged), no third-party packages. Items marked (Q) depend on the open questions.
+Framework (owner: WPF is fine): WPF on .NET 10 with the built-in Fluent theme (`ThemeMode="System"`), project `src/RipDvd.Gui` on top of `RipDvd.Core`; plain MVVM (view models with INotifyPropertyChanged), no third-party packages. Items marked (Q) depend on the open questions.
 
 **G0 – Groundwork in the library (testable without a GUI)**
 1. Move the cell-map model into `RipDvd.Core` (`Ripping/CellMap`: cells with title set, VOB/cell id, sectors, length; per title: playlist positions and chapter starts; shared-cell and duplicate/compilation info). Probe `cellmap` and the GUI both use it.
@@ -107,8 +107,5 @@ Framework: WPF on .NET 10, project `src/RipDvd.Gui` on top of `RipDvd.Core`; pla
 - **GUI disc insert (G1.4):** scan automatically when a disc is inserted, or only when Scan is clicked? Proposed: automatically.
 - **GUI track options (G2.3):** needed in the first version, or titles only (all tracks, like the CLI default)? Proposed: titles only first; track options later.
 - **GUI completion sound (G3.3):** the Windows notification sound, the owner's `soft-tone.mp3`, or a sound file the user picks? Proposed: a file picker defaulting to the Windows sound.
-- **GUI framework:** proposed WPF with its built-in Fluent (Windows 11) theme (.NET 9+, `ThemeMode="System"`): modern look, mature DataGrid, single .exe.
-	Alternative: WinUI 3 (newest, Windows 11 look), but its first-party table control is still experimental (late 2026) and apps usually need the Windows App SDK runtime / MSIX packaging.
-	(WinForms was also considered: all C#, but dated look and more manual work for the cell map.)
 - **Episode naming: data source.** TheTVDB (paid per-user subscription PIN, has DVD order), or free TVmaze/TMDB (aired order), or TheTVDB with a free fallback? See [episode-matching-analysis.md](episode-matching-analysis.md).
 - **Episode naming: file names.** Plex-library style `sNNeMM - Episode name.mkv`, optionally in `Series (year)/Season N/` folders?
