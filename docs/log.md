@@ -279,3 +279,8 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 - **Result (first cell vs MakeMKV):** first blocks byte-identical, same 1/30 s timing; ffmpeg decodes it (pcm_s16le, 2 ch, 48 kHz) with no errors.
 - **Finding:** on this unprotected disc the drive rejects the CSS handshake ("Incorrect function"). **Decision:** run the handshake anyway, but report its failure only if reading then fails.
 - **Decision:** omit the Language element when the disc gives no language (MakeMKV does).
+
+## 2026-11-18 13:52
+- **Fifth test disc:** `BUTTERFLY_EFFECT` (director's cut): 23 titles; titles 1 and 2 are the movie (1:59:38; title 2 has 56 chapters and 3 subtitle streams). Audio: AC3 5.1, DTS-ES, 2 × AC3 stereo (commentaries). Reference: the owner's Plex copy `D:\Movies\Butterfly Effect Directors Cut (2004).mkv` (MakeMKV 1.14.7).
+- **Result (first 3 cells of title 1):** DTS-ES needs nothing extra: the 6.1 extension (XCh) is inside each DTS frame and is copied with it. Our blocks are byte-identical to MakeMKV's; both label the track "Surround 5.1", 6 channels (the core), and ffprobe reads both files as DTS-ES 7 channels. AC3 tracks identical; ffmpeg decodes everything with no errors.
+- **Owner question:** would audio discs solve the MPEG-audio item? **Answer:** no. Audio CDs are not DVD-Video (plain PCM, no VIDEO_TS); DVD-Audio discs use MLP/LPCM in AUDIO_TS, and their video zone normally uses AC3/DTS. MPEG audio mostly appears on some PAL (European) DVDs and on home-made DVDs (camcorder / home authoring software).

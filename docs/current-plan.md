@@ -90,7 +90,7 @@ interfaces in `RipDvd.Core`, with one implementation per OS.
 ## Next steps
 1. Matroska polish: ReferenceBlock values are a placeholder (-1); we write more clusters than MakeMKV (291 vs 270 on title 6). Files already play (owner) and decode cleanly (ffmpeg).
 2. CLI polish: rip all titles of this disc with `rip-dvd mkv E: all` as an end-to-end test; MakeMKV-style output naming prefix (step 5); options for track selection later.
-3. Audio still missing: 20/24-bit LPCM (16-bit done) and MPEG audio (no disc in the owner's library has it). Worth testing: a DTS-ES 6.1 disc (Se7en, Dirty Dancing, The Mask, X-Men: The Last Stand, Butterfly Effect DC).
+3. Audio still missing: 20/24-bit LPCM (16-bit done) and MPEG audio (no disc in the owner's library has it; most likely on PAL or home-made DVDs). DTS-ES works (log 13:52).
 4. Drive authentication on Linux (`ioctl` DVD_AUTH on /dev/sr0) behind `ICssDrive`. Windows is done (`WindowsCssDrive`).
 5. Work out MakeMKV's file name prefix (`C1`, `B2`, ...). It is MakeMKV's per-title
 	"comment" attribute (TINFO id 49). Guess: derived from the menus that link to each title.
