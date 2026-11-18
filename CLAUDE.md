@@ -29,7 +29,8 @@ running an installed MakeMKV (`makemkvcon`) to compare results, is allowed.
 	decisions made, with their reasons. Never rewrite old entries; add new ones at the bottom.
 
 ### Rules
-- When a step is completed, add an entry to the log and update Status/Next steps in the plan.
+- **When a step is completed, record it in the log and remove it from Next steps** (don't leave it there marked "done");
+	update Status so it describes what now exists.
 - When a decision is made, add it to the plan's Design decisions and log it with the reason.
 - **When an open question is answered, remove it from current-plan.md and record the question
 	and its answer in the log.**

@@ -24,7 +24,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 - Library `src/RipDvd.Core`:
 	`Ifo/` (IFO parsing), `Css/` (descrambling, title-key recovery, drive authentication), `Dvd/` (VOB reading with read-ahead, nav packs, Windows drive commands),
 	`Mpeg/` (PES parsing; MPEG-2 video, AC3, DTS, LPCM framers; subpicture assembler), `Captions/` (EIA-608 decoder),
-	`Matroska/` (EBML reader/writer, MKV writer), `Ripping/` (disc scanner, title ripper, VobSub header, languages).
+	`Matroska/` (EBML reader/writer, MKV writer), `Ripping/` (disc scanner, cell map with duplicate/compilation detection, title ripper with progress phases and cancellation, batch runner `RipJob` with remaining-time estimates, options, naming, VobSub header, languages).
 - **GUI** `src/RipDvd.Gui` (`rip-dvd-gui.exe`, WPF): phases 1–2 done: drive picker, automatic scan on disc insert, title list (all titles, short ones dimmed, duplicate/compilation notes), compact cell map with selection highlighting and hover details; a checkbox per title, output folder and file name (remembered in %APPDATA%\rip-dvd\gui-settings.json), Start/Cancel. Test mode `--screenshot file.png [--drive E] [--rip 6 --to folder]`.
 - Probe `src/DvdProbe`: `drives`, `files`, `titles [-v]`, `scramble`, `crack` (old), `key`, `duration`, `bench`, `demux`, `mkvinfo [-dumptrack]`, `rip [-cells N]`.
 - References: MakeMKV output listings in `reference/makemkv/`; reference rips in git-ignored `reference/rips/`; the owner's Plex library (D:) holds MakeMKV rips of many of the owner's DVDs.
@@ -83,32 +83,17 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 ## Next steps: the GUI (Windows only)
 Owner's phases: (1) scan the disc and show what's on it, including which titles share cells, in a compact graphical cell map;
 (2) the user selects titles and clicks Start; (3) ripping with progress and remaining time for the current title and for all titles, then an optional sound.
-Framework and approach: see Design decisions → UI.
-
-**G0 – Groundwork in the library (testable without a GUI)**
-1. *(done)* Move the cell-map model into `RipDvd.Core` (`Ripping/CellMap`: cells with title set, VOB/cell id, sectors, length; per title: playlist positions and chapter starts; shared-cell and duplicate/compilation info). Probe `cellmap` and the GUI both use it.
-2. *(done)* Ripping progress and cancelling: `TitleRipper.Rip` reports a progress record (phase: unlocking / finding key / ripping / finishing; sectors done and total; bytes; elapsed) and takes a `CancellationToken`; a cancelled rip deletes its partial file.
-3. *(done)* A small batch runner (`Ripping/RipJob`): rips a list of titles in order and reports per-title and overall progress, including remaining-time estimates from the measured read speed (weighted by sectors, so short and long titles count fairly).
-
-**G1 – Phase 1: scan and present** *(done; screenshot: [gui-phase1-butterfly-effect.png](gui-phase1-butterfly-effect.png); auto-scan on insert still to be tried by the owner)*
-1. WPF project and main window: drive picker (optical drives with their disc names), Scan button, status line; scanning runs in the background so the window stays responsive.
-2. Title list with **all** titles: number, length, chapters, size, audio, subtitles, CC, and a flag column (duplicate of N / compilation of …); short titles shown dimmed.
-3. Compact graphical cell map (rows = titles, columns = cells in disc order, grouped by title set), every cell the same narrow width: a filled block where a title uses a cell, a mark where a chapter starts, cells used by several titles highlighted. Hovering shows cell details (id, sectors, length, which titles use it); selecting a title highlights its cells and the other titles that share them.
-4. Scan automatically when a disc is inserted; clear the view when it is removed.
-
-**G2 – Phase 2: select and start** *(done: Start also begins the rip, with a one-line status and Cancel; G3 adds the full progress view)*
-1. A checkbox per title; initially checked: titles ≥ 120 s that are not duplicates or compilations; quick buttons "select all" / "none".
-2. Output folder (with Browse) and disc name used in the file names (editable, from the volume label); remembered between runs (settings file in %APPDATA%).
-3. Start button: validates (something selected, folder writable, existing files → ask overwrite/skip).
+Framework and approach: see Design decisions → UI. Phases 1–2 are built (see Status); remaining:
 
 **G3 – Phase 3: rip with progress**
 1. Progress view: current title (name, % done, remaining time, MB/s) and all titles (% done, remaining time, n of m); a list of finished files with any warnings.
-2. Cancel button (stops after confirmation, removes the partial file).
+2. Ask for confirmation before cancelling (Cancel itself already works and removes the partial file).
 3. When done: summary, "Open folder" button, optional sound (checkbox, remembered): the Windows default notification sound.
 4. Errors (e.g. unreadable disc) shown per title without stopping the other titles.
 
 **G4 – Finish**
 1. Test on the five test discs (incl. Butterfly Effect's shared cells), check output equals the CLI's (`mkvcompare`).
+	*Owner:* try ejecting and inserting a disc while the GUI is open (automatic scan on insert can't be tested remotely).
 2. README section / screenshots; log and plan updated.
 
 ## Future (desirable, not scheduled)

@@ -403,3 +403,7 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 - **Bug found and fixed:** after a rip the buttons stayed disabled (WPF re-evaluates commands only after user input); now `CommandManager.InvalidateRequerySuggested` runs whenever scanning/ripping starts or stops.
 - **Owner question (during G2):** is current-plan.md updated as I go? **Answer:** at each milestone (G1 was recorded when committed; G2 is recorded with this commit).
 
+## 2026-11-18 17:50
+- **Owner question:** are steps logged as they are completed and removed from current-plan.md? **Answer:** logged, yes (one dated entry per milestone); removed, no: G0–G2 had been left in Next steps marked "(done)", against the plan's present-state rule.
+- **Step:** removed G0–G2 from Next steps (their history is in the log entries 16:20–17:45); Status now lists the GUI (phases 1–2) and the new library pieces (cell map, progress/cancellation, `RipJob`). The remaining Cancel work is now "ask for confirmation" (Cancel itself works); the owner's insert/eject test was moved into G4.
+- **Process:** CLAUDE.md rule made explicit: a completed step is recorded in the log and removed from Next steps, not marked done.
