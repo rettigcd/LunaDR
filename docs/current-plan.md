@@ -62,18 +62,51 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 | IFO parsing, CSS, demux, MKV writing | portable (pure C#) | none |
 | Locating the disc | `disc:N` / drive letter / folder (`DiscScanner.ResolveVideoTs`) | pass the mount point (e.g. `/media/<user>/<label>`); `disc:N` relies on `DriveInfo`, untested on Linux |
 | Drive authentication | Windows: `Dvd/WindowsCssDrive` behind `Css/ICssDrive` | needs an `ICssDrive` using `ioctl` DVD_AUTH / DVD_READ_STRUCT on `/dev/sr0` |
-| GUI (future) | not chosen | WinForms/WPF are Windows-only; MAUI has no Linux desktop. Use **Avalonia** if Linux matters. |
+| GUI | WPF, Windows only (owner: the GUI will be Windows-only) | none for the CLI; the GUI would need porting (e.g. Avalonia) if ever wanted on Linux |
 
-## Next steps
-None: the planned work is done. Possible next projects are listed under Future.
+## Next steps: the GUI (Windows only)
+Owner's phases: (1) scan the disc and show what's on it, including which titles share cells, in a compact graphical cell map;
+(2) the user selects titles and clicks Start; (3) ripping with progress and remaining time for the current title and for all titles, then an optional sound.
+Framework: WPF on .NET 10, project `src/RipDvd.Gui` on top of `RipDvd.Core`; plain MVVM (view models with INotifyPropertyChanged), no third-party packages. Items marked (Q) depend on the open questions.
+
+**G0 – Groundwork in the library (testable without a GUI)**
+1. Move the cell-map model into `RipDvd.Core` (`Ripping/CellMap`: cells with title set, VOB/cell id, sectors, length; per title: playlist positions and chapter starts; shared-cell and duplicate/compilation info). Probe `cellmap` and the GUI both use it.
+2. Ripping progress and cancelling: `TitleRipper.Rip` reports a progress record (phase: unlocking / finding key / ripping / finishing; sectors done and total; bytes; elapsed) and takes a `CancellationToken`; a cancelled rip deletes its partial file.
+3. A small batch runner (`Ripping/RipJob`): rips a list of titles in order and reports per-title and overall progress, including remaining-time estimates from the measured read speed (weighted by sectors, so short and long titles count fairly).
+
+**G1 – Phase 1: scan and present**
+1. WPF project and main window: drive picker (optical drives with their disc names), Scan button, status line; scanning runs in the background so the window stays responsive.
+2. Title list: number, length, chapters, size, audio, subtitles, CC, and a flag column (duplicate of N / compilation of …); short titles shown dimmed.
+3. Compact graphical cell map (rows = titles, columns = cells in disc order, grouped by title set): a filled block where a title uses a cell, a mark where a chapter starts, cells used by several titles highlighted. Hovering shows cell details (id, sectors, length, which titles use it); selecting a title highlights its cells and the other titles that share them. (Q: block widths.)
+4. Re-scan when a disc is inserted or removed. (Q)
+
+**G2 – Phase 2: select and start**
+1. A checkbox per title; default selection like `rip-dvd mkv … all` (titles ≥ 120 s), with quick toggles "skip compilations" / "skip duplicates" / "select all" / "none".
+2. Output folder (with Browse) and disc name used in the file names (editable, from the volume label); remembered between runs (settings file in %APPDATA%).
+3. Track options: audio/subtitle languages, captions, chapters, as in the CLI. (Q)
+4. Start button: validates (something selected, folder writable, existing files → ask overwrite/skip).
+
+**G3 – Phase 3: rip with progress**
+1. Progress view: current title (name, % done, remaining time, MB/s) and all titles (% done, remaining time, n of m); a list of finished files with any warnings.
+2. Cancel button (stops after confirmation, removes the partial file).
+3. When done: summary, "Open folder" button, optional sound (checkbox, remembered). (Q: which sound)
+4. Errors (e.g. unreadable disc) shown per title without stopping the other titles.
+
+**G4 – Finish**
+1. Test on the five test discs (incl. Butterfly Effect's shared cells), check output equals the CLI's (`mkvcompare`).
+2. README section / screenshots; log and plan updated.
 
 ## Future (desirable, not scheduled)
 - **Audio not yet supported:** 20/24-bit LPCM and MPEG audio. Needs a disc with one of them to test (MPEG audio is most likely on PAL or home-made DVDs); the owner has none.
 - **Linux drive authentication** (`ICssDrive` via `ioctl` DVD_AUTH on /dev/sr0). Needs a Linux machine with a DVD drive to test; the owner has none.
-- GUI similar to MakeMKV's, on top of the same library (secondary to the CLI).
 - Episode names from thetvdb.com (feasibility analysis done: [episode-matching-analysis.md](episode-matching-analysis.md); feasible, needs the owner's choice of data source and naming, see open questions): look up the series/season (e.g. from the volume label `DEAD_ZONE_S4_D1` → The Dead Zone, season 4, disc 1),
 	match the ripped titles to episodes (by order and running time), and name the output files with the episode titles.
 
 ## Open questions
+- **GUI cell map block widths (G1.3):** every cell the same narrow width (compact, short cells visible), or widths proportional to the cell's length (shows time, but tiny cells become slivers)? Proposed: same width, length shown on hover, and a toggle for proportional.
+- **GUI disc insert (G1.4):** scan automatically when a disc is inserted, or only when Scan is clicked? Proposed: automatically.
+- **GUI track options (G2.3):** needed in the first version, or titles only (all tracks, like the CLI default)? Proposed: titles only first; track options later.
+- **GUI completion sound (G3.3):** the Windows notification sound, the owner's `soft-tone.mp3`, or a sound file the user picks? Proposed: a file picker defaulting to the Windows sound.
+- **GUI WPF vs WinForms:** proposed WPF (data-bound lists, custom-drawn cell map, XAML layout); WinForms would be all C# but more manual for the cell map.
 - **Episode naming: data source.** TheTVDB (paid per-user subscription PIN, has DVD order), or free TVmaze/TMDB (aired order), or TheTVDB with a free fallback? See [episode-matching-analysis.md](episode-matching-analysis.md).
 - **Episode naming: file names.** Plex-library style `sNNeMM - Episode name.mkv`, optionally in `Series (year)/Season N/` folders?

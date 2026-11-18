@@ -351,3 +351,9 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 
 ## 2026-11-18 15:52
 - **Owner decision:** the remaining small differences from MakeMKV's files (audio lacing breaks, caption durations 1–4 ms longer, Duration ±1 ms, clusters 4–10 bytes smaller) are not important. Removed from Next steps; recorded in the plan's design decisions as accepted differences. Next steps is now empty; possible next projects are under Future.
+
+## 2026-11-18 16:00
+- **Owner request:** start the GUI, Windows only, in three phases: (1) scan the disc and present it, with cell information in a compact graphical table so duplicates are visible; (2) the user selects titles and clicks Start; (3) ripping with % done and remaining time for the current title and all titles, then an optional sound. Asked for a plan with steps and any questions.
+- **Step:** plan written (current-plan.md Next steps G0–G4): library groundwork (cell-map model in Core, progress + cancellation in TitleRipper, batch runner with ETA), then WPF phases 1–3, then testing. The GUI moved from Future to Next steps.
+- **Decision:** the GUI is Windows-only (owner), so the Platform table no longer plans Avalonia for it. Proposed WPF, no third-party packages.
+- **Open questions added:** cell-map block widths, auto-scan on disc insert, track options in the first version, which completion sound, WPF vs WinForms.
