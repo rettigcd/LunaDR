@@ -9,6 +9,8 @@ public sealed class VideoFrame {
 	public required int Fields { get; init; }
 	/// <summary>Starts with a sequence or GOP header and is an I picture: a random-access point.</summary>
 	public required bool IsKeyFrame { get; init; }
+	/// <summary>Closed-caption byte pairs (CC1/CC2 field) found in this picture's user data, in display order of the GOP; usually only on the first picture of a GOP.</summary>
+	public List<(byte, byte)> Captions { get; init; } = [];
 	/// <summary>Presentation time in nanoseconds on the title timeline.</summary>
 	public long Pts { get; set; }
 	public long DurationNs => FieldsToNs(Fields);
@@ -48,6 +50,9 @@ public sealed class Mpeg2VideoFramer {
 
 	/// <summary>Sequence header and its extensions (the bytes before the first GOP header): Matroska CodecPrivate.</summary>
 	public byte[]? SequenceHeader { get; private set; }
+
+	/// <summary>When set, DVD closed-caption user data is taken out of each picture and returned in <see cref="VideoFrame.Captions"/>.</summary>
+	public bool ExtractCaptions { get; set; }
 	public int Width { get; private set; }
 	public int Height { get; private set; }
 	/// <summary>aspect_ratio_information: 2 = 4:3, 3 = 16:9.</summary>
@@ -136,8 +141,10 @@ public sealed class Mpeg2VideoFramer {
 
 	private void EmitFrame(int end) {
 		var data = _es.GetRange(_frameStart, end - _frameStart).ToArray();
+		var captions = ExtractCaptions ? Captions.DvdCaptionData.ExtractAndStrip(ref data) : [];
 		var frame = new VideoFrame {
 			Data = data,
+			Captions = captions,
 			PictureType = _type,
 			TemporalReference = _temporalRef,
 			Fields = _fields,

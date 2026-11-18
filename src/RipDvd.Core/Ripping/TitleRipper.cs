@@ -88,6 +88,23 @@ public sealed class TitleRipper {
 			audioTracks[ctl.StreamNumber] = (track, new Ac3Framer());
 		}
 
+		// Closed captions (line 21 data in the video) become a text track, as MakeMKV's "CC→Text".
+		MkvTrack? captionTrack = null;
+		Captions.Eia608Decoder? captionDecoder = null;
+		if (_vts.Video.Line21Field1 || _vts.Video.Line21Field2) {
+			captionTrack = new MkvTrack {
+				Number = tracks.Count + 1,
+				Type = MkvTrackType.Subtitle,
+				CodecId = "S_TEXT/UTF8",
+				Language = "eng",
+				Default = true,
+				Lacing = false,
+				SourceId = "0100E0",
+			};
+			tracks.Add(captionTrack);
+			captionDecoder = new Captions.Eia608Decoder();
+		}
+
 		// ---- Chapters: program n starts at its entry cell ----
 		var cellStartNs = new long[pgc.Cells.Count + 1];
 		var elapsed = default(DvdTime);
@@ -107,7 +124,7 @@ public sealed class TitleRipper {
 		Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(outputPath))!);
 		using var file = new FileStream(outputPath, FileMode.Create, FileAccess.ReadWrite, FileShare.Read, 1 << 20);
 		var mkv = new MkvWriter(file, tracks, AppName);
-		var framer = new Mpeg2VideoFramer();
+		var framer = new Mpeg2VideoFramer { ExtractCaptions = captionDecoder is not null };
 		bool headerWritten = false;
 		var pendingVideo = new List<VideoFrame>();
 		var audioQueues = audioTracks.Values.Select(v => (v.Track, Queue: new Queue<AudioFrame>())).ToList();
@@ -128,6 +145,10 @@ public sealed class TitleRipper {
 			mkv.StartCluster(keyFrame.Pts, addCue: true);
 			foreach (var f in gop) mkv.AddVideoFrame(video, f.Pts, f.DurationNs, f.IsKeyFrame, f.Data);
 			foreach (var (track, queue) in audioQueues) WriteAudio(mkv, track, queue, audioUntilNs);
+			if (captionDecoder is not null) {
+				FeedCaptions(captionDecoder, gop);
+				foreach (var ev in captionDecoder.TakeEvents()) mkv.AddTextBlock(captionTrack!, ev.StartNs, ev.EndNs - ev.StartNs, ev.Text);
+			}
 		}
 
 		foreach (var sector in reader.ReadAll()) {
@@ -174,11 +195,31 @@ public sealed class TitleRipper {
 		pendingVideo.AddRange(framer.TakeReady());
 		if (pendingVideo.Count > 0) WriteGop(pendingVideo, long.MaxValue);
 		foreach (var (track, queue) in audioQueues) if (queue.Count > 0) WriteAudio(mkv, track, queue, long.MaxValue);
+		if (captionDecoder is not null && headerWritten) {
+			captionDecoder.Finish(video.LastEndNs);
+			foreach (var ev in captionDecoder.TakeEvents()) mkv.AddTextBlock(captionTrack!, ev.StartNs, ev.EndNs - ev.StartNs, ev.Text);
+		}
 		progress?.Invoke(total, total);
 
 		long durationNs = video.LastEndNs;
 		mkv.Finish(durationNs);
 		return new RipResult(outputPath, durationNs, total, DateTime.UtcNow - started, warnings);
+	}
+
+	/// <summary>
+	/// Feed a GOP's caption byte pairs to the decoder.
+	/// The pairs carried in the GOP's user data belong to its pictures in display order: pair k is shown with the k-th displayed picture.
+	/// Extra pairs (more than pictures) follow at one frame per pair.
+	/// </summary>
+	private static void FeedCaptions(Captions.Eia608Decoder decoder, List<VideoFrame> gop) {
+		var pairs = gop.SelectMany(f => f.Captions).ToList();
+		if (pairs.Count == 0) return;
+		var times = gop.Select(f => f.Pts).Order().ToList();
+		long frame = VideoFrame.FieldsToNs(2);
+		for (int k = 0; k < pairs.Count; k++) {
+			long t = k < times.Count ? times[k] : times[^1] + (k - times.Count + 1) * frame;
+			decoder.Feed(t, pairs[k].Item1, pairs[k].Item2);
+		}
 	}
 
 	/// <summary>Write queued audio frames that start before <paramref name="untilNs"/>, 3 per laced block like MakeMKV.</summary>

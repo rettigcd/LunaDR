@@ -15,6 +15,9 @@ internal static class MkvProbe {
 		public List<string> FirstBlocks = [];
 	}
 
+	/// <summary>Track whose block payloads are printed in full as UTF-8 text (for subtitle tracks), or 0.</summary>
+	public static long DumpTrack;
+
 	public static void Dump(string path, int showBlocks) {
 		using var fs = File.OpenRead(path);
 		var r = new EbmlReader(fs);
@@ -120,7 +123,10 @@ internal static class MkvProbe {
 			t.MaxGap = Math.Max(t.MaxGap, gap);
 		}
 		t.PrevTime = time;
-		if (t.FirstBlocks.Count < showBlocks) {
+		if (track == DumpTrack && t.FirstBlocks.Count < showBlocks) {
+			string text = System.Text.Encoding.UTF8.GetString(b, len + 3, b.Length - len - 3).Replace("\r", "\\r").Replace("\n", "\\n");
+			t.FirstBlocks.Add($"t={time} dur={duration} \"{text}\"");
+		} else if (t.FirstBlocks.Count < showBlocks) {
 			int payload = len + 3;
 			t.FirstBlocks.Add($"{(simple ? "SimpleBlock" : "BlockGroup")} t={time} ms key={key} lacing={lacing} frames={frames} dur={duration} " +
 							  $"size={b.Length - payload} data={Convert.ToHexString(b, payload, Math.Min(24, b.Length - payload))}");

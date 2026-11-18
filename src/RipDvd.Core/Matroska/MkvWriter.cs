@@ -184,6 +184,23 @@ public sealed class MkvWriter : IDisposable {
 		Count(track, ptsNs, durationNs, data.Length, 1);
 	}
 
+	/// <summary>
+	/// Subtitle text: a BlockGroup with the text as the block data and a BlockDuration.
+	/// Captions are only known once they end, so they can start well before the current cluster; the block time is relative and may be negative.
+	/// </summary>
+	public void AddTextBlock(MkvTrack track, long startNs, long durationNs, string text) {
+		var data = System.Text.Encoding.UTF8.GetBytes(text);
+		var body = new MemoryStream();
+		var bw = new EbmlWriter(body);
+		bw.Id(Block);
+		bw.Size(BlockHeaderLength(track) + data.Length);
+		WriteBlockHeader(body, track, startNs, flags: 0);
+		body.Write(data);
+		bw.UInt(BlockDuration, (ulong)Math.Max(1, ToMs(durationNs)));
+		_cw!.Master(BlockGroup, body.GetBuffer().AsSpan(0, (int)body.Length));
+		Count(track, startNs, durationNs, data.Length, 1);
+	}
+
 	/// <summary>Audio frames of equal size in one SimpleBlock with fixed-size lacing (MakeMKV packs 3 AC3 frames).</summary>
 	public void AddLacedFrames(MkvTrack track, long firstPtsNs, long frameNs, IReadOnlyList<byte[]> frames) {
 		bool lace = frames.Count > 1;

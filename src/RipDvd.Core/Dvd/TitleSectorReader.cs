@@ -49,7 +49,11 @@ public sealed class TitleSectorReader {
 						s += n;
 					}
 				}
-			} catch (OperationCanceledException) { } finally { full.CompleteAdding(); }
+			} catch (OperationCanceledException) {
+				// The consumer stopped early; nothing to do.
+			} finally {
+				full.CompleteAdding();
+			}
 		});
 
 		try {

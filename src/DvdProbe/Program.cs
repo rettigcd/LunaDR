@@ -138,9 +138,11 @@ public static class Commands {
 		return 0;
 	}
 
-	[ProbeCommand("mkvinfo", "Print a Matroska file's structure and per-track block summary. Args: <file.mkv> [-blocks N]")]
+	[ProbeCommand("mkvinfo", "Print a Matroska file's structure and per-track block summary. Args: <file.mkv> [-blocks N] [-dumptrack T]")]
 	public static int MkvInfo(string[] args) {
 		int bi = Array.IndexOf(args, "-blocks");
+		int di = Array.IndexOf(args, "-dumptrack");
+		if (di >= 0) MkvProbe.DumpTrack = long.Parse(args[di + 1]);
 		MkvProbe.Dump(args[0], bi >= 0 ? int.Parse(args[bi + 1]) : 5);
 		return 0;
 	}
