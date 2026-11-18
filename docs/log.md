@@ -329,3 +329,12 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 - **Decision:** existing output files are skipped unless `--overwrite` (safe default; MakeMKV asks in its GUI).
 - **Result:** default rip of the Dead Zone extra still identical to MakeMKV's (`mkvcompare`); dry runs list the expected tracks (e.g. episode 1: video, AC3 5.1 + stereo, CC text, 9 chapters; with `--audio=en --captions=off --chapters=off`: no CC track, no chapters); a real rip with `--audio=none --chapters=off` has only the video track and no chapters and decodes cleanly; all error cases behave.
 - **Plan:** the planned steps are done; only cosmetic differences from MakeMKV remain (optional). Future lists the next possible projects.
+
+## 2026-11-18 15:20
+- **Owner request:** analyse whether ripped titles can be matched to TheTVDB episodes. **Answer:** yes, with the user confirming series/season (when the volume label doesn't give it) and, from disc 2 on, possibly the first episode number. Written up in `docs/episode-matching-analysis.md`.
+- **Findings:**
+	- Our rip of DEAD_ZONE_S4_D1 title 1 is byte-identical (audio and caption payloads, duration) to the owner's `The Dead Zone (2002)\Season 4\s04e01 - Broken Circle.mkv`: disc order = episode order; the owner's library names episodes `sNNeMM - Name.mkv`.
+	- TheTVDB API v4: project key + per-user subscriber PIN (about $12/year, to be verified); episode records have name, number, seasonNumber, aired, runtime (whole minutes, nullable); season types include `dvd`.
+	- Free alternatives: TVmaze (no key, aired order only), TMDB (free key, DVD order only where episode groups exist); terms not yet verified. TheDiscDB maps specific discs' titles to episodes (identification method/API not verified).
+	- Runtime cannot tell episodes apart (seconds apart on disc, whole minutes in TheTVDB); order is the main signal.
+- **Open questions added:** data source (TheTVDB paid vs free) and episode file naming.
