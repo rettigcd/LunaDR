@@ -16,6 +16,9 @@ Process rules for this file are in [CLAUDE.md](../CLAUDE.md).
 - Default minimum title length: 120 seconds; shorter titles are skipped (MakeMKV default).
 - Output file naming follows MakeMKV: `<title name>_t<NN>.mkv`.
 - Self-contained: no ffmpeg or other external tools at run time (MakeMKV does everything itself).
+- DVD only; Blu-ray is out of scope.
+- Command-line app first. A MakeMKV-style GUI comes later and is secondary, so keep the ripping
+  logic in a library the GUI can reuse.
 
 ## Next steps
 1. Probe: run `makemkvcon -r info disc:0` on the test disc and save the output as a reference
@@ -29,7 +32,7 @@ Process rules for this file are in [CLAUDE.md](../CLAUDE.md).
    program chain's cell order.
 7. Matroska muxer: tracks, chapters, track language tags, VobSub subtitles.
 8. Main CLI (`rip-dvd info`, `rip-dvd mkv <titles> <outdir>`), similar to `makemkvcon`.
+9. Later (secondary): GUI similar to MakeMKV's, on top of the same library.
 
 ## Open questions
-- Should there be a GUI eventually (like MakeMKV), or is a command-line app enough?
-- Blu-ray support is out of scope unless the owner asks for it. Correct?
+- (none)

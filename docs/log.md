@@ -17,3 +17,9 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 - **Decision:** no external tools (ffmpeg etc.) at run time. Reason: MakeMKV is self-contained,
   and doing it in C# keeps all the logic readable in this repo.
 - **Step:** git repo initialized; probe app `src/DvdProbe` scaffolded.
+
+## 2026-11-18 09:24
+- **Question answered:** GUI like MakeMKV's, or command line only? **Answer:** a MakeMKV-style
+  GUI is wanted eventually but is secondary; start with the command-line app.
+- **Decision:** put the ripping logic in a library so a later GUI can reuse it.
+- **Question answered:** is Blu-ray out of scope? **Answer:** yes, DVD only.
