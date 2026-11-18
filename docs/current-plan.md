@@ -58,15 +58,15 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 | GUI (future) | not chosen | WinForms/WPF are Windows-only; MAUI has no Linux desktop. Use **Avalonia** if Linux matters. |
 
 ## Next steps
-Not finished: 1–6 below. Items needing something from the owner are marked.
+Not finished: 1–4 below.
 1. **Full-disc end-to-end test:** `rip-dvd mkv <disc> all <folder>` on a whole disc (all titles, through the CLI), then compare every file with MakeMKV's or the owner's Plex rip.
 2. **MakeMKV file naming:** work out the name part (why `DEAD_ZONE_S4_D1` gave no name but `A_VERY_LONG_ENGAGEMENT_DISC1` gave "A VERY LONG ENGAGEMENT DISC 1") and the comment part (`C1`, `B1`, `B2`, ...: MakeMKV's TINFO 49; guess: derived from the menus that lead to each title), then name files `<name>-<comment>_tNN.mkv`.
 3. **Matroska details still differing from MakeMKV:** ReferenceBlock values are a placeholder (-1); we write more clusters (291 vs 270 on one title); audio lacing breaks in slightly different places; caption durations 1–4 ms longer; Duration can differ by 1 ms. None affects playback.
-4. **Audio not yet supported:** 20/24-bit LPCM; MPEG audio. *Owner:* needs a disc with one of them (MPEG audio is most likely on PAL or home-made DVDs; none found in the Plex library).
-5. **Linux drive authentication** (`ICssDrive` via `ioctl`). *Owner:* can only be tested on a Linux machine with a DVD drive.
-6. **CLI options** like makemkvcon's (track selection, etc.), once the defaults are settled.
+4. **CLI options** like makemkvcon's (track selection, etc.), once the defaults are settled.
 
 ## Future (desirable, not scheduled)
+- **Audio not yet supported:** 20/24-bit LPCM and MPEG audio. Needs a disc with one of them to test (MPEG audio is most likely on PAL or home-made DVDs); the owner has none.
+- **Linux drive authentication** (`ICssDrive` via `ioctl` DVD_AUTH on /dev/sr0). Needs a Linux machine with a DVD drive to test; the owner has none.
 - GUI similar to MakeMKV's, on top of the same library (secondary to the CLI).
 - Episode names from thetvdb.com: look up the series/season (e.g. from the volume label `DEAD_ZONE_S4_D1` → The Dead Zone, season 4, disc 1),
 	match the ripped titles to episodes (by order and running time), and name the output files with the episode titles.

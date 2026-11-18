@@ -290,3 +290,6 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	**Answer:** no. Steps 1–4 were not finished (Matroska polish not started, full-disc CLI test not done, audio only partly done, Linux authentication not started), and the Status section had become a history with stale lines ("no drive authentication needed", the first test disc as "available"), against the CLAUDE.md rule.
 	**Step:** rewrote current-plan.md as a present-state document: compact status with a table of the five test discs, updated design decisions, next steps re-ordered with what each still needs and which need the owner.
 	**Decision:** when proposing what to do next, follow the plan's order or say why not.
+
+## 2026-11-18 14:00
+- **Decision (owner):** move 20/24-bit LPCM + MPEG audio, and Linux drive authentication, from Next steps to Future. Reason: the owner has no disc with those audio formats and no Linux machine with a DVD drive to test on.
