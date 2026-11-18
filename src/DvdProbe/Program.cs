@@ -94,7 +94,7 @@ public static class Commands {
 			for (int k = 0; k < n && sectors.Count < 2000; k++)
 				if (RipDvd.Core.Css.Css.IsScrambled(buf.AsSpan(k * 2048, 2048))) sectors.Add(buf.AsSpan(k * 2048, 2048).ToArray());
 		}
-		var key = CssProbe.CrackTitleSet(videoTs, vts, 200_000, 3, print: false)!.Value;
+		var key = RipDvd.Core.Dvd.TitleSectorReader.FindKey(reader)!.Value;
 
 		var sw = System.Diagnostics.Stopwatch.StartNew();
 		int rounds = 0;
@@ -112,7 +112,34 @@ public static class Commands {
 		return 0;
 	}
 
-	[ProbeCommand("crack", "Recover CSS title keys from VOB data and verify them. Args: <drive> [vts numbers...]")]
+	[ProbeCommand("demux", "Demux a title and check its streams. Args: <drive> <title> [-o outdir] [-cells N]")]
+	public static int Demux(string[] args) {
+		string videoTs = IfoProbe.ResolveVideoTs(args[0]);
+		int title = int.Parse(args[1]);
+		int oi = Array.IndexOf(args, "-o");
+		int ci = Array.IndexOf(args, "-cells");
+		DemuxProbe.Run(videoTs, title, oi >= 0 ? args[oi + 1] : null, ci >= 0 ? int.Parse(args[ci + 1]) : int.MaxValue);
+		return 0;
+	}
+
+	[ProbeCommand("key", "Find CSS title keys with the library's TitleKeyFinder and verify them. Args: <drive> [vts numbers...]")]
+	public static int Key(string[] args) {
+		string videoTs = IfoProbe.ResolveVideoTs(args.Length > 0 ? args[0] : "E:");
+		var titleSets = args.Skip(1).Select(int.Parse).ToList();
+		if (titleSets.Count == 0)
+			titleSets = Enumerable.Range(1, 99).TakeWhile(n => File.Exists(Path.Combine(videoTs, $"VTS_{n:00}_1.VOB"))).ToList();
+		foreach (int vts in titleSets) {
+			var sw = System.Diagnostics.Stopwatch.StartNew();
+			using var reader = RipDvd.Core.Dvd.VobReader.ForTitleSet(videoTs, vts);
+			var key = RipDvd.Core.Dvd.TitleSectorReader.FindKey(reader);
+			Console.WriteLine($"VTS {vts:00}: {key?.ToString() ?? "no key"} in {sw.ElapsedMilliseconds} ms");
+			if (key is not null) CssProbe.Verify(videoTs, vts, key.Value, samples: 50);
+		}
+		return 0;
+	}
+
+	[Obsolete("Old: replaced by the 'key' command, which uses RipDvd.Core TitleKeyFinder (validates the first candidate instead of waiting for 5 votes).")]
+	[ProbeCommand("crack", "Recover CSS title keys by voting (5 agreeing sectors) and verify them. Args: <drive> [vts numbers...]")]
 	public static int Crack(string[] args) {
 		string videoTs = IfoProbe.ResolveVideoTs(args.Length > 0 ? args[0] : "E:");
 		var titleSets = args.Skip(1).Select(int.Parse).ToList();
