@@ -22,7 +22,7 @@ public sealed record TitleSummary(
 }
 
 /// <summary>Disc-level information and the title list.</summary>
-public sealed record DiscSummary(string VideoTsFolder, string VolumeName, IReadOnlyList<TitleSummary> Titles);
+public sealed record DiscSummary(string VideoTsFolder, string VolumeName, IReadOnlyList<TitleSummary> Titles, CellMap CellMap);
 
 /// <summary>
 /// Reads the IFO files of a DVD-Video folder and lists its titles.
@@ -57,7 +57,6 @@ public static class DiscScanner {
 		var vmg = VmgIfo.Parse(File.ReadAllBytes(Path.Combine(videoTsFolder, "VIDEO_TS.IFO")));
 		var vtsCache = new Dictionary<int, VtsIfo>();
 		var titles = new List<TitleSummary>();
-		var titleCells = new List<List<(int Vts, int Vob, int Cell)>>();   // significant cells of each title, in playlist order
 		foreach (var t in vmg.Titles) {
 			if (!vtsCache.TryGetValue(t.TitleSetNumber, out var vts))
 				vtsCache[t.TitleSetNumber] = vts = VtsIfo.Parse(File.ReadAllBytes(Path.Combine(videoTsFolder, $"VTS_{t.TitleSetNumber:00}_0.IFO")), t.TitleSetNumber);
@@ -66,7 +65,6 @@ public static class DiscScanner {
 			var pgcs = chapters.Select(c => c.PgcNumber).Distinct().Select(n => vts.Pgcs[n - 1]).ToList();
 			var cells = pgcs.SelectMany(p => p.Cells).Where(c => c.BlockType != 1 || c.BlockMode == 1).ToList();
 			var time = cells.Aggregate(default(DvdTime), (sum, c) => sum + c.PlaybackTime);
-			titleCells.Add(cells.Where(c => c.PlaybackTime.ToNanoseconds() >= SignificantCellNs).Select(c => (t.TitleSetNumber, c.VobId, c.CellId)).ToList());
 
 			var audio = new List<string>();
 			for (int i = 0; i < vts.Audio.Count; i++) {
@@ -94,7 +92,10 @@ public static class DiscScanner {
 				vts.Video.Line21Field1 || vts.Video.Line21Field2));
 		}
 
-		titles = ClassifyOverlaps(titles, titleCells);
+		// Which titles share cells: duplicates and compilations (rules in CellMap.ClassifyOverlaps).
+		var cellMap = CellMap.Build(vmg, n => vtsCache[n]);
+		var overlaps = cellMap.ClassifyOverlaps();
+		titles = titles.Select(t => t with { DuplicateOf = overlaps[t.TitleNumber].DuplicateOf, CompilationOf = overlaps[t.TitleNumber].CompilationOf }).ToList();
 
 		string volume = vmg.ProviderId;
 		try {
@@ -103,38 +104,6 @@ public static class DiscScanner {
 		} catch (IOException) {
 			// Not a drive (e.g. a folder on disk): keep the IFO provider id.
 		}
-		return new DiscSummary(videoTsFolder, volume, titles);
-	}
-
-	/// <summary>Cells shorter than this (e.g. the 0.5 s end cells many titles share) are ignored when comparing titles.</summary>
-	private const long SignificantCellNs = 2_000_000_000;
-
-	/// <summary>
-	/// Marks duplicates and compilations, by comparing which cells the titles play (see probe "cellmap" for the picture).
-	///   * Duplicate: exactly the same cells in the same order as an earlier title (the chapters may differ).
-	///   * Compilation: every cell also belongs to other titles, taken from at least two of them, and no single other title holds them all
-	///     (a "play all" of episodes, or of extras; an episode inside a "play all" title is not a compilation, since it uses one other title).
-	/// </summary>
-	private static List<TitleSummary> ClassifyOverlaps(List<TitleSummary> titles, List<List<(int Vts, int Vob, int Cell)>> cells) {
-		var result = new List<TitleSummary>(titles.Count);
-		for (int i = 0; i < titles.Count; i++) {
-			var mine = cells[i];
-			int? duplicateOf = null;
-			IReadOnlyList<int>? compilationOf = null;
-			for (int j = 0; j < i && duplicateOf is null; j++)
-				if (mine.Count > 0 && mine.SequenceEqual(cells[j])) duplicateOf = titles[j].TitleNumber;
-
-			if (duplicateOf is null && mine.Count > 0) {
-				var set = mine.ToHashSet();
-				var sources = Enumerable.Range(0, titles.Count)
-					.Where(j => j != i && cells[j].Any(set.Contains) && !cells[j].SequenceEqual(mine))
-					.ToList();
-				bool allCovered = set.All(c => sources.Any(j => cells[j].Contains(c)));
-				bool insideOne = sources.Any(j => set.IsSubsetOf(cells[j]));
-				if (allCovered && !insideOne && sources.Count >= 2) compilationOf = sources.Select(j => titles[j].TitleNumber).ToList();
-			}
-			result.Add(titles[i] with { DuplicateOf = duplicateOf, CompilationOf = compilationOf });
-		}
-		return result;
+		return new DiscSummary(videoTsFolder, volume, titles, cellMap);
 	}
 }

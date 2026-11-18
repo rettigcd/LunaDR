@@ -378,3 +378,6 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	- Episode naming (data source, file names): **deferred**; kept in open questions, marked deferred.
 - **Decision (mine, owner may change):** initially checked titles = at least 120 s and neither duplicate nor compilation.
 - **Step:** current-plan.md updated: UI design decisions, G1–G3 steps (no more (Q) marks), open questions reduced to the two deferred ones.
+
+## 2026-11-18 16:33
+- **Question answered:** commit the G0.1 code left uncommitted after "stop"? **Answer (owner):** commit it. Committed (`Ripping/CellMap`, `DiscScanner` using it, probe `cellmap` rendering it).
