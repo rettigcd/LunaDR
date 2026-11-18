@@ -1,6 +1,6 @@
 <Solution>
-  <Folder Name="/src/">
-    <Project Path="src/DvdProbe/DvdProbe.csproj" />
-    <Project Path="src/RipDvd.Core/RipDvd.Core.csproj" />
-  </Folder>
+	<Folder Name="/src/">
+		<Project Path="src/DvdProbe/DvdProbe.csproj" />
+		<Project Path="src/RipDvd.Core/RipDvd.Core.csproj" />
+	</Folder>
 </Solution>
