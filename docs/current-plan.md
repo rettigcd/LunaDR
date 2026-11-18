@@ -4,9 +4,11 @@ Process rules for this file are in [CLAUDE.md](../CLAUDE.md).
 This file describes the present state only; the history is in [log.md](log.md).
 
 ## Status
-- **Ripping works end to end on Windows.** CLI `src/RipDvd.Cli` (executable `rip-dvd`), modeled on makemkvcon:
-	`rip-dvd info [disc]` lists titles by the disc's own title numbers (with audio, subtitle and CC info);
-	`rip-dvd mkv <disc> <titles|all> <folder>` (titles like `1` or `1,3,6`; `all` = titles ≥ 120 s) writes `<Disc name> - title NN.mkv`. Disc = `disc:0`, `E:` or a folder; options `--minlength=N`, `--name=`.
+- **Ripping works end to end on Windows.** CLI `src/RipDvd.Cli` (executable `rip-dvd`), modeled on makemkvcon; `rip-dvd help` / `help <command>` / `-h` explain everything:
+	`info [disc] [--all] [--minlength=N]` lists titles by the disc's own title numbers (length, chapters, size, audio, subtitles, CC);
+	`mkv <disc> <titles|all> <folder>` writes `<Disc name> - title NN.mkv`, titles like `1` or `1,3,6` (`all` = titles ≥ 120 s).
+	`mkv` options: `--name`, `--audio=LANGS|all|none`, `--subtitles=LANGS|all|none`, `--captions=on|off`, `--chapters=on|off`, `--overwrite` (default: skip existing files), `--dry-run`, `--minlength`.
+	Disc = `disc:0`, `E:` or a folder.
 - **Verified against MakeMKV on five discs** (byte-level comparisons with `mkvinfo`, plus ffmpeg decoding with no errors; the owner has played the files):
 
 	| Disc | What it tested | Result |
@@ -60,9 +62,10 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 | GUI (future) | not chosen | WinForms/WPF are Windows-only; MAUI has no Linux desktop. Use **Avalonia** if Linux matters. |
 
 ## Next steps
-Not finished: 1–2 below.
-1. **Matroska details still differing from MakeMKV** (none affects playback): audio lacing breaks in slightly different places; caption durations 1–4 ms longer; Duration can differ by 1 ms; each cluster is 4–10 bytes smaller (element size encoding). ReferenceBlocks and cluster layout now match.
-2. **CLI options** like makemkvcon's (track selection, etc.), once the defaults are settled.
+The planned work is done. Optional, cosmetic only (no effect on playback):
+1. **Remaining small differences from MakeMKV's files:** audio lacing breaks in slightly different places; caption durations 1–4 ms longer; Duration can differ by 1 ms; each cluster is 4–10 bytes smaller (element size encoding).
+
+Possible next projects are listed under Future.
 
 ## Future (desirable, not scheduled)
 - **Audio not yet supported:** 20/24-bit LPCM and MPEG audio. Needs a disc with one of them to test (MPEG audio is most likely on PAL or home-made DVDs); the owner has none.

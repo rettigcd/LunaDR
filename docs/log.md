@@ -321,3 +321,11 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	- the cluster timestamp is the earliest block time in it (the B pictures shown before the key frame), truncated to whole ms (block times are rounded);
 	- the cue still points at the key frame's time.
 - **Result (Dead Zone extra, title 6):** 270 clusters like MakeMKV (was 291), all 270 cluster timestamps identical, and the file is identical to MakeMKV's in every property `mkvcompare` checks. Each cluster is 4–10 bytes smaller than MakeMKV's (element size encoding); left as is.
+
+## 2026-11-18 14:52
+- **Owner request:** do the CLI options, including a help option that explains them.
+- **Step:** `Ripping/RipOptions` (audio/subtitle languages: list, all or none, 2-letter codes accepted, `und` = no language; captions on/off; chapters on/off). `TitleRipper`: track and chapter setup moved into `BuildPlan(options)`, used by `Rip` and by the new `Describe` (for dry runs), so both always agree.
+- **Step:** CLI rewritten around two tables (commands, options) from which the parser and the help are generated: `rip-dvd help`, `help <command>`, `-h`/`--help`. New: `info --all`; `mkv --audio`, `--subtitles`, `--captions`, `--chapters`, `--overwrite`, `--dry-run`. Unknown options, missing values, options for the wrong command and bad values give a message plus a pointer to the help (exit 1).
+- **Decision:** existing output files are skipped unless `--overwrite` (safe default; MakeMKV asks in its GUI).
+- **Result:** default rip of the Dead Zone extra still identical to MakeMKV's (`mkvcompare`); dry runs list the expected tracks (e.g. episode 1: video, AC3 5.1 + stereo, CC text, 9 chapters; with `--audio=en --captions=off --chapters=off`: no CC track, no chapters); a real rip with `--audio=none --chapters=off` has only the video track and no chapters and decodes cleanly; all error cases behave.
+- **Plan:** the planned steps are done; only cosmetic differences from MakeMKV remain (optional). Future lists the next possible projects.

@@ -40,7 +40,8 @@ public sealed class TitleRipper {
 
 	/// <summary>Rip to <paramref name="outputPath"/>. <paramref name="progress"/> gets (sectors done, total).</summary>
 	/// <param name="maxCells">For testing: rip only the first cells of the title.</param>
-	public RipResult Rip(string outputPath, Action<long, long>? progress = null, int maxCells = int.MaxValue) {
+	public RipResult Rip(string outputPath, Action<long, long>? progress = null, int maxCells = int.MaxValue, RipOptions? options = null) {
+		options ??= RipOptions.Default;
 		var started = DateTime.UtcNow;
 		var warnings = new List<string>();
 		var pgc = _pgcs[0];
@@ -59,114 +60,7 @@ public sealed class TitleRipper {
 		var cells = _pgcs.SelectMany(p => p.Cells).Take(maxCells).ToList();
 		var reader = new TitleSectorReader(vobs, cells, key);
 
-		// ---- Tracks ----
-		var video = new MkvTrack {
-			Number = 1,
-			Type = MkvTrackType.Video,
-			CodecId = "V_MPEG2",
-			Default = false,
-			Lacing = false,
-			DefaultDurationNs = VideoFrame.FieldsToNs(2),
-			MinCache = 2,
-			PixelWidth = _vts.Video.Width,
-			PixelHeight = _vts.Video.Height,
-			SourceId = "0100E0",
-		};
-		SetDisplaySize(video, _vts.Video.AspectRatio);
-		var tracks = new List<MkvTrack> { video };
-		var audioTracks = new Dictionary<StreamId, (MkvTrack Track, AudioFramer Framer)>();
-		for (int i = 0; i < _vts.Audio.Count; i++) {
-			var ctl = pgc.AudioControl[i];
-			if (!ctl.Available) continue;
-			var a = _vts.Audio[i];
-			// AC3 is substream 0x80+n of private stream 1, DTS 0x88+n.
-			(StreamKind kind, string codecId, AudioFramer audioFramer, int substreamBase) = a.Coding switch {
-				"AC3" => (StreamKind.Ac3, "A_AC3", (AudioFramer)new Ac3Framer(), 0x80),
-				"DTS" => (StreamKind.Dts, "A_DTS", new DtsFramer(), 0x88),
-				// LPCM is substream 0xA0+n; MakeMKV converts it to little-endian PCM in 1/30 s blocks.
-				"LPCM" when a.BitsPerSample == 16 => (StreamKind.Lpcm, "A_PCM/INT/LIT", new LpcmFramer(a.Channels, a.SampleRate, 16), 0xA0),
-				_ => (StreamKind.Other, "", null!, 0),
-			};
-			if (kind == StreamKind.Other) {
-				warnings.Add($"Audio stream {i} is {a.Coding}; not supported yet, skipped.");
-				continue;
-			}
-			var track = new MkvTrack {
-				Number = tracks.Count + 1,
-				Type = MkvTrackType.Audio,
-				CodecId = codecId,
-				Language = a.Language is null ? null : Languages.ToIso6392(a.Language),   // MakeMKV writes no Language when the disc gives none
-				Name = ChannelName(a.Channels),
-				Default = audioTracks.Count == 0,
-				DefaultDurationNs = audioFramer.FrameNs > 0 ? audioFramer.FrameNs : 512 * 1_000_000_000L / a.SampleRate,   // DTS: known once the stream is read
-				BitDepth = kind == StreamKind.Lpcm ? a.BitsPerSample : 0,
-				Lacing = kind != StreamKind.Lpcm,
-				SamplingFrequency = a.SampleRate,
-				Channels = a.Channels,
-				SourceId = $"01{substreamBase + ctl.StreamNumber:X2}BD",
-			};
-			tracks.Add(track);
-			audioTracks[new StreamId(kind, ctl.StreamNumber)] = (track, audioFramer);
-		}
-
-		// Subpicture (bitmap subtitle) streams become S_VOBSUB tracks.
-		// Each declared stream names a physical substream per display mode; for 16:9 video the "wide" one is used, else the 4:3 one.
-		// Streams that point at the same substream are listed once (MakeMKV does the same).
-		var subtitleTracks = new Dictionary<int, (MkvTrack Track, SubpictureAssembler Assembler)>();   // key: substream number
-		string vobSubHeader = VobSubHeader.Build(_vts.Video.Width, _vts.Video.Height, pgc.Palette, AppName);
-		for (int i = 0; i < _vts.Subpictures.Count; i++) {
-			var ctl = pgc.SubpictureControl[i];
-			if (!ctl.Available) continue;
-			int substream = _vts.Video.AspectRatio == "16:9" ? ctl.StreamWide : ctl.Stream4x3;
-			if (subtitleTracks.ContainsKey(substream)) continue;
-			var track = new MkvTrack {
-				Number = tracks.Count + 1,
-				Type = MkvTrackType.Subtitle,
-				CodecId = "S_VOBSUB",
-				CodecPrivate = System.Text.Encoding.ASCII.GetBytes(vobSubHeader),
-				Language = Languages.ToIso6392(_vts.Subpictures[i].Language),
-				Default = subtitleTracks.Count == 0,
-				Lacing = false,
-				SourceId = $"01{0x20 + substream:X2}BD",
-			};
-			tracks.Add(track);
-			subtitleTracks[substream] = (track, new SubpictureAssembler());
-		}
-
-		// Closed captions (line 21 data in the video) become a text track, as MakeMKV's "CC→Text".
-		// It is the default subtitle track only when there are no bitmap subtitles.
-		MkvTrack? captionTrack = null;
-		Captions.Eia608Decoder? captionDecoder = null;
-		if (_vts.Video.Line21Field1 || _vts.Video.Line21Field2) {
-			captionTrack = new MkvTrack {
-				Number = tracks.Count + 1,
-				Type = MkvTrackType.Subtitle,
-				CodecId = "S_TEXT/UTF8",
-				Language = "eng",
-				Default = subtitleTracks.Count == 0,
-				Lacing = false,
-				SourceId = "0100E0",
-			};
-			tracks.Add(captionTrack);
-			captionDecoder = new Captions.Eia608Decoder();
-		}
-
-		// ---- Chapters: program n starts at its entry cell ----
-		var cellStartNs = new long[pgc.Cells.Count + 1];
-		var elapsed = default(DvdTime);
-		for (int c = 0; c < pgc.Cells.Count; c++) {
-			elapsed += pgc.Cells[c].PlaybackTime;   // add frame counts, convert once (exact)
-			cellStartNs[c + 1] = elapsed.ToNanoseconds();
-		}
-		long ifoDurationNs = cellStartNs[^1];
-		var chapterStarts = pgc.ProgramEntryCells.Select(cell => cellStartNs[cell - 1]).ToList();
-		var chapters = new List<MkvChapter>();
-		for (int i = 0; i < chapterStarts.Count; i++) {
-			long end = i + 1 < chapterStarts.Count ? chapterStarts[i + 1] : ifoDurationNs;
-			chapters.Add(new MkvChapter(chapterStarts[i], end, $"Chapter {i + 1:00}"));
-		}
-		// A single chapter carries no information; MakeMKV writes no Chapters element then.
-		if (chapters.Count == 1) chapters.Clear();
+		var (video, tracks, audioTracks, subtitleTracks, captionTrack, captionDecoder, chapters) = BuildPlan(options, warnings);
 
 		// ---- Mux ----
 		Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(outputPath))!);
@@ -308,6 +202,148 @@ public sealed class TitleRipper {
 		long durationNs = tracks.Where(t => t.Type != MkvTrackType.Subtitle).Max(t => t.LastEndNs);
 		mkv.Finish(durationNs);
 		return new RipResult(outputPath, durationNs, total, DateTime.UtcNow - started, warnings);
+	}
+
+	/// <summary>The tracks and chapters a rip will write, after applying the options.</summary>
+	private sealed record Plan(
+		MkvTrack Video, List<MkvTrack> Tracks,
+		Dictionary<StreamId, (MkvTrack Track, AudioFramer Framer)> AudioTracks,
+		Dictionary<int, (MkvTrack Track, SubpictureAssembler Assembler)> SubtitleTracks,
+		MkvTrack? CaptionTrack, Captions.Eia608Decoder? CaptionDecoder, List<MkvChapter> Chapters);
+
+	private Plan BuildPlan(RipOptions options, List<string> warnings) {
+		var pgc = _pgcs[0];
+		var video = new MkvTrack {
+			Number = 1,
+			Type = MkvTrackType.Video,
+			CodecId = "V_MPEG2",
+			Default = false,
+			Lacing = false,
+			DefaultDurationNs = VideoFrame.FieldsToNs(2),
+			MinCache = 2,
+			PixelWidth = _vts.Video.Width,
+			PixelHeight = _vts.Video.Height,
+			SourceId = "0100E0",
+		};
+		SetDisplaySize(video, _vts.Video.AspectRatio);
+		var tracks = new List<MkvTrack> { video };
+		var audioTracks = new Dictionary<StreamId, (MkvTrack Track, AudioFramer Framer)>();
+		for (int i = 0; i < _vts.Audio.Count; i++) {
+			var ctl = pgc.AudioControl[i];
+			if (!ctl.Available) continue;
+			var a = _vts.Audio[i];
+			// AC3 is substream 0x80+n of private stream 1, DTS 0x88+n.
+			(StreamKind kind, string codecId, AudioFramer audioFramer, int substreamBase) = a.Coding switch {
+				"AC3" => (StreamKind.Ac3, "A_AC3", (AudioFramer)new Ac3Framer(), 0x80),
+				"DTS" => (StreamKind.Dts, "A_DTS", new DtsFramer(), 0x88),
+				// LPCM is substream 0xA0+n; MakeMKV converts it to little-endian PCM in 1/30 s blocks.
+				"LPCM" when a.BitsPerSample == 16 => (StreamKind.Lpcm, "A_PCM/INT/LIT", new LpcmFramer(a.Channels, a.SampleRate, 16), 0xA0),
+				_ => (StreamKind.Other, "", null!, 0),
+			};
+			string? audioLanguage = a.Language is null ? null : Languages.ToIso6392(a.Language);   // MakeMKV writes no Language when the disc gives none
+			if (!RipOptions.Keeps(options.AudioLanguages, audioLanguage)) continue;
+			if (kind == StreamKind.Other) {
+				warnings.Add($"Audio stream {i} is {a.Coding}; not supported yet, skipped.");
+				continue;
+			}
+			var track = new MkvTrack {
+				Number = tracks.Count + 1,
+				Type = MkvTrackType.Audio,
+				CodecId = codecId,
+				Language = audioLanguage,
+				Name = ChannelName(a.Channels),
+				Default = audioTracks.Count == 0,
+				DefaultDurationNs = audioFramer.FrameNs > 0 ? audioFramer.FrameNs : 512 * 1_000_000_000L / a.SampleRate,   // DTS: known once the stream is read
+				BitDepth = kind == StreamKind.Lpcm ? a.BitsPerSample : 0,
+				Lacing = kind != StreamKind.Lpcm,
+				SamplingFrequency = a.SampleRate,
+				Channels = a.Channels,
+				SourceId = $"01{substreamBase + ctl.StreamNumber:X2}BD",
+			};
+			tracks.Add(track);
+			audioTracks[new StreamId(kind, ctl.StreamNumber)] = (track, audioFramer);
+		}
+
+		// Subpicture (bitmap subtitle) streams become S_VOBSUB tracks.
+		// Each declared stream names a physical substream per display mode; for 16:9 video the "wide" one is used, else the 4:3 one.
+		// Streams that point at the same substream are listed once (MakeMKV does the same).
+		var subtitleTracks = new Dictionary<int, (MkvTrack Track, SubpictureAssembler Assembler)>();   // key: substream number
+		string vobSubHeader = VobSubHeader.Build(_vts.Video.Width, _vts.Video.Height, pgc.Palette, AppName);
+		for (int i = 0; i < _vts.Subpictures.Count; i++) {
+			var ctl = pgc.SubpictureControl[i];
+			if (!ctl.Available) continue;
+			int substream = _vts.Video.AspectRatio == "16:9" ? ctl.StreamWide : ctl.Stream4x3;
+			if (subtitleTracks.ContainsKey(substream)) continue;
+			string subtitleLanguage = Languages.ToIso6392(_vts.Subpictures[i].Language);
+			if (!RipOptions.Keeps(options.SubtitleLanguages, subtitleLanguage)) continue;
+			var track = new MkvTrack {
+				Number = tracks.Count + 1,
+				Type = MkvTrackType.Subtitle,
+				CodecId = "S_VOBSUB",
+				CodecPrivate = System.Text.Encoding.ASCII.GetBytes(vobSubHeader),
+				Language = subtitleLanguage,
+				Default = subtitleTracks.Count == 0,
+				Lacing = false,
+				SourceId = $"01{0x20 + substream:X2}BD",
+			};
+			tracks.Add(track);
+			subtitleTracks[substream] = (track, new SubpictureAssembler());
+		}
+
+		// Closed captions (line 21 data in the video) become a text track, as MakeMKV's "CC→Text".
+		// It is the default subtitle track only when there are no bitmap subtitles.
+		MkvTrack? captionTrack = null;
+		Captions.Eia608Decoder? captionDecoder = null;
+		if (options.ClosedCaptions && (_vts.Video.Line21Field1 || _vts.Video.Line21Field2)) {
+			captionTrack = new MkvTrack {
+				Number = tracks.Count + 1,
+				Type = MkvTrackType.Subtitle,
+				CodecId = "S_TEXT/UTF8",
+				Language = "eng",
+				Default = subtitleTracks.Count == 0,
+				Lacing = false,
+				SourceId = "0100E0",
+			};
+			tracks.Add(captionTrack);
+			captionDecoder = new Captions.Eia608Decoder();
+		}
+
+		// ---- Chapters: program n starts at its entry cell ----
+		var cellStartNs = new long[pgc.Cells.Count + 1];
+		var elapsed = default(DvdTime);
+		for (int c = 0; c < pgc.Cells.Count; c++) {
+			elapsed += pgc.Cells[c].PlaybackTime;   // add frame counts, convert once (exact)
+			cellStartNs[c + 1] = elapsed.ToNanoseconds();
+		}
+		long ifoDurationNs = cellStartNs[^1];
+		var chapterStarts = pgc.ProgramEntryCells.Select(cell => cellStartNs[cell - 1]).ToList();
+		var chapters = new List<MkvChapter>();
+		for (int i = 0; i < chapterStarts.Count; i++) {
+			long end = i + 1 < chapterStarts.Count ? chapterStarts[i + 1] : ifoDurationNs;
+			chapters.Add(new MkvChapter(chapterStarts[i], end, $"Chapter {i + 1:00}"));
+		}
+		// A single chapter carries no information; MakeMKV writes no Chapters element then.
+		if (chapters.Count == 1 || !options.Chapters) chapters.Clear();
+
+		return new Plan(video, tracks, audioTracks, subtitleTracks, captionTrack, captionDecoder, chapters);
+	}
+
+	/// <summary>
+	/// What a rip with these options would write, without reading any video: one line per track, then the chapter count.
+	/// Used by the CLI's --dry-run; it shares <see cref="BuildPlan"/> with <see cref="Rip"/>, so it shows exactly what a rip produces.
+	/// (Tracks that turn out to carry no data are still dropped by a real rip.)
+	/// </summary>
+	public IReadOnlyList<string> Describe(RipOptions? options = null) {
+		var warnings = new List<string>();
+		var plan = BuildPlan(options ?? RipOptions.Default, warnings);
+		var lines = plan.Tracks.Select(t => t.Type switch {
+			MkvTrackType.Video => $"video     {t.CodecId} {t.PixelWidth}x{t.PixelHeight} (display {t.DisplayWidth}x{t.DisplayHeight})",
+			MkvTrackType.Audio => $"audio     {t.CodecId} {t.Name} {t.Language ?? "(no language)"}{(t.Default ? " [default]" : "")}",
+			_ => $"subtitle  {t.CodecId} {t.Language ?? "(no language)"}{(t.Default ? " [default]" : "")}",
+		}).ToList();
+		lines.Add($"chapters  {(plan.Chapters.Count == 0 ? "none" : plan.Chapters.Count.ToString())}");
+		lines.AddRange(warnings.Select(w => "warning   " + w));
+		return lines;
 	}
 
 	/// <summary>
