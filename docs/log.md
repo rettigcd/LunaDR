@@ -23,3 +23,20 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
   GUI is wanted eventually but is secondary; start with the command-line app.
 - **Decision:** put the ripping logic in a library so a later GUI can reuse it.
 - **Question answered:** is Blu-ray out of scope? **Answer:** yes, DVD only.
+
+## 2026-11-18 09:29
+- **Owner confirmed** the test disc is The Dead Zone, season 4, disc 1; title sets 1–4 are
+  episodes and the small title sets are extras/menus.
+- **Step:** ran MakeMKV v2.0.0 `makemkvcon64 -r info disc:0` (default and `--minlength=0`);
+  saved the output in `reference/makemkv/`. Results: 14 titles; 8 kept (titles 1–4 episodes
+  of 42:27, 42:48, 42:45, 42:53 with 9/9/10/9 cells; titles 6–9 extras of 2:19–3:35 with 2
+  cells), 6 skipped for being under 120 s (titles 5, 10–14). MakeMKV uses "direct disc
+  access mode".
+- **Finding:** MakeMKV's file names are `C1_t00.mkv` … `C1_t03.mkv`, `B2_t04.mkv`,
+  `B4_t05.mkv`, `B6_t06.mkv`, `B8_t07.mkv`, not `<volume>_tNN.mkv` as assumed. `tNN` is the
+  position among kept titles. The prefix rule is unknown; added to next steps.
+- **Decision (corrected):** file naming is `<prefix>_t<NN>.mkv`, with the prefix rule to be
+  worked out from MakeMKV's behavior.
+- **Owner request:** added to the plan's new "Future" section: look up episode titles on
+  thetvdb.com and match them to the ripped titles. The MakeMKV-style GUI moved to the same
+  section.
