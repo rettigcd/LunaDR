@@ -301,3 +301,9 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	All 8 files decode with ffmpeg with no problems (video, all audio, caption text).
 - **Correction:** I had told the owner MakeMKV references existed for every title of this disc; only 3 titles had full MakeMKV rips (the rest have only MakeMKV's title listing). Corrected before the run.
 
+## 2026-11-18 14:46
+- **Owner decision:** MakeMKV's file naming doesn't matter; use something clearer. Plan step "MakeMKV file naming" dropped (the C1/B2 comment rule stays unexplained).
+- **Decision:** files are named `<Disc name> - title NN.mkv` (`Ripping/OutputNaming`): disc name from the volume label (`_` → space, all-caps words capitalized, words with digits kept as written, `DVD` when there is no label), overridable with `--name=`; NN is the disc's own title number.
+	Reason: readable, and the number traces the file back to the disc (the title a DVD player would play).
+- **Decision:** the CLI uses the disc's title numbers everywhere: `info` lists `title N`; `mkv` takes `1` or `1,3,6` (any title, even short ones) or `all` (titles at least --minlength long). MakeMKV's renumbered ids (0, 1, 2 over kept titles) are gone. Reason: one numbering, so what `info` shows is what `mkv` takes.
+- **Result:** `info E:` shows "Dead Zone S4 D1"; `mkv E: 6 <folder>` wrote `Dead Zone S4 D1 - title 06.mkv`; `mkv E: 99 x` reports "No title 99 on this disc; titles are 1..14" and exits with 1.

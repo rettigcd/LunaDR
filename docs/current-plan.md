@@ -5,8 +5,8 @@ This file describes the present state only; the history is in [log.md](log.md).
 
 ## Status
 - **Ripping works end to end on Windows.** CLI `src/RipDvd.Cli` (executable `rip-dvd`), modeled on makemkvcon:
-	`rip-dvd info [disc]` lists titles (MakeMKV-style ids over titles ≥ 120 s, with audio, subtitle and CC info);
-	`rip-dvd mkv <disc> <id|all> <folder>` writes `title_tNN.mkv`. Disc = `disc:0`, `E:` or a folder; option `--minlength=N`.
+	`rip-dvd info [disc]` lists titles by the disc's own title numbers (with audio, subtitle and CC info);
+	`rip-dvd mkv <disc> <titles|all> <folder>` (titles like `1` or `1,3,6`; `all` = titles ≥ 120 s) writes `<Disc name> - title NN.mkv`. Disc = `disc:0`, `E:` or a folder; options `--minlength=N`, `--name=`.
 - **Verified against MakeMKV on five discs** (byte-level comparisons with `mkvinfo`, plus ffmpeg decoding with no errors; the owner has played the files):
 
 	| Disc | What it tested | Result |
@@ -38,8 +38,9 @@ This file describes the present state only; the history is in [log.md](log.md).
 - Chapters: one per PGC program, from IFO cell times; none for a single-chapter title.
 - Timing: each cell's stream time mapped to one title timeline (handles STC resets); times computed from field/sample counts so they don't drift.
 	Duration = end of the longest audio/video track, whole milliseconds. CC pairs timed one per 1/29.97 s frame.
-- Defaults as MakeMKV: keep all tracks and chapters; skip titles under 120 s; ids count only kept titles.
-- Output naming: `title_tNN.mkv` for now. MakeMKV uses `<name>-<comment>_tNN.mkv` (name from the volume label, e.g. `A VERY LONG ENGAGEMENT DISC 1-B1_t00.mkv`), see next steps.
+- Defaults as MakeMKV: keep all tracks and chapters; ll skips titles under 120 s (they can still be ripped by number).
+- Output naming (owner: clearer than MakeMKV's): `<Disc name> - title NN.mkv`, e.g. `Dead Zone S4 D1 - title 01.mkv`. Disc name = volume label with `_` → space, all-caps words capitalized, words with digits kept as written, `DVD` if no label; `--name` overrides.
+	NN and the CLI's title arguments are the disc's own title numbers (as a DVD player numbers them), not MakeMKV's renumbered ids.
 - CSS: recover title keys from the scrambled data (libdvdcss "AttackPattern"), accepting the first key that descrambles to valid MPEG.
 	Before reading, run the CSS drive handshake (needed on a freshly inserted disc); on unprotected discs the drive rejects it, which is only reported if reading then fails.
 - CSS code is ported from libdvdcss rather than linked: readable, no native DLL. libdvdcss could be an optional fallback if a disc defeats the port.
@@ -59,10 +60,9 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 | GUI (future) | not chosen | WinForms/WPF are Windows-only; MAUI has no Linux desktop. Use **Avalonia** if Linux matters. |
 
 ## Next steps
-Not finished: 1–3 below.
-1. **MakeMKV file naming:** work out the name part (why `DEAD_ZONE_S4_D1` gave no name but `A_VERY_LONG_ENGAGEMENT_DISC1` gave "A VERY LONG ENGAGEMENT DISC 1") and the comment part (`C1`, `B1`, `B2`, ...: MakeMKV's TINFO 49; guess: derived from the menus that lead to each title), then name files `<name>-<comment>_tNN.mkv`.
-2. **Matroska details still differing from MakeMKV:** ReferenceBlock values are a placeholder (-1); we write more clusters (291 vs 270 on one title); audio lacing breaks in slightly different places; caption durations 1–4 ms longer; Duration can differ by 1 ms. None affects playback.
-3. **CLI options** like makemkvcon's (track selection, etc.), once the defaults are settled.
+Not finished: 1–2 below.
+1. **Matroska details still differing from MakeMKV:** ReferenceBlock values are a placeholder (-1); we write more clusters (291 vs 270 on one title); audio lacing breaks in slightly different places; caption durations 1–4 ms longer; Duration can differ by 1 ms. None affects playback.
+2. **CLI options** like makemkvcon's (track selection, etc.), once the defaults are settled.
 
 ## Future (desirable, not scheduled)
 - **Audio not yet supported:** 20/24-bit LPCM and MPEG audio. Needs a disc with one of them to test (MPEG audio is most likely on PAL or home-made DVDs); the owner has none.
