@@ -5,7 +5,12 @@ Process rules for this file are in [CLAUDE.md](../CLAUDE.md).
 ## Status
 - Repo created. Process documents (CLAUDE.md, this plan, log) in place.
 - Probe console app `src/DvdProbe` (net10.0): commands `drives`, `files`, `titles [-v]`,
-	`scramble`, `crack`, `duration`, `bench`.
+	`scramble`, `crack` (old), `key`, `duration`, `bench`, `demux`, `mkvinfo`.
+- Demuxing works: `Mpeg/ProgramStreamParser` + `Dvd/TitleSectorReader` produce the same
+	video/audio bytes MakeMKV puts in its MKV (checked on title 6). Key finding is now fast
+	(`Css/TitleKeyFinder`, 0.1–0.4 s per title set).
+- `Matroska/EbmlReader` reads MKV files (probe `mkvinfo`); MakeMKV reference rips are in
+	git-ignored `reference/rips/makemkv/`.
 - CSS works on the test disc: `RipDvd.Core/Css` recovers each title set's key from the
 	scrambled data (no drive authentication needed) and descrambles sectors. All 14 title
 	sets cracked and verified. `RipDvd.Core/Dvd/VobReader` reads a title set's VOBs as one
@@ -14,8 +19,9 @@ Process rules for this file are in [CLAUDE.md](../CLAUDE.md).
 	VTS_xx_0.IFO (stream attributes, chapters, program chains, cells).
 - `titles` output matches MakeMKV on the test disc for: title list, cell counts, chapter
 	counts, sizes (exact bytes), which titles are under 120 s, audio track counts, aspect
-	ratio, and which titles have closed captions. Not yet matching: episode durations
-	(MakeMKV shows ~6 s less) and the file name prefix.
+	ratio, and which titles have closed captions. MakeMKV's title-list durations are ~6 s
+	shorter on episodes, but its MKV files use the true stream duration (which we match).
+	Not yet matching: the file name prefix.
 - Test disc available: drive E:, volume `DEAD_ZONE_S4_D1` (TV episodes, 14 title sets).
 - MakeMKV is installed at `C:\Program Files (x86)\MakeMKV` and can be used as a reference.
 - MakeMKV reference output for the test disc saved in `reference/makemkv/` (default 120 s
@@ -33,6 +39,9 @@ Process rules for this file are in [CLAUDE.md](../CLAUDE.md).
 - Self-contained: no ffmpeg or other external tools at run time (MakeMKV does everything itself).
 - DVD only; Blu-ray is out of scope.
 - A title's size = sum of its cells' sectors × 2048 (matches MakeMKV exactly).
+- MKV duration = measured stream duration (pictures + pulldown), as in MakeMKV's files.
+- MKV layout copies MakeMKV's (details in log 2026-11-18 10:22); streams are copied
+	unchanged ("lossless"), timestamps shifted so the title starts at 0.
 - A stream is real only if the title's program chain marks it "available"; the stream
 	counts in the VTS attribute table are not trusted (the test disc declares 8 audio and
 	32 subtitle streams but uses 1–2 audio and none).
@@ -72,16 +81,17 @@ interfaces in `RipDvd.Core`, with one implementation per OS.
 | Notification-sound hook | Claude Code settings only, not part of the app | none |
 
 ## Next steps
-1. Demux MPEG-2 program stream (video, AC3/DTS/LPCM/MPEG audio, subpictures) by following the
-	program chain's cell order.
-2. Episode durations: the stream's own timestamps (nav packs) give 42:33.017 for title 1,
-	exactly the IFO cell times at 29.97 fps, yet MakeMKV shows 0:42:27. Rip title 1 with
-	`makemkvcon` into a folder outside the repo and inspect the MKV (duration, tracks,
-	chapters, codec private data). This also gives a reference file for the muxer.
-3. Matroska muxer: tracks, chapters, track language tags, VobSub subtitles, CC→text.
+1. Finish checking MakeMKV's episode rip (`C1_t00.mkv`, in progress): duration (expect
+	42:33.017), the CC→text subtitle track (codec, format), 5.1 audio track name, chapters.
+	Demux title 1 with our probe and compare byte counts.
+2. Matroska muxer, copying MakeMKV's layout (see log 2026-11-18 10:22): EBML writer,
+	video BlockGroups per frame with reference/duration, AC3 laced SimpleBlocks,
+	chapters from PGC programs, statistics tags, clusters ≈ per GOP, cues. Then compare our
+	file against MakeMKV's with `mkvinfo`.
+3. Closed captions → text track (EIA-608 decoding from video user data).
 4. Main CLI (`rip-dvd info`, `rip-dvd mkv <titles> <outdir>`), similar to `makemkvcon`.
-5. Speed up key recovery (VTS 9 took 49 s, mostly reading the drive): stop at the first
-	key that descrambles to valid MPEG, or recover the key while ripping.
+5. Subpicture (VobSub) tracks, DTS/LPCM/MPEG audio: needed for other discs (test disc has
+	none). Find a disc with subtitles to test.
 6. Drive authentication through Windows DVD IOCTLs, only if a disc/drive refuses to read
 	scrambled sectors (this drive reads them fine; MakeMKV had run before, so check again
 	after a fresh disc insert). Alternative: libdvdcss as an optional fallback.

@@ -122,6 +122,13 @@ public static class Commands {
 		return 0;
 	}
 
+	[ProbeCommand("mkvinfo", "Print a Matroska file's structure and per-track block summary. Args: <file.mkv> [-blocks N]")]
+	public static int MkvInfo(string[] args) {
+		int bi = Array.IndexOf(args, "-blocks");
+		MkvProbe.Dump(args[0], bi >= 0 ? int.Parse(args[bi + 1]) : 5);
+		return 0;
+	}
+
 	[ProbeCommand("key", "Find CSS title keys with the library's TitleKeyFinder and verify them. Args: <drive> [vts numbers...]")]
 	public static int Key(string[] args) {
 		string videoTs = IfoProbe.ResolveVideoTs(args.Length > 0 ? args[0] : "E:");

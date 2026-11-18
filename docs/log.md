@@ -131,3 +131,39 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	libdvdcss as an optional fallback behind the same interface.
 - **Plan tidy-up:** two design-decision bullets had ended up below the Platform table;
 	moved back. Status updated (probe commands, duration gap).
+
+## 2026-11-18 10:22
+- **Step:** `RipDvd.Core/Css/TitleKeyFinder`: accepts the first candidate key that
+	descrambles most sampled video sectors into data with MPEG start codes. Probe `key` uses
+	it: same 14 keys as before, now 0.1–0.4 s per title set (was up to 49 s). Plan step
+	"speed up key recovery" done. The old voting method (`CssProbe.CrackTitleSet`, probe
+	`crack`) is marked `[Obsolete]` / "(old)".
+- **Step:** demuxer: `Mpeg/ProgramStreamParser` (pack → PES packets: video, AC3, DTS, LPCM,
+	MPEG audio, subpictures, nav), `Dvd/TitleSectorReader` (cells in PGC order, descrambled,
+	angle-1 cells only). Probe `demux` checks the streams.
+- **Result (title 6):** key in 57 ms; nothing left scrambled; video 4,189 pictures, no
+	pulldown, duration 2:19.772; both AC3 tracks 4,367 clean frames, 2:19.744.
+- **Step:** `Matroska/EbmlReader` + `MatroskaIds` and probe `mkvinfo` to inspect MKV files.
+- **Step:** MakeMKV rip of title 6 (its `B2_t04.mkv`) into git-ignored `reference/rips/`;
+	structure dump saved as `reference/makemkv/B2_t04-mkvinfo.txt`.
+- **Finding (durations resolved for files):** MakeMKV's MKV Duration is 139,772 ms =
+	2:19.772, exactly our stream measurement. The shorter times in MakeMKV's title list are
+	a display value only. Decision: our MKV duration = measured stream duration.
+- **Finding (MakeMKV MKV layout, to copy):**
+	- EBML DocType "matroska" v2. Segment order: SeekHead, Void, Info, Tracks, Chapters,
+		Clusters, Cues, Tags. TimestampScale 1 ms. Info has MuxingApp/WritingApp, Duration,
+		DateUTC, SegmentUID.
+	- Video: `V_MPEG2`, CodecPrivate = sequence header + extensions (152 bytes),
+		DefaultDuration 33,366,666 ns, MinCache 2, FlagDefault 0, no lacing, Pixel 720×480,
+		Display 640×480 for 4:3. One frame per BlockGroup (BlockDuration 33, ReferenceBlock
+		on non-key frames), in decode order, timestamps = PTS shifted so the first is 0.
+		Bytes are the elementary stream unchanged (75,134,800 = our demuxer's count).
+	- AC3: `A_AC3`, Language "eng", Name "Stereo" (or e.g. "Surround 5.1"), first audio
+		FlagDefault 1, others 0; DefaultDuration 32 ms; SimpleBlocks with fixed-size lacing,
+		3 frames per block. Payload unchanged (3,353,856 bytes = ours).
+	- Chapters: one default edition; ChapterAtoms "Chapter 01".., ChapLanguage "eng", with
+		ChapterTimeStart/End in ns.
+	- Tags per track (TargetType "MOVIE", TagTrackUID): BPS, DURATION, NUMBER_OF_FRAMES,
+		NUMBER_OF_BYTES, SOURCE_ID ("0100E0" video, "0180BD"/"0181BD" AC3), plus
+		_STATISTICS_WRITING_APP/_DATE_UTC/_TAGS.
+	- 270 clusters (≈ one per GOP), one Cue per cluster on the video track.
