@@ -34,6 +34,8 @@ This file describes the present state only; the history is in [log.md](log.md).
 - DVD only; Blu-ray is out of scope. Command-line app first; a GUI later on top of the same library.
 - Output: Matroska, laid out like MakeMKV's files (log 10:22, 12:10); streams copied unchanged except where MakeMKV converts:
 	LPCM → little-endian `A_PCM/INT/LIT` in 1/30 s blocks; closed captions → `S_TEXT/UTF8`, and the CC data is removed from the video.
+- Accepted differences from MakeMKV's files (owner: not important, not to be worked on): audio lacing breaks in slightly different places;
+	caption durations 1–4 ms longer; Duration can differ by 1 ms; each cluster is 4–10 bytes smaller (element size encoding). None affects playback.
 - Tracks: video; then each audio stream the title's PGC marks available (AC3, DTS, LPCM 16-bit); then VobSub tracks (16:9 uses each stream's "wide" substream, duplicates merged); then CC text.
 	The first audio and first subtitle track are default (CC is default only if there's no VobSub). Tracks that end up empty are dropped. No Language element when the disc gives none.
 	Audio channel counts come from the stream (the IFO said 5 for 5.1 DTS).
@@ -63,10 +65,7 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 | GUI (future) | not chosen | WinForms/WPF are Windows-only; MAUI has no Linux desktop. Use **Avalonia** if Linux matters. |
 
 ## Next steps
-The planned work is done. Optional, cosmetic only (no effect on playback):
-1. **Remaining small differences from MakeMKV's files:** audio lacing breaks in slightly different places; caption durations 1–4 ms longer; Duration can differ by 1 ms; each cluster is 4–10 bytes smaller (element size encoding).
-
-Possible next projects are listed under Future.
+None: the planned work is done. Possible next projects are listed under Future.
 
 ## Future (desirable, not scheduled)
 - **Audio not yet supported:** 20/24-bit LPCM and MPEG audio. Needs a disc with one of them to test (MPEG audio is most likely on PAL or home-made DVDs); the owner has none.

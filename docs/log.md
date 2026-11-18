@@ -348,3 +348,6 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 
 ## 2026-11-18 15:47
 - **Question answered:** make skipping compilations a saved or built-in default? **Answer (owner):** no, leave it as is: compilations and duplicates are kept by default; `--no-compilations` / `--no-duplicates` opt in.
+
+## 2026-11-18 15:52
+- **Owner decision:** the remaining small differences from MakeMKV's files (audio lacing breaks, caption durations 1–4 ms longer, Duration ±1 ms, clusters 4–10 bytes smaller) are not important. Removed from Next steps; recorded in the plan's design decisions as accepted differences. Next steps is now empty; possible next projects are under Future.
