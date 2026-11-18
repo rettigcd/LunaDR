@@ -34,6 +34,8 @@ running an installed MakeMKV (`makemkvcon`) to compare results, is allowed.
 - **When an open question is answered, remove it from current-plan.md and record the question
 	and its answer in the log.**
 - Commit after each meaningful step so the history is readable.
+- Keep current-plan.md's Status short and current: replace outdated lines instead of adding new ones on top.
+	When proposing what to do next, follow the order of Next steps, or say why a step is skipped.
 
 ## Environment notes
 - Windows working tree uses CRLF (`core.autocrlf=true`); new files should match.
