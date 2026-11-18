@@ -20,6 +20,9 @@ internal static class MkvCompare {
 		public long? First, Last;
 		public readonly IncrementalHash Hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
 		public string Digest = "";
+		public readonly IncrementalHash RefHash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+		public string RefDigest = "";
+		public long References;
 	}
 
 	private sealed class Info {
@@ -57,6 +60,7 @@ internal static class MkvCompare {
 			Line("Frames", ta.Frames.ToString(), tb.Frames.ToString());
 			Line("Payload bytes", ta.Bytes.ToString(), tb.Bytes.ToString());
 			Line("Payload SHA-256", ta.Digest[..16], tb.Digest[..16]);
+			Line("ReferenceBlocks (count, SHA)", $"{ta.References} {ta.RefDigest[..16]}", $"{tb.References} {tb.RefDigest[..16]}");
 			Line("First / last frame (ms)", $"{ta.First} / {ta.Last}", $"{tb.First} / {tb.Last}");
 		}
 		Console.WriteLine(same ? "RESULT: identical in all compared properties" : "RESULT: differences found");
@@ -78,11 +82,15 @@ internal static class MkvCompare {
 		using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 20);
 		var r = new EbmlReader(fs);
 		Walk(r, fs.Length, info, null, 0);
-		foreach (var t in info.Tracks.Values) t.Digest = Convert.ToHexString(t.Hash.GetHashAndReset());
+		foreach (var t in info.Tracks.Values) {
+			t.Digest = Convert.ToHexString(t.Hash.GetHashAndReset());
+			t.RefDigest = Convert.ToHexString(t.RefHash.GetHashAndReset());
+		}
 		return info;
 	}
 
 	private static long _clusterTime;
+	private static Track? _lastTrack;
 
 	private static void Walk(EbmlReader r, long end, Info info, Track? current, int depth) {
 		while (r.Stream.Position < end) {
@@ -120,6 +128,12 @@ internal static class MkvCompare {
 				case MatroskaIds.Duration: info.Duration = EbmlReader.ToFloat(r.ReadData(hdr)); break;
 				case MatroskaIds.ChapterTimeStart: info.Chapters.Add(EbmlReader.ToUInt(r.ReadData(hdr))); break;
 				case MatroskaIds.Timestamp: _clusterTime = (long)EbmlReader.ToUInt(r.ReadData(hdr)); break;
+				case MatroskaIds.ReferenceBlock:
+					if (_lastTrack is { } lt) {
+						lt.RefHash.AppendData(BitConverter.GetBytes(EbmlReader.ToInt(r.ReadData(hdr))));
+						lt.References++;
+					} else r.Skip(hdr);
+					break;
 				case MatroskaIds.SimpleBlock:
 				case MatroskaIds.Block:
 					AddBlock(info, r.ReadData(hdr));
@@ -134,6 +148,7 @@ internal static class MkvCompare {
 	private static void AddBlock(Info info, byte[] b) {
 		var (number, len) = EbmlReader.ReadVint(b);
 		if (!info.Tracks.TryGetValue(number, out var t)) return;
+		_lastTrack = t;   // a BlockGroup's ReferenceBlocks follow its Block
 		long time = _clusterTime + (short)((b[len] << 8) | b[len + 1]);
 		int lacing = (b[len + 2] >> 1) & 3;
 		int p = len + 3;

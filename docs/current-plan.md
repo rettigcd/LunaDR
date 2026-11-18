@@ -61,7 +61,7 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 
 ## Next steps
 Not finished: 1–2 below.
-1. **Matroska details still differing from MakeMKV:** ReferenceBlock values are a placeholder (-1); we write more clusters (291 vs 270 on one title); audio lacing breaks in slightly different places; caption durations 1–4 ms longer; Duration can differ by 1 ms. None affects playback.
+1. **Matroska details still differing from MakeMKV:** we write more clusters (291 vs 270 on one title); audio lacing breaks in slightly different places; caption durations 1–4 ms longer; Duration can differ by 1 ms. None affects playback.
 2. **CLI options** like makemkvcon's (track selection, etc.), once the defaults are settled.
 
 ## Future (desirable, not scheduled)

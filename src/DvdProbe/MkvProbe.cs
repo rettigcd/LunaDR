@@ -83,12 +83,14 @@ internal static class MkvProbe {
 				long? duration = null;
 				byte[]? block = null;
 				bool hasReference = false;
+				var refs = new List<long>();
 				while (r.Stream.Position < hdr.End) {
 					var c = r.ReadHeader()!.Value;
 					if (c.Id == MatroskaIds.Block) block = r.ReadData(c);
 					else if (c.Id == MatroskaIds.BlockDuration) duration = (long)EbmlReader.ToUInt(r.ReadData(c));
-					else { if (c.Id == MatroskaIds.ReferenceBlock) hasReference = true; r.Skip(c); }
+					else if (c.Id == MatroskaIds.ReferenceBlock) { hasReference = true; refs.Add(EbmlReader.ToInt(r.ReadData(c))); } else r.Skip(c);
 				}
+				_lastRefs = refs.Count == 0 ? "" : " refs=" + string.Join(",", refs);
 				if (block is not null) AddBlock(block, simple: false, tracks, showBlocks, duration, hasReference);
 			} else if (hdr.Size == EbmlReader.UnknownSize) {
 				// An unknown-size cluster ends where the next top-level element starts.
@@ -99,6 +101,8 @@ internal static class MkvProbe {
 			}
 		}
 	}
+
+	private static string _lastRefs = "";
 
 	private static void AddBlock(byte[] b, bool simple, Dictionary<long, TrackStats> tracks, int showBlocks, long? duration, bool hasReference = false) {
 		var (track, len) = EbmlReader.ReadVint(b);
@@ -128,7 +132,7 @@ internal static class MkvProbe {
 			t.FirstBlocks.Add($"t={time} dur={duration} \"{text}\"");
 		} else if (t.FirstBlocks.Count < showBlocks) {
 			int payload = len + 3;
-			t.FirstBlocks.Add($"{(simple ? "SimpleBlock" : "BlockGroup")} t={time} ms key={key} lacing={lacing} frames={frames} dur={duration} " +
+			t.FirstBlocks.Add($"{(simple ? "SimpleBlock" : "BlockGroup")} t={time} ms key={key} lacing={lacing} frames={frames} dur={duration}{(simple ? "" : _lastRefs)} " +
 							  $"size={b.Length - payload} data={Convert.ToHexString(b, payload, Math.Min(24, b.Length - payload))}");
 		}
 	}

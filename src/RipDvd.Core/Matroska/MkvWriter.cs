@@ -172,8 +172,9 @@ public sealed class MkvWriter : IDisposable {
 		if (addCue) _cues.Add((_clusterTimeMs, _clusterPos - _segmentDataStart));
 	}
 
-	/// <summary>Video frame: a BlockGroup with BlockDuration, and ReferenceBlock for non-key frames.</summary>
-	public void AddVideoFrame(MkvTrack track, long ptsNs, long durationNs, bool keyFrame, ReadOnlySpan<byte> data) {
+	/// <summary>Video frame: a BlockGroup with BlockDuration, and a ReferenceBlock for each frame it depends on (none for key frames).</summary>
+	/// <param name="referencePtsNs">Times of the frames this one is predicted from; written as (their block time − this block time) in ms, as MakeMKV does.</param>
+	public void AddVideoFrame(MkvTrack track, long ptsNs, long durationNs, bool keyFrame, ReadOnlySpan<byte> data, IReadOnlyList<long> referencePtsNs) {
 		var body = new MemoryStream();
 		var bw = new EbmlWriter(body);
 		bw.Id(Block);
@@ -181,8 +182,11 @@ public sealed class MkvWriter : IDisposable {
 		WriteBlockHeader(body, track, ptsNs, flags: 0);
 		body.Write(data);
 		bw.UInt(BlockDuration, (ulong)Math.Max(1, ToMs(durationNs)));
-		// ReferenceBlock: relative time of a block this one depends on. Value only signals "not a key frame".
-		if (!keyFrame) bw.Int(ReferenceBlock, -1);
+		if (!keyFrame) {
+			// At least one ReferenceBlock marks a non-key frame even if its reference is unknown (first frames after a cut).
+			if (referencePtsNs.Count == 0) bw.Int(ReferenceBlock, -1);
+			foreach (long r in referencePtsNs) bw.Int(ReferenceBlock, ToMs(r) - ToMs(ptsNs));
+		}
 		_cw!.Master(BlockGroup, body.GetBuffer().AsSpan(0, (int)body.Length));
 		Count(track, ptsNs, durationNs, data.Length, 1);
 	}

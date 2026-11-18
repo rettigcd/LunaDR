@@ -194,6 +194,8 @@ public sealed class TitleRipper {
 		uint? cellFirstPtm = null, cellLastPtm = null;
 		long sectorsDone = 0, total = reader.TotalSectors;
 
+		long? lastAnchor = null, olderAnchor = null;   // presentation times of the last two I/P pictures, in decode order
+
 		void WriteGop(List<VideoFrame> gop, long audioUntilNs) {
 			if (!headerWritten) {
 				video.CodecPrivate = framer.SequenceHeader;
@@ -209,7 +211,25 @@ public sealed class TitleRipper {
 			}
 			var keyFrame = gop[0];
 			mkv.StartCluster(keyFrame.Pts, addCue: true);
-			foreach (var f in gop) mkv.AddVideoFrame(video, f.Pts, f.DurationNs, f.IsKeyFrame, f.Data);
+			foreach (var f in gop) {
+				// References, like MakeMKV: a P picture uses the previous anchor (I or P); a B picture the two previous anchors in decode order.
+				// A key frame starts a new cluster and references never reach back past it: the B pictures right after it
+				// (shown before it, in an open GOP) reference only the key frame.
+				IReadOnlyList<long> refs = f.PictureType switch {
+					'P' when lastAnchor is { } a => [a],
+					'B' when olderAnchor is { } o && lastAnchor is { } a => [o, a],
+					'B' when lastAnchor is { } a => [a],
+					_ => [],
+				};
+				mkv.AddVideoFrame(video, f.Pts, f.DurationNs, f.IsKeyFrame, f.Data, refs);
+				if (f.IsKeyFrame) {
+					olderAnchor = null;
+					lastAnchor = f.Pts;
+				} else if (f.PictureType is 'I' or 'P') {
+					olderAnchor = lastAnchor;
+					lastAnchor = f.Pts;
+				}
+			}
 			foreach (var (track, af, queue) in audioQueues) WriteAudio(mkv, track, af, queue, audioUntilNs);
 			WriteSubtitles(audioUntilNs);
 			if (captionDecoder is not null) {

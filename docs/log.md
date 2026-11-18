@@ -307,3 +307,10 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	Reason: readable, and the number traces the file back to the disc (the title a DVD player would play).
 - **Decision:** the CLI uses the disc's title numbers everywhere: `info` lists `title N`; `mkv` takes `1` or `1,3,6` (any title, even short ones) or `all` (titles at least --minlength long). MakeMKV's renumbered ids (0, 1, 2 over kept titles) are gone. Reason: one numbering, so what `info` shows is what `mkv` takes.
 - **Result:** `info E:` shows "Dead Zone S4 D1"; `mkv E: 6 <folder>` wrote `Dead Zone S4 D1 - title 06.mkv`; `mkv E: 99 x` reports "No title 99 on this disc; titles are 1..14" and exits with 1.
+
+## 2026-11-18 14:58
+- **Step (plan: Matroska details):** real ReferenceBlock values instead of the placeholder -1.
+	MakeMKV (seen with probe `mkvinfo`, which now prints refs): each reference is (referenced block time - this block time) in ms, from the rounded block times; P pictures reference the previous anchor (I/P); B pictures the two previous anchors in decode order (backward first); a key frame starts a new cluster and nothing references back past it, so the B pictures right after a key frame reference only that key frame.
+	Implemented in `TitleRipper` (anchor tracking) and `MkvWriter.AddVideoFrame` (list of reference times).
+- **Step:** probe `mkvcompare` also compares ReferenceBlocks (count and SHA-256 of all values per track).
+- **Result:** on the Dead Zone extra (title 6) our file is identical to MakeMKV's in every compared property, now including all 6,119 ReferenceBlocks. (A first version also gave the leading B pictures of a GOP a reference into the previous GOP: 6,651 vs 6,119; fixed.)
