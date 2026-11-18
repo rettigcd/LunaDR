@@ -357,3 +357,6 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 - **Step:** plan written (current-plan.md Next steps G0–G4): library groundwork (cell-map model in Core, progress + cancellation in TitleRipper, batch runner with ETA), then WPF phases 1–3, then testing. The GUI moved from Future to Next steps.
 - **Decision:** the GUI is Windows-only (owner), so the Platform table no longer plans Avalonia for it. Proposed WPF, no third-party packages.
 - **Open questions added:** cell-map block widths, auto-scan on disc insert, track options in the first version, which completion sound, WPF vs WinForms.
+
+## 2026-11-18 16:05
+- **Owner question:** does Windows have a more modern UI than WPF? **Answer:** WinUI 3 (Windows App SDK) is the newest; but its first-party table control (TableView) is still experimental as of late 2026, and apps usually need the Windows App SDK runtime / MSIX packaging. WPF has had a built-in Fluent (Windows 11) theme since .NET 9 (`ThemeMode`), giving a modern look with WPF's mature DataGrid and a single .exe. Recommended WPF + Fluent; open question updated.
