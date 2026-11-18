@@ -151,6 +151,12 @@ public static class Commands {
 		return 0;
 	}
 
+	[ProbeCommand("cellmap", "Table of titles vs cells per title set ('*' = chapter start). Args: <drive> [title set]")]
+	public static int CellMap(string[] args) {
+		CellMapProbe.Print(IfoProbe.ResolveVideoTs(args.Length > 0 ? args[0] : "E:"), args.Length > 1 ? int.Parse(args[1]) : null);
+		return 0;
+	}
+
 	[ProbeCommand("mkvcompare", "Compare two MKV files track by track (frames, bytes, SHA-256 of payloads, times, chapters). Args: <a.mkv> <b.mkv>")]
 	public static int MkvCompareCommand(string[] args) => MkvCompare.Run(args[0], args[1]);
 
