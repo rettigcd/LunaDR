@@ -32,9 +32,10 @@ public sealed class LpcmFramer : AudioFramer {
 
 	public override void Feed(ReadOnlySpan<byte> payload, long? ptsNs, int firstAccessUnit) {
 		if (_firstPts < 0) {
-			if (ptsNs is null) return;   // wait for a timestamp to start from
-										 // The PTS belongs to the first audio frame starting at the first-access-unit pointer; skip bytes before it.
-										 // The pointer counts from the byte after itself; the payload we get starts 3 bytes later (after the LPCM header), hence -4.
+			// Wait for a timestamp to start from.
+			if (ptsNs is null) return;
+			// The PTS belongs to the first audio frame starting at the first-access-unit pointer; skip bytes before it.
+			// The pointer counts from the byte after itself; the payload we get starts 3 bytes later (after the LPCM header), hence -4.
 			int skip = Math.Clamp(firstAccessUnit - 4, 0, payload.Length);
 			payload = payload[skip..];
 			_firstPts = ptsNs.Value;
