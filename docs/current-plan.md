@@ -3,9 +3,14 @@
 Process rules for this file are in [CLAUDE.md](../CLAUDE.md).
 
 ## Status
+- **Ripping works end to end.** Main CLI `src/RipDvd.Cli` (executable `rip-dvd`), modeled on makemkvcon:
+	`rip-dvd info [disc]` lists titles (MakeMKV-style ids over titles ≥ 120 s);
+	`rip-dvd mkv <disc> <id|all> <folder>` writes `title_tNN.mkv`. Disc = `disc:0`, `E:` or a folder. Option `--minlength=N`.
+- Output checked against MakeMKV on the test disc: episode 1 and extra 6 have identical video/audio bytes, frames, durations, chapters; the CC→text track matches in text (timing within a few ms).
+	The files play (owner) and decode with 0 errors (ffmpeg). Speed: at least as fast as MakeMKV (title 2: 341 s vs 434 s).
 - Repo created. Process documents (CLAUDE.md, this plan, log) in place.
 - Probe console app `src/DvdProbe` (net10.0): commands `drives`, `files`, `titles [-v]`,
-	`scramble`, `crack` (old), `key`, `duration`, `bench`, `demux`, `mkvinfo`.
+	`scramble`, `crack` (old), `key`, `duration`, `bench`, `demux`, `mkvinfo [-dumptrack]`, `rip`.
 - Demuxing works: `Mpeg/ProgramStreamParser` + `Dvd/TitleSectorReader` produce the same
 	video/audio bytes MakeMKV puts in its MKV (checked on title 6). Key finding is now fast
 	(`Css/TitleKeyFinder`, 0.1–0.4 s per title set).
