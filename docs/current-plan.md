@@ -61,6 +61,12 @@ This file describes the present state only; the history is in [log.md](log.md).
 - WPF on .NET 10 with the built-in Fluent (Windows 11) theme, `ThemeMode="System"` (owner: WPF is fine; WinUI 3 was considered but its table control is still experimental and it needs extra runtime/packaging).
 - Plain MVVM: view models with `INotifyPropertyChanged`, no third-party packages, so all code is readable C# and XAML.
 - The GUI shows and calls library types (`DiscScanner`, `CellMap`, `TitleRipper`, the batch runner); it contains no ripping logic of its own.
+- Scans automatically when a disc is inserted (owner).
+- Title list shows **all** titles, short ones included; duplicates and compilations are marked; the user checks/unchecks each title (owner).
+	Initially checked: titles ≥ 120 s that are neither duplicates nor compilations (proposed default; the owner may change it).
+	No track options in the first version: all tracks are kept, as with the CLI default.
+- Cell map: every cell drawn the same narrow width (owner); a cell's length and details are shown on hover.
+- Completion sound: the Windows default notification sound, for now (owner).
 
 ## Platform (Windows 11 now, Linux possible later)
 Target is Windows 11. Keep Linux possible by putting OS-specific code behind small interfaces in `RipDvd.Core`, with one implementation per OS.
@@ -76,7 +82,7 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 ## Next steps: the GUI (Windows only)
 Owner's phases: (1) scan the disc and show what's on it, including which titles share cells, in a compact graphical cell map;
 (2) the user selects titles and clicks Start; (3) ripping with progress and remaining time for the current title and for all titles, then an optional sound.
-Framework and approach: see Design decisions → UI. Items marked (Q) depend on the open questions.
+Framework and approach: see Design decisions → UI.
 
 **G0 – Groundwork in the library (testable without a GUI)**
 1. Move the cell-map model into `RipDvd.Core` (`Ripping/CellMap`: cells with title set, VOB/cell id, sectors, length; per title: playlist positions and chapter starts; shared-cell and duplicate/compilation info). Probe `cellmap` and the GUI both use it.
@@ -85,20 +91,19 @@ Framework and approach: see Design decisions → UI. Items marked (Q) depend on 
 
 **G1 – Phase 1: scan and present**
 1. WPF project and main window: drive picker (optical drives with their disc names), Scan button, status line; scanning runs in the background so the window stays responsive.
-2. Title list: number, length, chapters, size, audio, subtitles, CC, and a flag column (duplicate of N / compilation of …); short titles shown dimmed.
-3. Compact graphical cell map (rows = titles, columns = cells in disc order, grouped by title set): a filled block where a title uses a cell, a mark where a chapter starts, cells used by several titles highlighted. Hovering shows cell details (id, sectors, length, which titles use it); selecting a title highlights its cells and the other titles that share them. (Q: block widths.)
-4. Re-scan when a disc is inserted or removed. (Q)
+2. Title list with **all** titles: number, length, chapters, size, audio, subtitles, CC, and a flag column (duplicate of N / compilation of …); short titles shown dimmed.
+3. Compact graphical cell map (rows = titles, columns = cells in disc order, grouped by title set), every cell the same narrow width: a filled block where a title uses a cell, a mark where a chapter starts, cells used by several titles highlighted. Hovering shows cell details (id, sectors, length, which titles use it); selecting a title highlights its cells and the other titles that share them.
+4. Scan automatically when a disc is inserted; clear the view when it is removed.
 
 **G2 – Phase 2: select and start**
-1. A checkbox per title; default selection like `rip-dvd mkv … all` (titles ≥ 120 s), with quick toggles "skip compilations" / "skip duplicates" / "select all" / "none".
+1. A checkbox per title; initially checked: titles ≥ 120 s that are not duplicates or compilations; quick buttons "select all" / "none".
 2. Output folder (with Browse) and disc name used in the file names (editable, from the volume label); remembered between runs (settings file in %APPDATA%).
-3. Track options: audio/subtitle languages, captions, chapters, as in the CLI. (Q)
-4. Start button: validates (something selected, folder writable, existing files → ask overwrite/skip).
+3. Start button: validates (something selected, folder writable, existing files → ask overwrite/skip).
 
 **G3 – Phase 3: rip with progress**
 1. Progress view: current title (name, % done, remaining time, MB/s) and all titles (% done, remaining time, n of m); a list of finished files with any warnings.
 2. Cancel button (stops after confirmation, removes the partial file).
-3. When done: summary, "Open folder" button, optional sound (checkbox, remembered). (Q: which sound)
+3. When done: summary, "Open folder" button, optional sound (checkbox, remembered): the Windows default notification sound.
 4. Errors (e.g. unreadable disc) shown per title without stopping the other titles.
 
 **G4 – Finish**
@@ -108,13 +113,11 @@ Framework and approach: see Design decisions → UI. Items marked (Q) depend on 
 ## Future (desirable, not scheduled)
 - **Audio not yet supported:** 20/24-bit LPCM and MPEG audio. Needs a disc with one of them to test (MPEG audio is most likely on PAL or home-made DVDs); the owner has none.
 - **Linux drive authentication** (`ICssDrive` via `ioctl` DVD_AUTH on /dev/sr0). Needs a Linux machine with a DVD drive to test; the owner has none.
+- GUI track options (audio/subtitle languages, captions, chapters), as the CLI has; not in the first GUI version.
 - Episode names from thetvdb.com (feasibility analysis done: [episode-matching-analysis.md](episode-matching-analysis.md); feasible, needs the owner's choice of data source and naming, see open questions): look up the series/season (e.g. from the volume label `DEAD_ZONE_S4_D1` → The Dead Zone, season 4, disc 1),
 	match the ripped titles to episodes (by order and running time), and name the output files with the episode titles.
 
 ## Open questions
-- **GUI cell map block widths (G1.3):** every cell the same narrow width (compact, short cells visible), or widths proportional to the cell's length (shows time, but tiny cells become slivers)? Proposed: same width, length shown on hover, and a toggle for proportional.
-- **GUI disc insert (G1.4):** scan automatically when a disc is inserted, or only when Scan is clicked? Proposed: automatically.
-- **GUI track options (G2.3):** needed in the first version, or titles only (all tracks, like the CLI default)? Proposed: titles only first; track options later.
-- **GUI completion sound (G3.3):** the Windows notification sound, the owner's `soft-tone.mp3`, or a sound file the user picks? Proposed: a file picker defaulting to the Windows sound.
+Deferred by the owner (answer later):
 - **Episode naming: data source.** TheTVDB (paid per-user subscription PIN, has DVD order), or free TVmaze/TMDB (aired order), or TheTVDB with a free fallback? See [episode-matching-analysis.md](episode-matching-analysis.md).
 - **Episode naming: file names.** Plex-library style `sNNeMM - Episode name.mkv`, optionally in `Series (year)/Season N/` folders?

@@ -368,3 +368,13 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 ## 2026-11-18 16:20
 - **Step (G0.1, done but not committed by request):** `Ripping/CellMap` in the library (cells, per-title playlists and chapter starts, `ClassifyOverlaps`); `DiscScanner` returns it in `DiscSummary.CellMap` and uses it for duplicates/compilations; probe `cellmap` renders it. Checked: probe output identical to the saved BUTTERFLY_EFFECT table; `info` flags unchanged. The owner then said "stop"; the code changes are left uncommitted until the owner decides.
 - **Owner request:** split the design decisions into core and UI. **Step:** current-plan.md now has "Design decisions → Core" (library and CLI) and "→ UI" (WPF + Fluent, Windows only, plain MVVM, no ripping logic in the GUI); the framework sentence moved out of the Next steps header. Also fixed a control character (from a PowerShell backtick escape) that had turned `all` into "ll" in the plan.
+
+## 2026-11-18 16:30
+- **Questions answered (owner):**
+	- GUI cell map block widths: **same width** for every cell (no proportional mode).
+	- GUI disc insert: **scan automatically** when a disc goes in.
+	- GUI selection: **show all titles**, mark duplicates and compilations, the user checks/unchecks which to rip. Track options are not in the first version (moved to Future); all tracks kept.
+	- GUI completion sound: the **Windows default notification sound** for now.
+	- Episode naming (data source, file names): **deferred**; kept in open questions, marked deferred.
+- **Decision (mine, owner may change):** initially checked titles = at least 120 s and neither duplicate nor compilation.
+- **Step:** current-plan.md updated: UI design decisions, G1–G3 steps (no more (Q) marks), open questions reduced to the two deferred ones.
