@@ -195,6 +195,7 @@ public sealed class TitleRipper {
 		long sectorsDone = 0, total = reader.TotalSectors;
 
 		long? lastAnchor = null, olderAnchor = null;   // presentation times of the last two I/P pictures, in decode order
+		long? clusterKeyPts = null;                    // key frame that started the current cluster
 
 		void WriteGop(List<VideoFrame> gop, long audioUntilNs) {
 			if (!headerWritten) {
@@ -209,12 +210,19 @@ public sealed class TitleRipper {
 				mkv.WriteHeader(chapters, null);
 				headerWritten = true;
 			}
+			// Clusters as MakeMKV makes them: a new cluster at a key frame at least 400 ms after the current cluster's key frame,
+			// or where a chapter starts; otherwise the GOP joins the current cluster (short GOPs).
+			// The cluster's timestamp is its earliest block (B pictures shown before the key frame); its cue uses the key frame's time.
 			var keyFrame = gop[0];
-			mkv.StartCluster(keyFrame.Pts, addCue: true);
+			bool chapterStarts = chapters.Any(c => c.StartNs > (clusterKeyPts ?? long.MinValue) + 1_000_000 && c.StartNs <= keyFrame.Pts + 1_000_000);
+			if (clusterKeyPts is null || keyFrame.Pts - clusterKeyPts >= 400_000_000 || chapterStarts) {
+				mkv.StartCluster(gop.Min(f => f.Pts), cueTimeNs: keyFrame.Pts);
+				clusterKeyPts = keyFrame.Pts;
+			}
 			foreach (var f in gop) {
 				// References, like MakeMKV: a P picture uses the previous anchor (I or P); a B picture the two previous anchors in decode order.
-				// A key frame starts a new cluster and references never reach back past it: the B pictures right after it
-				// (shown before it, in an open GOP) reference only the key frame.
+				// References never reach back past a key frame: the B pictures right after it (shown before it, in an open GOP)
+				// reference only the key frame (checked against MakeMKV: all 6,119 references of a test title identical).
 				IReadOnlyList<long> refs = f.PictureType switch {
 					'P' when lastAnchor is { } a => [a],
 					'B' when olderAnchor is { } o && lastAnchor is { } a => [o, a],

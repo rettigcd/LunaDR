@@ -161,15 +161,19 @@ public sealed class MkvWriter : IDisposable {
 		}
 	}
 
-	/// <summary>Close the current cluster (if any) and start a new one at <paramref name="timeNs"/>.</summary>
-	public void StartCluster(long timeNs, bool addCue) {
+	/// <summary>
+	/// Close the current cluster (if any) and start a new one with timestamp <paramref name="timeNs"/> (MakeMKV: the earliest block time in it).
+	/// If <paramref name="cueTimeNs"/> is given, a cue points at this cluster with that time (MakeMKV: the key frame's time).
+	/// </summary>
+	public void StartCluster(long timeNs, long? cueTimeNs) {
 		FlushCluster();
-		_clusterTimeMs = ToMs(timeNs);
+		// MakeMKV truncates the cluster timestamp (500.5 ms → 500) while block times are rounded (→ 501).
+		_clusterTimeMs = Math.Max(0, timeNs) / NsPerTick;
 		_cluster = new MemoryStream();
 		_cw = new EbmlWriter(_cluster);
 		_cw.UInt(Timestamp, (ulong)_clusterTimeMs);
 		_clusterPos = _w.Position;
-		if (addCue) _cues.Add((_clusterTimeMs, _clusterPos - _segmentDataStart));
+		if (cueTimeNs is { } cue) _cues.Add((ToMs(cue), _clusterPos - _segmentDataStart));
 	}
 
 	/// <summary>Video frame: a BlockGroup with BlockDuration, and a ReferenceBlock for each frame it depends on (none for key frames).</summary>

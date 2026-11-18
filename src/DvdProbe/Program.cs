@@ -145,6 +145,8 @@ public static class Commands {
 		int bi = Array.IndexOf(args, "-blocks");
 		int di = Array.IndexOf(args, "-dumptrack");
 		if (di >= 0) MkvProbe.DumpTrack = long.Parse(args[di + 1]);
+		int ci = Array.IndexOf(args, "-clusters");
+		if (ci >= 0) MkvProbe.ListClusters = int.Parse(args[ci + 1]);
 		MkvProbe.Dump(args[0], bi >= 0 ? int.Parse(args[bi + 1]) : 5);
 		return 0;
 	}

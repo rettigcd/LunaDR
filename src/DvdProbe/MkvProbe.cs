@@ -18,6 +18,10 @@ internal static class MkvProbe {
 	/// <summary>Track whose block payloads are printed in full as UTF-8 text (for subtitle tracks), or 0.</summary>
 	public static long DumpTrack;
 
+	/// <summary>How many clusters to list with their time and size (option -clusters N).</summary>
+	public static int ListClusters;
+	private static readonly List<(long Start, long Size)> ClusterList = [];
+
 	public static void Dump(string path, int showBlocks) {
 		using var fs = File.OpenRead(path);
 		var r = new EbmlReader(fs);
@@ -26,6 +30,11 @@ internal static class MkvProbe {
 		Walk(r, fs.Length, 0, tracks, ref clusters, showBlocks);
 
 		Console.WriteLine($"Clusters: {clusters:N0}");
+		foreach (var (start, size) in ClusterList) {
+			fs.Position = start;
+			var th = r.ReadHeader()!.Value;
+			Console.WriteLine($"  cluster at {start,12:N0}: time {EbmlReader.ToUInt(r.ReadData(th)),8} ms, size {size,9:N0}");
+		}
 		foreach (var (n, t) in tracks.OrderBy(k => k.Key)) {
 			Console.WriteLine($"  track {n}: {t.Blocks:N0} blocks ({t.KeyFrames:N0} key, {t.Laced:N0} laced, {t.Frames:N0} frames), " +
 							  $"{t.Bytes:N0} bytes, time {t.First / 1000.0:F3} .. {t.Last / 1000.0:F3} s, gap {t.MinGap}..{t.MaxGap} ms");
@@ -45,6 +54,7 @@ internal static class MkvProbe {
 
 			if (hdr.Id == MatroskaIds.Cluster) {
 				clusters++;
+				if (ClusterList.Count < ListClusters) ClusterList.Add((hdr.DataStart, hdr.Size));
 				ReadCluster(r, hdr, tracks, showBlocks);
 				continue;
 			}

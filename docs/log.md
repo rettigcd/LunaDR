@@ -314,3 +314,10 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	Implemented in `TitleRipper` (anchor tracking) and `MkvWriter.AddVideoFrame` (list of reference times).
 - **Step:** probe `mkvcompare` also compares ReferenceBlocks (count and SHA-256 of all values per track).
 - **Result:** on the Dead Zone extra (title 6) our file is identical to MakeMKV's in every compared property, now including all 6,119 ReferenceBlocks. (A first version also gave the leading B pictures of a GOP a reference into the previous GOP: 6,651 vs 6,119; fixed.)
+
+## 2026-11-18 15:05
+- **Step (plan: Matroska details):** cluster layout like MakeMKV's. Found by listing cluster times/sizes (probe `mkvinfo -clusters N`) and simulating rules against MakeMKV's file:
+	- a new cluster starts at a key frame only if it is at least 400 ms after the key frame that started the current cluster, or where a chapter starts; short GOPs join the current cluster;
+	- the cluster timestamp is the earliest block time in it (the B pictures shown before the key frame), truncated to whole ms (block times are rounded);
+	- the cue still points at the key frame's time.
+- **Result (Dead Zone extra, title 6):** 270 clusters like MakeMKV (was 291), all 270 cluster timestamps identical, and the file is identical to MakeMKV's in every property `mkvcompare` checks. Each cluster is 4–10 bytes smaller than MakeMKV's (element size encoding); left as is.
