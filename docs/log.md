@@ -217,3 +217,12 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	MakeMKV starts a new event whenever a pop-on caption is swapped in (EOC), even with identical text (e.g. repeated "[RING]"); we now do the same.
 	MakeMKV writes the 608 extended character ’ as ASCII `'`; we now map ’ and ‘ to `'` and “ ” to `"` (only ’ was seen on this disc).
 - **Note:** the 5.5 s rip time of title 1 here is from the Windows file cache (data read minutes earlier), not the drive.
+
+## 2026-11-18 10:57
+- **Question answered:** how to check that our MKVs really play (ffmpeg was blocked)? **Answer (owner):** the files in `reference/rips/ours/` play; permission given to run the downloaded ffmpeg to test files.
+- **Result (ffmpeg decode test):** `ffmpeg -v error -i <file> -map 0:v -map 0:a -f null -` gives 0 errors for our title01.mkv and title06.mkv, same as for MakeMKV's files.
+	ffprobe sees the same streams in ours and MakeMKV's: mpeg2video 720×480 (DAR 853:480 / 4:3), AC3 6ch/2ch eng, subrip (our S_TEXT/UTF8 CC track) eng; durations 2553.017 / 139.772 s.
+- **Step:** main CLI `src/RipDvd.Cli` (assembly `rip-dvd`) with `info` and `mkv`, plus `Ripping/DiscScanner` in the library (title list, disc argument parsing `disc:N` / drive letter / folder).
+	`info E:` lists the same 8 kept titles as MakeMKV, with the same ids (e.g. id 4 = disc title 6). `mkv E: 4 <folder>` wrote `title_t04.mkv`.
+- **Decision:** output name prefix `title` until MakeMKV's `C1`/`B2` rule is understood. Reason: MakeMKV's usual name is `title_tNN.mkv`.
+- **Note for future sessions:** ffmpeg was downloaded to the session scratchpad only (BtbN build, GitHub); a new session must download it again. Owner allows running it for testing.

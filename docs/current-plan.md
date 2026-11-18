@@ -34,8 +34,7 @@ Process rules for this file are in [CLAUDE.md](../CLAUDE.md).
 - Default: keep all video, audio and subtitle tracks and the chapters (MakeMKV default).
 - Default minimum title length: 120 seconds; shorter titles are skipped (MakeMKV default).
 - Output file naming follows MakeMKV: `<prefix>_t<NN>.mkv`, where `NN` is the position in the
-	list of kept titles (starting at 00). How MakeMKV picks the prefix (`C1`, `B2`, `B4`, ...)
-	still has to be worked out.
+	list of kept titles (starting at 00). Until MakeMKV's prefix rule (`C1`, `B2`, ...) is worked out, the prefix is `title` (MakeMKV's usual name when it has no better one).
 - Self-contained: no ffmpeg or other external tools at run time (MakeMKV does everything itself).
 - DVD only; Blu-ray is out of scope.
 - A title's size = sum of its cells' sectors × 2048 (matches MakeMKV exactly).
@@ -81,9 +80,8 @@ interfaces in `RipDvd.Core`, with one implementation per OS.
 | Notification-sound hook | Claude Code settings only, not part of the app | none |
 
 ## Next steps
-1. Matroska muxer: works. Titles 1 (episode) and 6 (extra) match MakeMKV's files: identical video/audio bytes, frames, durations and chapters; captions identical in text (±1–4 ms timing).
-	Still to do: decode-test with ffmpeg or a player (needs owner, see open questions); ReferenceBlock values are a placeholder (-1); we write more clusters than MakeMKV (291 vs 270 on title 6).
-2. Main CLI (`rip-dvd info`, `rip-dvd mkv <titles> <outdir>`), similar to `makemkvcon`.
+1. Matroska polish: ReferenceBlock values are a placeholder (-1); we write more clusters than MakeMKV (291 vs 270 on title 6). Files already play (owner) and decode cleanly (ffmpeg).
+2. CLI polish: rip all titles of this disc with `rip-dvd mkv E: all` as an end-to-end test; MakeMKV-style output naming prefix (step 5); options for track selection later.
 3. Subpicture (VobSub) tracks, DTS/LPCM/MPEG audio: needed for other discs (test disc has
 	none). Find a disc with subtitles to test.
 4. Drive authentication through Windows DVD IOCTLs, only if a disc/drive refuses to read
@@ -99,8 +97,3 @@ interfaces in `RipDvd.Core`, with one implementation per OS.
 	(by order and running time), and name the output files with the episode titles.
 
 ## Open questions
-- **Decode testing with ffmpeg.** To check our MKVs really play, I downloaded a standard
-	ffmpeg build (BtbN, from GitHub) into the session scratchpad. Running it was blocked by
-	Claude Code's permission system. Options: allow it (a PowerShell permission rule for
-	that ffmpeg/ffprobe path), install ffmpeg or MKVToolNix yourself, or play the test files
-	in a player. It is a development check only, not a runtime dependency.

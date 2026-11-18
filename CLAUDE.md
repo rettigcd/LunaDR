@@ -43,4 +43,6 @@ running an installed MakeMKV (`makemkvcon`) to compare results, is allowed.
 	editing C#, run `dotnet format whitespace RipDvd.slnx` (or `--verify-no-changes` to check).
 - **Comments and `<summary>` docs (owner's rule):** wrap at up to ~140 characters (about 50%
 	longer than the ~95 used at first), and start each new sentence on a new line.
+- Testing output: compare against MakeMKV's files (probe `mkvinfo`) and decode with ffmpeg, a development check only (never a runtime dependency).
+	The owner allows downloading ffmpeg (e.g. the BtbN Windows build from GitHub) and running `ffmpeg -v error -i <file.mkv> -map 0:v -map 0:a -f null -`.
 - Build: `dotnet build` from the repo root. Run the probe: `dotnet run --project src/DvdProbe -- <command>`.
