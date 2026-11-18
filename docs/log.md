@@ -381,3 +381,10 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 
 ## 2026-11-18 16:33
 - **Question answered:** commit the G0.1 code left uncommitted after "stop"? **Answer (owner):** commit it. Committed (`Ripping/CellMap`, `DiscScanner` using it, probe `cellmap` rendering it).
+
+## 2026-11-18 16:50
+- **Step (G0.2):** `TitleRipper.Rip` reports `RipProgress` (phase Unlocking / FindingKey / Ripping / Finishing / Done, sectors done/total, elapsed) and takes a `CancellationToken` (checked every sector and during the key search). A cancelled or failed rip deletes its partial file. The first report is sent before the VOBs are opened (spin-up took 4 s on one test).
+	Probe `canceltest`: cancelled after 8 s, partial file removed.
+- **Step (G0.3):** `Ripping/RipJob` rips a list of titles; reports per-title and overall % and remaining time from the measured read speed (reading time only, over the whole job, after 3 s); a failing title is recorded and the job continues; cancellation stops it. The CLI `mkv` now uses it (status line with % and time left per title and overall, MB/s; Ctrl+C cancels cleanly, exit code 3; exit code 2 if a title failed).
+- **Result:** Butterfly Effect titles 3 and 6 through the CLI: estimates appear after 3 s and settle (overall estimate 0:47 at 7%, actual ~42 s), carry over to the second title; both files written.
+

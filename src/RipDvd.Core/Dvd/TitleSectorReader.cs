@@ -74,11 +74,12 @@ public sealed class TitleSectorReader {
 	/// Find the title key by scanning the title set's VOBs from the start until a candidate is
 	/// validated. Returns null if the VOBs contain no scrambled sectors (not CSS protected).
 	/// </summary>
-	public static CssKey? FindKey(VobReader reader, int maxSectors = 400_000) {
+	public static CssKey? FindKey(VobReader reader, int maxSectors = 400_000, CancellationToken cancel = default) {
 		var finder = new TitleKeyFinder();
 		var buffer = new byte[64 * VobReader.SectorSize];
 		long limit = Math.Min(reader.SectorCount, maxSectors);
 		for (long s = 0; s < limit; s += 64) {
+			cancel.ThrowIfCancellationRequested();
 			int n = (int)Math.Min(64, limit - s);
 			reader.Read(s, n, buffer);
 			for (int i = 0; i < n; i++)

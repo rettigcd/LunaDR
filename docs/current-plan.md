@@ -86,8 +86,8 @@ Framework and approach: see Design decisions → UI.
 
 **G0 – Groundwork in the library (testable without a GUI)**
 1. *(done)* Move the cell-map model into `RipDvd.Core` (`Ripping/CellMap`: cells with title set, VOB/cell id, sectors, length; per title: playlist positions and chapter starts; shared-cell and duplicate/compilation info). Probe `cellmap` and the GUI both use it.
-2. Ripping progress and cancelling: `TitleRipper.Rip` reports a progress record (phase: unlocking / finding key / ripping / finishing; sectors done and total; bytes; elapsed) and takes a `CancellationToken`; a cancelled rip deletes its partial file.
-3. A small batch runner (`Ripping/RipJob`): rips a list of titles in order and reports per-title and overall progress, including remaining-time estimates from the measured read speed (weighted by sectors, so short and long titles count fairly).
+2. *(done)* Ripping progress and cancelling: `TitleRipper.Rip` reports a progress record (phase: unlocking / finding key / ripping / finishing; sectors done and total; bytes; elapsed) and takes a `CancellationToken`; a cancelled rip deletes its partial file.
+3. *(done)* A small batch runner (`Ripping/RipJob`): rips a list of titles in order and reports per-title and overall progress, including remaining-time estimates from the measured read speed (weighted by sectors, so short and long titles count fairly).
 
 **G1 – Phase 1: scan and present**
 1. WPF project and main window: drive picker (optical drives with their disc names), Scan button, status line; scanning runs in the background so the window stays responsive.

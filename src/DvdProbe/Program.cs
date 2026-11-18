@@ -31,7 +31,7 @@ public static class Program {
 			bool noDisc = drive is not null && DriveInfo.GetDrives().Any(d =>
 				d.Name.StartsWith(drive.TrimEnd(':', '\\'), StringComparison.OrdinalIgnoreCase) && d.DriveType == DriveType.CDRom && !d.IsReady);
 			Console.Error.WriteLine(noDisc
-				? $"Error: no disc is ready in drive {drive.TrimEnd(':', '\\')}: (still spinning up, tray open, or the disc can't be read)."
+				? $"Error: no disc is ready in drive {drive!.TrimEnd(':', '\\')}: (still spinning up, tray open, or the disc can't be read)."
 				: $"Error: {ex.InnerException!.Message}");
 			return 2;
 		}
@@ -140,8 +140,9 @@ public static class Commands {
 		int lastPercent = -1;
 		int ci = Array.IndexOf(args, "-cells");
 		int maxCells = ci >= 0 ? int.Parse(args[ci + 1]) : int.MaxValue;
-		var result = ripper.Rip(args[2], maxCells: maxCells, progress: (done, total) => {
-			int pct = (int)(done * 100 / total);
+		var result = ripper.Rip(args[2], maxCells: maxCells, progress: p => {
+			if (p.Phase != RipDvd.Core.Ripping.RipPhase.Ripping) return;
+			int pct = (int)(p.Fraction * 100);
 			if (pct / 10 != lastPercent / 10) { Console.Write($"{pct}% "); lastPercent = pct; }
 		});
 		Console.WriteLine();
@@ -165,6 +166,24 @@ public static class Commands {
 	[ProbeCommand("cellmap", "Table of titles vs cells per title set ('*' = chapter start). Args: <drive> [title set]")]
 	public static int CellMap(string[] args) {
 		CellMapProbe.Print(IfoProbe.ResolveVideoTs(args.Length > 0 ? args[0] : "E:"), args.Length > 1 ? int.Parse(args[1]) : null);
+		return 0;
+	}
+
+	[ProbeCommand("canceltest", "Start ripping a title, cancel after N seconds, and check the partial file was removed. Args: <drive> <title> <seconds>")]
+	public static int CancelTest(string[] args) {
+		string videoTs = IfoProbe.ResolveVideoTs(args[0]);
+		string path = Path.Combine(Path.GetTempPath(), "rip-dvd-canceltest.mkv");
+		using var cancel = new CancellationTokenSource(TimeSpan.FromSeconds(double.Parse(args[2])));
+		var lastPhase = (RipDvd.Core.Ripping.RipPhase)(-1);
+		try {
+			new RipDvd.Core.Ripping.TitleRipper(videoTs, int.Parse(args[1])).Rip(path, cancel: cancel.Token, progress: p => {
+				if (p.Phase != lastPhase) Console.WriteLine($"  phase {p.Phase} at {p.Elapsed.TotalSeconds:F1} s ({p.SectorsDone:N0}/{p.SectorsTotal:N0} sectors)");
+				lastPhase = p.Phase;
+			});
+			Console.WriteLine("Finished before the cancel time.");
+		} catch (OperationCanceledException) {
+			Console.WriteLine($"Cancelled. Partial file still exists: {File.Exists(path)}");
+		}
 		return 0;
 	}
 

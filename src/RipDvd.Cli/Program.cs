@@ -231,36 +231,76 @@ public static class Program {
 
 		string discName = OutputNaming.Sanitize(name ?? OutputNaming.DiscName(disc.VolumeName));
 		int skippedExisting = 0;
+		var items = new List<RipJobItem>();
 		foreach (var t in selected) {
 			string path = Path.Combine(outputFolder, OutputNaming.FileName(discName, t.TitleNumber));
-			var ripper = new TitleRipper(videoTs, t.TitleNumber);
-			Console.WriteLine($"Title {t.TitleNumber} ({Format(t.DurationNs)}) -> {path}");
 			if (dryRun) {
+				Console.WriteLine($"Title {t.TitleNumber} ({Format(t.DurationNs)}) -> {path}");
 				if (File.Exists(path)) Console.WriteLine(overwrite ? "  (exists; would be replaced)" : "  (exists; would be skipped)");
-				foreach (var line in ripper.Describe(options)) Console.WriteLine($"  {line}");
+				foreach (var line in new TitleRipper(videoTs, t.TitleNumber).Describe(options)) Console.WriteLine($"  {line}");
 				continue;
 			}
 			if (File.Exists(path) && !overwrite) {
-				Console.WriteLine("  skipped: the file already exists (use --overwrite to replace it)");
+				Console.WriteLine($"Title {t.TitleNumber} skipped: {path} already exists (use --overwrite to replace it)");
 				skippedExisting++;
 				continue;
 			}
-			int lastPercent = -1;
-			var result = ripper.Rip(path, options: options, progress: (done, total) => {
-				int pct = (int)(done * 100 / total);
-				if (pct != lastPercent) {
-					Console.Write($"\r  {pct,3}%");
-					lastPercent = pct;
-				}
-			});
-			Console.WriteLine($"\r  done: {Format(result.DurationNs)} in {result.Elapsed.TotalSeconds:F0} s " +
-							  $"({result.Sectors * 2048 / 1e6 / Math.Max(1, result.Elapsed.TotalSeconds):F1} MB/s)");
-			foreach (var w in result.Warnings) Console.WriteLine($"  warning: {w}");
+			items.Add(new RipJobItem(t.TitleNumber, path, t.SizeBytes / 2048));
 		}
-		if (dryRun) Console.WriteLine("\nDry run: nothing was written. Tracks that turn out to carry no data are dropped during a real rip.");
-		else if (skippedExisting > 0) Console.WriteLine($"\n{skippedExisting} title(s) skipped because the file already exists.");
-		return 0;
+		if (dryRun) {
+			Console.WriteLine("\nDry run: nothing was written. Tracks that turn out to carry no data are dropped during a real rip.");
+			return 0;
+		}
+
+		// Ctrl+C cancels cleanly: the title being ripped stops and its partial file is removed.
+		using var cancel = new CancellationTokenSource();
+		Console.CancelKeyPress += (_, e) => {
+			e.Cancel = true;
+			cancel.Cancel();
+		};
+
+		int lastIndex = -1;
+		var lastPrint = DateTime.MinValue;
+		var job = new RipJob(videoTs, items, options);
+		List<RipJobItemResult> results;
+		try {
+			results = job.Run(p => {
+				if (p.Index != lastIndex) {
+					if (lastIndex >= 0) Console.WriteLine();
+					Console.WriteLine($"Title {p.Item.TitleNumber} ({p.Index + 1} of {p.Count}) -> {p.Item.OutputPath}");
+					lastIndex = p.Index;
+				}
+				// Rewrite the status line at most twice a second.
+				if (p.Title.Phase != RipPhase.Done && (DateTime.UtcNow - lastPrint).TotalMilliseconds < 500) return;
+				lastPrint = DateTime.UtcNow;
+				string status = p.Title.Phase switch {
+					RipPhase.Unlocking => "unlocking the drive",
+					RipPhase.FindingKey => "finding the title key",
+					RipPhase.Finishing => "finishing the file",
+					RipPhase.Done => "done",
+					_ => $"{p.TitleFraction,4:P0} ({Remaining(p.TitleRemaining)} left)  all: {p.OverallFraction,4:P0} ({Remaining(p.OverallRemaining)} left)  {p.BytesPerSecond / 1e6:F1} MB/s",
+				};
+				Console.Write($"\r  {status}".PadRight(100));
+			}, cancel.Token);
+		} catch (OperationCanceledException) {
+			Console.WriteLine("\nCancelled; the unfinished file was removed.");
+			return 3;
+		}
+		Console.WriteLine();
+
+		foreach (var r in results) {
+			if (r.Error is not null) Console.WriteLine($"Title {r.Item.TitleNumber} FAILED: {r.Error.Message}");
+			else if (r.Result is { } res) {
+				Console.WriteLine($"Title {r.Item.TitleNumber}: {Format(res.DurationNs)} in {res.Elapsed.TotalSeconds:F0} s " +
+								  $"({res.Sectors * 2048 / 1e6 / Math.Max(1, res.Elapsed.TotalSeconds):F1} MB/s) -> {Path.GetFileName(res.OutputPath)}");
+				foreach (var w in res.Warnings) Console.WriteLine($"  warning: {w}");
+			}
+		}
+		if (skippedExisting > 0) Console.WriteLine($"\n{skippedExisting} title(s) skipped because the file already exists.");
+		return results.Any(r => r.Error is not null) ? 2 : 0;
 	}
+
+	private static string Remaining(TimeSpan? t) => t is { } r ? $"{(int)r.TotalHours}:{r.Minutes:00}:{r.Seconds:00}" : "-:--:--";
 
 	private static string Format(long ns) {
 		var ts = TimeSpan.FromTicks(ns / 100);
