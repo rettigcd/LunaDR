@@ -133,7 +133,10 @@ public sealed class Ac3Framer : AudioFramer {
 /// FIXEDBIT(1) DYNF(1) TIMEF(1) AUXF(1) HDCD(1) EXT_AUDIO_ID(3) EXT_AUDIO(1) ASPF(1) LFF(2) ...
 /// The frame is FSIZE+1 bytes.
 /// </summary>
-public sealed class DtsFramer : AudioFramer {
+public sealed class DtsFramer(bool keepExtension = false) : AudioFramer {
+	/// <summary>Blu-ray DTS-HD: each core frame is followed by an extension substream (sync 64 58 20 25); kept in the same Matroska frame, as MakeMKV does.</summary>
+	public bool KeepExtension { get; } = keepExtension;
+
 	private static readonly int[] SampleRates = [0, 8000, 16000, 32000, 0, 0, 11025, 22050, 44100, 0, 0, 12000, 24000, 48000, 0, 0];
 
 	public bool HasLfe { get; private set; }
@@ -152,6 +155,16 @@ public sealed class DtsFramer : AudioFramer {
 		SampleRate = SampleRates[sfreq];
 		HasLfe = lff is 1 or 2;
 		Channels = amode switch { 0 => 1, 1 or 2 or 3 or 4 => 2, 5 or 6 => 3, 7 or 8 => 4, 9 => 5, 10 or 11 or 12 => 6, 13 => 7, _ => 8 } + (HasLfe ? 1 : 0);
-		return fsize + 1;
+		int size = fsize + 1;
+		if (KeepExtension) {
+			// Extension substream header: sync (32 bits), user data (8), index (2), header size type (1), then header size and frame size (8+16 or 12+20 bits), each minus 1.
+			int ext = pos + size;
+			if (ext + 12 > b.Count) return size + 12;   // not all here yet: wait for more data
+			if (b[ext] == 0x64 && b[ext + 1] == 0x58 && b[ext + 2] == 0x20 && b[ext + 3] == 0x25) {
+				bool large = Bits(b, ext, 42, 1) == 1;
+				size += Bits(b, ext, large ? 55 : 51, large ? 20 : 16) + 1;
+			}
+		}
+		return size;
 	}
 }

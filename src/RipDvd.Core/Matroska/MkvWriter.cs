@@ -22,9 +22,9 @@ public sealed class MkvTrack {
 	public int DisplayWidth { get; set; }
 	public int DisplayHeight { get; set; }
 	// Audio
-	public double SamplingFrequency { get; init; }
+	public double SamplingFrequency { get; set; }
 	public int Channels { get; set; }
-	public int BitDepth { get; init; }
+	public int BitDepth { get; set; }
 	/// <summary>SOURCE_ID statistics tag, e.g. "0100E0" (MakeMKV's form).</summary>
 	public string? SourceId { get; init; }
 
@@ -232,7 +232,7 @@ public sealed class MkvWriter : IDisposable {
 	private void WriteBlockHeader(Stream s, MkvTrack track, long ptsNs, byte flags) {
 		new EbmlWriter(s).Size(track.Number, track.Number < 127 ? 1 : 2);   // track number as vint
 		long rel = ToMs(ptsNs) - _clusterTimeMs;
-		if (rel < short.MinValue || rel > short.MaxValue) throw new InvalidOperationException($"Block {rel} ms from cluster start; start clusters more often.");
+		if (rel < short.MinValue || rel > short.MaxValue) throw new InvalidOperationException($"Block of track {track.Number} at {ToMs(ptsNs)} ms is {rel} ms from its cluster (at {_clusterTimeMs} ms); start clusters more often.");
 		s.WriteByte((byte)(rel >> 8));
 		s.WriteByte((byte)rel);
 		s.WriteByte(flags);

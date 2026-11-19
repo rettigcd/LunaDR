@@ -169,3 +169,48 @@ internal static class BlurayKeyProbe {
 		Console.WriteLine($"{Path.GetFileName(file)}: {samples} sample units, {encrypted} encrypted, {ok} decrypted to valid packets.");
 	}
 }
+
+internal static class BlurayRipProbe {
+	/// <summary>Rips a playlist with BdTitleRipper (optionally only the first MB of each clip) and prints progress and warnings.</summary>
+	public static void Rip(string root, int playlist, string output, long maxMb) {
+		var ripper = new BdTitleRipper(root, playlist);
+		foreach (var line in ripper.Describe()) Console.WriteLine("  " + line);
+		int lastPercent = -1;
+		var result = ripper.Rip(output, p => {
+			int percent = (int)(p.Fraction * 100);
+			if (percent != lastPercent && percent % 5 == 0) {
+				lastPercent = percent;
+				Console.WriteLine($"  {p.Phase} {percent}% item {p.CellPosition} {p.Elapsed:g}");
+			}
+		}, maxBytes: maxMb > 0 ? maxMb * 1_000_000 : long.MaxValue);
+		Console.WriteLine($"Done: {result.OutputPath}, {TimeSpan.FromTicks(result.DurationNs / 100)}, {result.Elapsed:g}");
+		foreach (var w in result.Warnings) Console.WriteLine("  warning: " + w);
+	}
+}
+
+internal static class BlurayPesProbe {
+	/// <summary>Lists the PES packets of one PID in a clip (decrypted): PTS/DTS in seconds, the first payload bytes, and the newest video PTS seen when it arrived.</summary>
+	public static void Print(string root, string clip, int pid, int videoPid, long maxMb, int max) {
+		using var aacs = AacsDecryptor.ForDisc(root);
+		using var fs = new FileStream(Path.Combine(root, "BDMV", "STREAM", clip + ".m2ts"), FileMode.Open, FileAccess.Read, FileShare.Read, 1);
+		var demux = new TsDemuxer([pid, videoPid]);
+		var unit = new byte[AacsDecryptor.UnitSize];
+		long limit = Math.Min(fs.Length, maxMb * 1_000_000);
+		double lastVideo = 0;
+		int shown = 0;
+		while (fs.Position + unit.Length <= limit && shown < max) {
+			fs.ReadExactly(unit);
+			if (aacs is not null && !aacs.DecryptUnit(unit)) continue;
+			for (int p = 0; p < unit.Length; p += 192) demux.Feed(unit.AsSpan(p + 4, 188));
+			foreach (var pes in demux.TakeReady()) {
+				if (pes.Pid == videoPid) {
+					if (pes.Pts is { } v) lastVideo = Math.Max(lastVideo, v / 90000.0);
+					continue;
+				}
+				shown++;
+				Console.WriteLine($"  pts {pes.Pts / 90000.0,10:F3}  dts {pes.Dts / 90000.0,10:F3}  video {lastVideo,10:F3}  len {pes.Payload.Length,6}  " +
+								  Convert.ToHexString(pes.Payload.AsSpan(0, Math.Min(8, pes.Payload.Length))));
+			}
+		}
+	}
+}

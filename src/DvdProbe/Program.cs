@@ -244,6 +244,25 @@ public static class Commands {
 		return 0;
 	}
 
+	[ProbeCommand("bdrip", "Rip a Blu-ray playlist to MKV with BdTitleRipper. Args: <drive or folder> <playlist> <output.mkv> [-mb N: only the first N MB of each clip]")]
+	public static int BdRip(string[] args) {
+		string root = RipDvd.Core.Bluray.BdScanner.ResolveRoot(args[0]) ?? throw new IOException("No Blu-ray structure (BDMV/index.bdmv) found.");
+		int mi = Array.IndexOf(args, "-mb");
+		BlurayRipProbe.Rip(root, int.Parse(args[1]), args[2], mi >= 0 ? long.Parse(args[mi + 1]) : 0);
+		return 0;
+	}
+
+	[ProbeCommand("bdpes", "List one PID's PES packets in a Blu-ray clip (decrypted): PTS, DTS, newest video PTS on arrival, first bytes. Args: <drive> <clip> <pid hex> [-mb N] [-n max] [-video pid hex]")]
+	public static int BdPes(string[] args) {
+		string root = RipDvd.Core.Bluray.BdScanner.ResolveRoot(args[0]) ?? throw new IOException("No Blu-ray structure (BDMV/index.bdmv) found.");
+		long Opt(string name, long fallback, int radix = 10) {
+			int i = Array.IndexOf(args, name);
+			return i < 0 ? fallback : Convert.ToInt64(args[i + 1], radix);
+		}
+		BlurayPesProbe.Print(root, args[1], Convert.ToInt32(args[2], 16), (int)Opt("-video", 0x1011, 16), Opt("-mb", 2000), (int)Opt("-n", 200));
+		return 0;
+	}
+
 	[ProbeCommand("cellmap", "Table of titles vs cells per title set ('*' = chapter start). Args: <drive> [title set]")]
 	public static int CellMap(string[] args) {
 		CellMapProbe.Print(IfoProbe.ResolveVideoTs(args.Length > 0 ? args[0] : "E:"), args.Length > 1 ? int.Parse(args[1]) : null);

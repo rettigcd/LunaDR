@@ -65,6 +65,9 @@ public sealed record BdStream(int Pid, int CodingType, int Format, int Rate, str
 /// <summary>A play item: part of one clip (in/out time on the clip's timeline, 45 kHz ticks) with the streams the player may use.</summary>
 public sealed record BdPlayItem(string ClipId, uint InTime, uint OutTime, int ConnectionCondition, int Angles,
 	IReadOnlyList<BdStream> Video, IReadOnlyList<BdStream> Audio, IReadOnlyList<BdStream> Subtitles) {
+	/// <summary>Subtitle streams for picture-in-picture (secondary) video, listed apart in the STN table; not ripped (the secondary video isn't either).</summary>
+	public IReadOnlyList<BdStream> PipSubtitles { get; init; } = [];
+
 	public long DurationNs => (long)(OutTime - InTime) * 1_000_000_000 / 45_000;
 }
 
@@ -173,8 +176,9 @@ public sealed class Mpls {
 		}
 		var video = Read(numVideo);
 		var audio = Read(numAudio);
-		var subtitles = Read(numPg + numPipPg);
-		return new BdPlayItem(clip, inTime, outTime, connection, angles, video, audio, subtitles);
+		var subtitles = Read(numPg);
+		var pipSubtitles = Read(numPipPg);
+		return new BdPlayItem(clip, inTime, outTime, connection, angles, video, audio, subtitles) { PipSubtitles = pipSubtitles };
 	}
 
 	internal static uint Be32(byte[] b, int p) => BinaryPrimitives.ReadUInt32BigEndian(b.AsSpan(p));

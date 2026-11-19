@@ -477,7 +477,7 @@ public sealed class TitleRipper {
 	/// <summary>
 	/// Write queued audio frames that start before <paramref name="untilNs"/>, laced like MakeMKV: 96 ms per block (3 AC3 or 9 DTS frames).
 	/// </summary>
-	private static void WriteAudio(MkvWriter mkv, MkvTrack track, AudioFramer framer, Queue<AudioFrame> queue, long untilNs) {
+	internal static void WriteAudio(MkvWriter mkv, MkvTrack track, AudioFramer framer, Queue<AudioFrame> queue, long untilNs) {
 		int perBlock = framer.FramesPerBlock;
 		long frameNs = framer.FrameNs;
 		var group = new List<AudioFrame>(perBlock);
@@ -526,7 +526,7 @@ public sealed class TitleRipper {
 		v.DisplayWidth = aspect == "16:9" ? (int)Math.Round(v.PixelHeight * 16 / 9.0) : (int)Math.Round(v.PixelHeight * 4 / 3.0);
 	}
 
-	private static string ChannelName(int channels) => channels switch {
+	internal static string ChannelName(int channels) => channels switch {
 		1 => "Mono",
 		2 => "Stereo",
 		6 => "Surround 5.1",
