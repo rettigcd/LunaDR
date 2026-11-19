@@ -13,6 +13,12 @@ public sealed class RipOptions {
 	/// <summary>Convert closed captions to a text subtitle track (and take them out of the video, as MakeMKV does).</summary>
 	public bool ClosedCaptions { get; init; } = true;
 
+	/// <summary>
+	/// Blu-ray: also write the AC3 version carried inside a Dolby TrueHD stream, as its own track after the TrueHD one.
+	/// It lets players without TrueHD play that soundtrack; leaving it out saves about 0.5 GB for a two-hour movie.
+	/// </summary>
+	public bool TrueHdCore { get; init; } = true;
+
 	/// <summary>Write the disc's chapters.</summary>
 	public bool Chapters { get; init; } = true;
 

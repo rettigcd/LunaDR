@@ -11,6 +11,7 @@ namespace RipDvd.Gui;
 public sealed class GuiSettings {
 	public string OutputFolder { get; set; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "LunaDR");
 	public bool PlaySoundWhenDone { get; set; } = true;
+	public bool TrueHdCore { get; set; } = true;
 
 	private static string FilePath => SettingsPath("LunaDR");
 	private static string OldFilePath => SettingsPath("rip-dvd");

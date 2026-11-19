@@ -8,7 +8,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 	`info [disc] [--all] [--minlength=N] [--cells]` lists titles by the disc's own title numbers (length, chapters, size, audio, subtitles, CC); `--cells` adds the numbered cell table;
 	`mkv <disc> <titles|all> <folder>` writes `<Disc name> - title NN.mkv`, titles like `1` or `1,3,6` (`all` = titles ≥ 120 s);
 	`mkv <disc> cells:LIST <folder>` rips chosen cells (e.g. `cells:23-27,30`, one title set) joined into `<Disc name> - cells LIST.mkv`, one chapter per cell.
-	`mkv` options: `--name`, `--audio=LANGS|all|none`, `--subtitles=LANGS|all|none`, `--captions=on|off`, `--chapters=on|off`, `--overwrite` (default: skip existing files), `--dry-run`, `--minlength`, `--no-compilations`, `--no-duplicates`.
+	`mkv` options: `--name`, `--audio=LANGS|all|none`, `--subtitles=LANGS|all|none`, `--captions=on|off`, `--chapters=on|off`, `--truehd-core=on|off` (Blu-ray), `--overwrite` (default: skip existing files), `--dry-run`, `--minlength`, `--no-compilations`, `--no-duplicates`.
 	Disc = `disc:0`, `E:` or a folder.
 - **Verified against MakeMKV on five discs** (byte-level comparisons with `mkvinfo`, plus ffmpeg decoding with no errors; the owner has played the files):
 
@@ -56,7 +56,8 @@ This file describes the present state only; the history is in [log.md](log.md).
 	are small internal classes (`VideoReferences`, `ClusterRule`, `RipTiming`, `AudioContinuity`) so they can be tested. Disc comparisons with MakeMKV stay the end-to-end check.
 - Blu-ray (code in `RipDvd.Core/Bluray`): read the disc's files through Windows' UDF file system; one title per playlist, numbered by its file (00000 = 0);
 	files named `<Disc name> - playlist NNNNN.mkv`; AACS decryption with a per-disc key from a `KEYDB.cfg` key file the owner supplies (next to the program,
-	`%APPDATA%\aacs` or `%LOCALAPPDATA%\aacs`), never downloaded. Tracks: video, the first play item's audio (TrueHD as two tracks: TrueHD and its AC3 core),
+	`%APPDATA%\aacs` or `%LOCALAPPDATA%\aacs`), never downloaded. Tracks: video, the first play item's audio (TrueHD as two tracks, TrueHD and its AC3 core;
+	the core is an option, on by default (owner): `RipOptions.TrueHdCore`, CLI `--truehd-core=on|off`, GUI checkbox "AC3 copy of TrueHD" shown for Blu-rays, remembered),
 	PGS subtitles; chapters from the entry marks (a mark within 1 s of the end dropped). VC-1 is a VfW track with decode times plus the decoder delay.
 	PGS display sets without an END segment are closed 2 s after they start. UHD, BD+, 3D, menus and bus encryption are out of scope for now.
 - All ripping logic lives in the library; the CLI and the GUI only call it.
@@ -129,9 +130,7 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 `RipDvd.Core/Bluray` (playlists, clip info, AACS with a key file, transport-stream demuxing, `BdTitleRipper`); the CLI's `info`/`mkv` and the GUI handle Blu-rays.
 Test disc: The Goonies (AACS 1, no bus encryption; VC-1, AC3, TrueHD, PGS). The drive (HL-DT-ST BP50NB40) works; MakeMKV failed only because its Blu-ray support is shareware.
 No MakeMKV rips to compare with, so the bar is the owner's: the file plays (ffmpeg decodes it), with the playlist's length, chapters and tracks.
-
-**BR7 – Check the whole movie** (the full rip decodes cleanly, 1:53:55, 37 chapters, audio in sync to the end; log 2026-11-19)
-1. *Owner:* play the file (e.g. in Plex/VLC): picture, each audio track (TrueHD needs a player that supports it), subtitles.
+BR7 is done too: the whole movie (playlist 00000) decodes cleanly and the owner played it.
 
 **BR8 – Formats not on the test disc** (unit-tested, and ripped from a stream made by ffmpeg with probe `bdclip`: H.264, E-AC3, DTS core, LPCM decode cleanly with the source's times; never seen on a real disc)
 1. *Owner:* a Blu-ray with H.264 video and DTS-HD MA audio (most Blu-ray movies), ideally also one with LPCM or E-AC3; a home-burned BD-R would test an unencrypted disc.
@@ -155,9 +154,6 @@ No MakeMKV rips to compare with, so the bar is the owner's: the file plays (ffmp
 	match the ripped titles to episodes (by order and running time), and name the output files with the episode titles.
 
 ## Open questions
-Blu-ray (2026-11-19; my guesses are in force until answered):
-- **TrueHD's AC3 core.** Written as a separate AC3 track next to the TrueHD track (for players without TrueHD). Keep it, or leave it out? Guess: keep.
-
 Deferred by the owner (answer later):
 - **MakeMKV evaluation** ("not now", 2026-11-19). MakeMKV's Blu-ray support asks to start a 30-day evaluation; starting it would give MakeMKV rips to compare with.
 - **Episode naming: data source.** TheTVDB (paid per-user subscription PIN, has DVD order), or free TVmaze/TMDB (aired order), or TheTVDB with a free fallback? See [episode-matching-analysis.md](episode-matching-analysis.md).

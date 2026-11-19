@@ -103,7 +103,7 @@ public sealed class BdTitleRipper {
 				case 0x82 or 0x85 or 0x86: Add("A_DTS", new DtsFramer(keepExtension: true), guess); break;
 				case 0x83:
 					Add("A_TRUEHD", new TrueHdFramer(), guess, trueHd: true);
-					Add("A_AC3", new Ac3Framer(), guess, core: true);
+					if (options.TrueHdCore) Add("A_AC3", new Ac3Framer(), guess, core: true);
 					break;
 				case 0x80: Add("A_PCM/INT/LIT", null, guess); break;
 				default: warnings.Add($"Audio stream {a.Pid:X4} ({a.CodecName}, {a.Language}) is not supported yet and was left out."); break;

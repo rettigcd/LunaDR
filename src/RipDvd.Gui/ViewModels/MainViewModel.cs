@@ -136,6 +136,17 @@ public sealed class MainViewModel : ViewModelBase {
 		}
 	}
 
+	/// <summary>Blu-ray: also write the AC3 version inside each TrueHD soundtrack as its own track (RipOptions.TrueHdCore); remembered between runs.</summary>
+	public bool TrueHdCore {
+		get => _settings.TrueHdCore;
+		set {
+			if (_settings.TrueHdCore == value) return;
+			_settings.TrueHdCore = value;
+			_settings.Save();
+			Raise(nameof(TrueHdCore));
+		}
+	}
+
 	public ObservableCollection<DriveItem> Drives { get; } = [];
 	public ObservableCollection<TitleRow> Titles { get; } = [];
 	public ICommand ScanCommand { get; }
@@ -208,6 +219,9 @@ public sealed class MainViewModel : ViewModelBase {
 	public string DiscName { get => _discName; private set => Set(ref _discName, value); }
 	/// <summary>DVDs have a cell map; Blu-rays (and no disc) don't, and the cell area is hidden.</summary>
 	public bool HasCellMap => _cellMap is not null;
+
+	/// <summary>A Blu-ray is scanned (shows the Blu-ray-only options).</summary>
+	public bool IsBluray => _bluray;
 
 	/// <summary>Shown after the file name box: how the files will be named.</summary>
 	public string FileNameSuffix => _bluray ? " - playlist NNNNN.mkv" : " - title NN.mkv";
@@ -287,6 +301,7 @@ public sealed class MainViewModel : ViewModelBase {
 		_videoTs = null;
 		_bluray = false;
 		Raise(nameof(FileNameSuffix));
+		Raise(nameof(IsBluray));
 		SelectedTitle = null;
 		Status = status;
 	}
@@ -337,6 +352,7 @@ public sealed class MainViewModel : ViewModelBase {
 		_videoTs = root;
 		_bluray = true;
 		Raise(nameof(FileNameSuffix));
+		Raise(nameof(IsBluray));
 		DiscName = OutputNaming.DiscName(disc.VolumeName);
 		FileName = DiscName;
 		foreach (var t in disc.Titles.OrderByDescending(t => t.DurationNs)) {
@@ -443,7 +459,8 @@ public sealed class MainViewModel : ViewModelBase {
 		string videoTs = _videoTs!;   // both callers return early when no disc is scanned
 		bool cancelled = false;
 		try {
-			var results = await Task.Run(() => new RipJob(videoTs, items).Run(progress.Report, _cancel.Token, finished.Report));
+			var options = new RipOptions { TrueHdCore = TrueHdCore };
+			var results = await Task.Run(() => new RipJob(videoTs, items, options).Run(progress.Report, _cancel.Token, finished.Report));
 			int failed = results.Count(r => r.Error is not null);
 			RipStatus = failed == 0
 				? $"Done: {results.Count} title(s) ripped to {folder}."

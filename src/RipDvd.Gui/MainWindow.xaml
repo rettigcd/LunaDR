@@ -125,6 +125,9 @@
 							Style="{DynamicResource AccentButtonStyle}" />
 					<CheckBox DockPanel.Dock="Right" Content="Play a sound when done" IsChecked="{Binding PlaySoundWhenDone}"
 							  VerticalAlignment="Center" Margin="0,0,16,0" />
+					<CheckBox DockPanel.Dock="Right" Content="AC3 copy of TrueHD" IsChecked="{Binding TrueHdCore}"
+							  Visibility="{Binding IsBluray, Converter={StaticResource Visible}}" VerticalAlignment="Center" Margin="0,0,16,0"
+							  ToolTip="Blu-ray: also write the AC3 version inside each Dolby TrueHD soundtrack as its own track, for players that can't play TrueHD." />
 					<TextBlock Text="{Binding RipStatus}" VerticalAlignment="Center" Margin="16,0" TextTrimming="CharacterEllipsis" />
 				</DockPanel>
 

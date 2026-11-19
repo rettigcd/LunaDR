@@ -38,7 +38,7 @@ public static class Program {
 				"By default every audio and subtitle track is kept, closed captions become a text subtitle track, and chapters are written",
 				"(MakeMKV's defaults). Existing files are skipped unless --overwrite is given.",
 				"Blu-ray: <titles> are playlist numbers as listed by 'info' (e.g. 0 or 0,8); files are named \"<Disc name> - playlist NNNNN.mkv\".",
-				"Supported: VC-1, H.264 and MPEG-2 video; AC3, E-AC3, DTS / DTS-HD, TrueHD (written as TrueHD plus its AC3 core) and LPCM audio;",
+				"Supported: VC-1, H.264 and MPEG-2 video; AC3, E-AC3, DTS / DTS-HD, TrueHD (written as TrueHD plus its AC3 core; see --truehd-core) and LPCM audio;",
 				"PGS subtitles. An AACS-encrypted disc needs a key file in libaacs's KEYDB.cfg format, with the disc's entry, next to the program",
 				"or in %APPDATA%\\aacs\\ or %LOCALAPPDATA%\\aacs\\ (this program never downloads keys). UHD (AACS 2) and BD+ discs are not supported.",
 			],
@@ -63,6 +63,8 @@ public static class Program {
 		new("subtitles", "LANGS", ["mkv"], "Bitmap subtitle tracks to keep, by language, as for --audio. (Closed captions are controlled by --captions.)", "all"),
 		new("captions", "on|off", ["mkv"], "Convert closed captions to a text subtitle track. With 'off' the caption data stays inside the video.", "on"),
 		new("chapters", "on|off", ["mkv"], "Write the disc's chapters.", "on"),
+		new("truehd-core", "on|off", ["mkv"], "Blu-ray: also write the AC3 version inside each Dolby TrueHD soundtrack as its own track, " +
+			"for players that can't play TrueHD.", "on"),
 		new("no-compilations", null, ["mkv"], "With 'all', skip compilations: \"play all\" titles made of parts of other titles (marked in 'info')."),
 		new("no-duplicates", null, ["mkv"], "With 'all', skip titles that play the same video as an earlier title, e.g. the same movie with other chapters (marked in 'info')."),
 		new("overwrite", null, ["mkv"], "Replace output files that already exist (otherwise they are skipped)."),
@@ -95,6 +97,7 @@ public static class Program {
 						SubtitleLanguages = values.TryGetValue("subtitles", out var su) ? RipOptions.ParseLanguages(su!) : null,
 						ClosedCaptions = !values.TryGetValue("captions", out var cc) || OnOff(cc!, "captions"),
 						Chapters = !values.TryGetValue("chapters", out var ch) || OnOff(ch!, "chapters"),
+						TrueHdCore = !values.TryGetValue("truehd-core", out var core) || OnOff(core!, "truehd-core"),
 					};
 					return Mkv(positional[1], positional[2], positional[3], minLength, values.GetValueOrDefault("name"), options,
 						overwrite: values.ContainsKey("overwrite"), dryRun: values.ContainsKey("dry-run"),

@@ -51,7 +51,7 @@ Ctrl+C stops a rip cleanly; the unfinished file is removed.
 lunadr info E:
 lunadr mkv E: 0 C:\Rips          (playlist 00000 -> C:\Rips\<Disc name> - playlist 00000.mkv)
 ```
-- Formats: VC-1, H.264 and MPEG-2 video; AC3, E-AC3, DTS / DTS-HD, TrueHD (written as TrueHD plus its AC3 core) and LPCM audio; PGS subtitles.
+- Formats: VC-1, H.264 and MPEG-2 video; AC3, E-AC3, DTS / DTS-HD, TrueHD (written as TrueHD plus its AC3 core; `--truehd-core=off` or the app's "AC3 copy of TrueHD" box leaves the core out) and LPCM audio; PGS subtitles.
 	Tested on one disc so far (The Goonies: VC-1, AC3, TrueHD, PGS); the others are unit-tested only.
 - Encrypted (AACS) discs need a key file in libaacs's `KEYDB.cfg` format that has the disc's entry, placed next to the program or in
 	`%APPDATA%\aacs\` or `%LOCALAPPDATA%\aacs\`. The program never downloads keys. `lunadr info` says which key file it found.

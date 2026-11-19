@@ -1,4 +1,5 @@
 using RipDvd.Core.Bluray;
+using RipDvd.Core.Ripping;
 
 namespace RipDvd.Core.Tests;
 
@@ -54,6 +55,15 @@ public class GooniesBdTests {
 		Assert.Equal(0, chapters[0]);
 		Assert.True(chapters.Zip(chapters.Skip(1)).All(p => p.First < p.Second));
 		Assert.True(chapters[^1] < mpls.DurationNs);
+	}
+
+	[BdFact(Disc)]
+	public void TrueHdCore_IsATrackUnlessTurnedOff() {
+		var ripper = new BdTitleRipper(Folder, 0);
+		string[] Audio(RipOptions options) => ripper.Describe(options).Where(l => l.StartsWith("audio")).Select(l => l.Split(' ', StringSplitOptions.RemoveEmptyEntries)[2]).ToArray();
+		// Default: the TrueHD track is followed by its AC3 core.
+		Assert.Equal(["A_AC3", "A_TRUEHD", "A_AC3", "A_AC3", "A_AC3", "A_AC3", "A_AC3"], Audio(RipOptions.Default));
+		Assert.Equal(["A_AC3", "A_TRUEHD", "A_AC3", "A_AC3", "A_AC3", "A_AC3"], Audio(new RipOptions { TrueHdCore = false }));
 	}
 
 	[Fact]

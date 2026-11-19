@@ -585,3 +585,9 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	GUI settings move to `%APPDATA%\LunaDR\gui-settings.json`; the old `%APPDATA%\rip-dvd` file is read until the new one is saved, so the owner's folder carries over.
 	The repo, solution, projects and namespaces keep `rip-dvd` / `RipDvd.*` for now: renaming them touches every file and no user sees them.
 - **Question deferred: MakeMKV evaluation.** Owner: "not now". Moved to the deferred questions.
+
+## 2026-11-19 18:10
+- **Question answered: TrueHD's AC3 core.** Owner: make it an option, on by default.
+	Done: `RipOptions.TrueHdCore` (default true); CLI `--truehd-core=on|off`; GUI checkbox "AC3 copy of TrueHD" next to "Play a sound when done", shown only for a Blu-ray and remembered in the settings.
+	Test `GooniesBdTests.TrueHdCore_IsATrackUnlessTurnedOff`: playlist 00000 has 7 audio tracks by default and 6 with the option off. GUI screenshot with The Goonies checked: the box shows and is checked.
+- **BR7 done.** Owner played the Goonies rip: "It looks great!" Removed from Next steps.
