@@ -4,7 +4,7 @@ Process rules for this file are in [CLAUDE.md](../CLAUDE.md).
 This file describes the present state only; the history is in [log.md](log.md).
 
 ## Status
-- **Ripping works end to end on Windows.** CLI `src/RipDvd.Cli` (executable `rip-dvd`), modeled on makemkvcon; `rip-dvd help` / `help <command>` / `-h` explain everything:
+- **Ripping works end to end on Windows.** CLI `src/RipDvd.Cli` (executable `lunadr`), modeled on makemkvcon; `lunadr help` / `help <command>` / `-h` explain everything:
 	`info [disc] [--all] [--minlength=N] [--cells]` lists titles by the disc's own title numbers (length, chapters, size, audio, subtitles, CC); `--cells` adds the numbered cell table;
 	`mkv <disc> <titles|all> <folder>` writes `<Disc name> - title NN.mkv`, titles like `1` or `1,3,6` (`all` = titles ≥ 120 s);
 	`mkv <disc> cells:LIST <folder>` rips chosen cells (e.g. `cells:23-27,30`, one title set) joined into `<Disc name> - cells LIST.mkv`, one chapter per cell.
@@ -28,8 +28,8 @@ This file describes the present state only; the history is in [log.md](log.md).
 	`Mpeg/` (PES parsing; MPEG-2 video, AC3, DTS, LPCM framers; subpicture assembler), `Captions/` (EIA-608 decoder),
 	`Matroska/` (EBML reader/writer, MKV writer), `Ripping/` (disc scanner, cell map with duplicate/compilation detection, title ripper with progress phases, cell progress and cancellation, batch runner `RipJob` with remaining-time estimates, cell selection, options, naming, VobSub header, languages).
 	Interleaved (multi-angle) cells are read unit by unit following the nav packs; read errors are retried 3 times and then skipped to the next readable VOBU, with a warning.
-- **GUI** `src/RipDvd.Gui` (`rip-dvd-gui.exe`, WPF): all three phases built: drive picker, automatic scan on disc insert, title list (all titles, short ones dimmed, duplicate/compilation notes), compact cell map with selection highlighting and hover details;
-	a checkbox per title, output folder and file name (remembered in %APPDATA%\rip-dvd\gui-settings.json), Start/Cancel (Cancel asks first);
+- **GUI** `src/RipDvd.Gui` (`lunadr-gui.exe`, WPF): all three phases built: drive picker, automatic scan on disc insert, title list (all titles, short ones dimmed, duplicate/compilation notes), compact cell map with selection highlighting and hover details;
+	a checkbox per title, output folder and file name (remembered in %APPDATA%\LunaDR\gui-settings.json), Start/Cancel (Cancel asks first);
 	progress bars with % / time left / MB/s for the title and for all titles, a list of finished files (or per-title errors), Open folder, and "Play a sound when done" (remembered).
 	Cells can be selected in the cell map (click, Ctrl+click, Shift+click) and ripped into one file ("Rip selected cells"); during a rip the cell map shows progress (green strip above the cells, green blocks on the ripped title's row).
 	Output identical to the CLI's (Butterfly Effect titles 3 and 6; Beauty and the Beast cells 32,45 = title 5). Test mode `--screenshot file.png [--drive E] [--rip 3,6 | --cells 32,45] [--to folder] [--midshot file.png]`.
@@ -44,6 +44,10 @@ This file describes the present state only; the history is in [log.md](log.md).
 - References: MakeMKV output listings in `reference/makemkv/`; reference rips in git-ignored `reference/rips/`; the owner's Plex library (D:) holds MakeMKV rips of many of the owner's DVDs.
 
 ## Design decisions
+
+- **Name: LunaDR** (owner, 2026-11-19). Programs `lunadr` (CLI) and `lunadr-gui` (GUI; a different name so both fit in one folder on case-insensitive Windows);
+	window titles and the MKV "writing application" say LunaDR; GUI settings in `%APPDATA%\LunaDR` (the old `rip-dvd` settings are read until then).
+	The repo, solution, projects and namespaces keep their `rip-dvd` / `RipDvd.*` names for now (renaming them touches every file and is not visible to users).
 
 ### Core (ripping library `RipDvd.Core` and the CLI)
 - C# on .NET 10, all managed code (no native C). The drive is the bottleneck (descrambling 430 MB/s vs ≤ 22 MB/s from a drive).
@@ -152,10 +156,9 @@ No MakeMKV rips to compare with, so the bar is the owner's: the file plays (ffmp
 
 ## Open questions
 Blu-ray (2026-11-19; my guesses are in force until answered):
-- **Program name.** It now rips Blu-rays too; keep `rip-dvd` / `rip-dvd-gui`, or rename (e.g. `rip-disc`)? Guess: keep the name until you decide.
 - **TrueHD's AC3 core.** Written as a separate AC3 track next to the TrueHD track (for players without TrueHD). Keep it, or leave it out? Guess: keep.
-- **MakeMKV evaluation.** MakeMKV's Blu-ray support asks to start a 30-day evaluation; starting it would give MakeMKV rips to compare with. Your choice; not needed for our ripper.
 
 Deferred by the owner (answer later):
+- **MakeMKV evaluation** ("not now", 2026-11-19). MakeMKV's Blu-ray support asks to start a 30-day evaluation; starting it would give MakeMKV rips to compare with.
 - **Episode naming: data source.** TheTVDB (paid per-user subscription PIN, has DVD order), or free TVmaze/TMDB (aired order), or TheTVDB with a free fallback? See [episode-matching-analysis.md](episode-matching-analysis.md).
 - **Episode naming: file names.** Plex-library style `sNNeMM - Episode name.mkv`, optionally in `Series (year)/Season N/` folders?

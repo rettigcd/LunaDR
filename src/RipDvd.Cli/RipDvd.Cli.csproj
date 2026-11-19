@@ -9,7 +9,7 @@
 		<TargetFramework>net10.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
-		<AssemblyName>rip-dvd</AssemblyName>
+		<AssemblyName>lunadr</AssemblyName>
 		<RootNamespace>RipDvd.Cli</RootNamespace>
 	</PropertyGroup>
 

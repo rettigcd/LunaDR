@@ -1,5 +1,5 @@
-// rip-dvd: command-line DVD ripper, modeled on MakeMKV's makemkvcon.
-// Run "rip-dvd help" for the commands and options; the help text is generated from the tables below,
+// lunadr: the LunaDR command line, a DVD and Blu-ray ripper, modeled on MakeMKV's makemkvcon.
+// Run "lunadr help" for the commands and options; the help text is generated from the tables below,
 // so adding an option to Options automatically documents it.
 
 using RipDvd.Core.Bluray;
@@ -25,7 +25,7 @@ public static class Program {
 				"Blu-ray: the titles are the disc's playlists, listed longest first by playlist number (00000 = 0); playlists that play the same",
 				"video as another are marked. It also says whether the disc is AACS-encrypted and which key file would be used.",
 			],
-			["rip-dvd info", "rip-dvd info E:", "rip-dvd info E: --all", "rip-dvd info E: --cells"]),
+			["lunadr info", "lunadr info E:", "lunadr info E: --all", "lunadr info E: --cells"]),
 		new("mkv", "<disc> <titles|all|cells:LIST> <output folder>",
 			"Rip titles to MKV files named \"<Disc name> - title NN.mkv\", or chosen cells to one file.",
 			[
@@ -43,14 +43,14 @@ public static class Program {
 				"or in %APPDATA%\\aacs\\ or %LOCALAPPDATA%\\aacs\\ (this program never downloads keys). UHD (AACS 2) and BD+ discs are not supported.",
 			],
 			[
-				"rip-dvd mkv E: all C:\\Rips",
-				"rip-dvd mkv E: 1 C:\\Rips --name=\"The Dead Zone S4D1\"",
-				"rip-dvd mkv E: 1,2 C:\\Rips --audio=eng --subtitles=none",
-				"rip-dvd mkv E: all C:\\Rips --no-compilations --no-duplicates",
-				"rip-dvd mkv E: all C:\\Rips --dry-run",
-				"rip-dvd mkv E: cells:23-27 C:\\Rips",
+				"lunadr mkv E: all C:\\Rips",
+				"lunadr mkv E: 1 C:\\Rips --name=\"The Dead Zone S4D1\"",
+				"lunadr mkv E: 1,2 C:\\Rips --audio=eng --subtitles=none",
+				"lunadr mkv E: all C:\\Rips --no-compilations --no-duplicates",
+				"lunadr mkv E: all C:\\Rips --dry-run",
+				"lunadr mkv E: cells:23-27 C:\\Rips",
 			]),
-		new("help", "[command]", "Show this help, or the help for one command.", [], ["rip-dvd help mkv"]),
+		new("help", "[command]", "Show this help, or the help for one command.", [], ["lunadr help mkv"]),
 	];
 
 	private static readonly Option[] Options = [
@@ -139,7 +139,7 @@ public static class Program {
 
 	private static int Fail(string message, string? command = null) {
 		Console.Error.WriteLine(message);
-		Console.Error.WriteLine(command is null ? "Run 'rip-dvd help' for usage." : $"Run 'rip-dvd help {command}' for usage.");
+		Console.Error.WriteLine(command is null ? "Run 'lunadr help' for usage." : $"Run 'lunadr help {command}' for usage.");
 		return 1;
 	}
 
@@ -149,9 +149,9 @@ public static class Program {
 		if (commandName is not null && commandName != "help" && command is null) return Fail($"Unknown command '{commandName}'.");
 
 		if (command is null || command.Name == "help") {
-			Console.WriteLine("rip-dvd: rip DVD titles to MKV files (modeled on MakeMKV's makemkvcon).");
+			Console.WriteLine("lunadr (LunaDR): rip DVD and Blu-ray titles to MKV files (modeled on MakeMKV's makemkvcon).");
 			Console.WriteLine();
-			Console.WriteLine("usage: rip-dvd <command> [arguments] [options]");
+			Console.WriteLine("usage: lunadr <command> [arguments] [options]");
 			Console.WriteLine();
 			Console.WriteLine("commands:");
 			foreach (var c in Commands) Console.WriteLine($"  {c.Name,-6} {c.Summary}");
@@ -161,11 +161,11 @@ public static class Program {
 			Console.WriteLine("options:");
 			PrintOptions(Options.Where(o => o.Name != "help"), showCommands: true);
 			Console.WriteLine();
-			Console.WriteLine("Run 'rip-dvd help <command>' for details and examples, e.g. 'rip-dvd help mkv'.");
+			Console.WriteLine("Run 'lunadr help <command>' for details and examples, e.g. 'lunadr help mkv'.");
 			return 0;
 		}
 
-		Console.WriteLine($"usage: rip-dvd {command.Name} {command.Arguments} [options]");
+		Console.WriteLine($"usage: lunadr {command.Name} {command.Arguments} [options]");
 		Console.WriteLine();
 		Console.WriteLine(command.Summary);
 		foreach (var line in command.Details) Console.WriteLine(line);
@@ -245,7 +245,7 @@ public static class Program {
 			var numbers = which.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(int.Parse).ToList();
 			var unknown = numbers.Where(n => disc.Titles.All(t => t.TitleNumber != n)).ToList();
 			if (unknown.Count > 0) {
-				Console.Error.WriteLine($"No title {string.Join(", ", unknown)} on this disc; titles are 1..{disc.Titles.Count} (see 'rip-dvd info').");
+				Console.Error.WriteLine($"No title {string.Join(", ", unknown)} on this disc; titles are 1..{disc.Titles.Count} (see 'lunadr info').");
 				return 1;
 			}
 			selected = numbers.Select(n => disc.Titles.First(t => t.TitleNumber == n)).ToList();
@@ -285,7 +285,7 @@ public static class Program {
 		Console.WriteLine(all
 			? $"{disc.Titles.Count} playlists (titles):"
 			: $"{disc.Titles.Count} playlists (titles), {listed.Count} at least {minLength.TotalSeconds:0} s long:");
-		Console.WriteLine("Rip a playlist by its number, e.g. 'rip-dvd mkv <disc> 0 <folder>' for playlist 00000.");
+		Console.WriteLine("Rip a playlist by its number, e.g. 'lunadr mkv <disc> 0 <folder>' for playlist 00000.");
 		Console.WriteLine();
 		foreach (var t in listed) {
 			Console.WriteLine($"  playlist {t.Playlist:00000}  {Format(t.DurationNs)}  {t.Chapters,2} chapters  {t.SizeBytes / 1e9,5:F2} GB  {t.Video}" +
@@ -300,7 +300,7 @@ public static class Program {
 							  $"playlists {string.Join(", ", skipped.Select(t => $"{t.Playlist} ({Format(t.DurationNs)})"))}");
 		if (Directory.Exists(Path.Combine(root, "AACS"))) {
 			string? keyFile = KeyDb.Find();
-			Console.WriteLine($"\nAACS-encrypted. Key file: {keyFile ?? "none found (needed to rip; see 'rip-dvd help mkv')"}");
+			Console.WriteLine($"\nAACS-encrypted. Key file: {keyFile ?? "none found (needed to rip; see 'lunadr help mkv')"}");
 		}
 		return 0;
 	}
@@ -317,13 +317,13 @@ public static class Program {
 				selected.Remove(t);
 			}
 		} else if (which.StartsWith("cells:", StringComparison.OrdinalIgnoreCase)) {
-			Console.Error.WriteLine("cells: is for DVDs; a Blu-ray is ripped by playlist number (see 'rip-dvd info').");
+			Console.Error.WriteLine("cells: is for DVDs; a Blu-ray is ripped by playlist number (see 'lunadr info').");
 			return 1;
 		} else {
 			var numbers = which.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(int.Parse).ToList();
 			var unknown = numbers.Where(n => disc.Titles.All(t => t.Playlist != n)).ToList();
 			if (unknown.Count > 0) {
-				Console.Error.WriteLine($"No playlist {string.Join(", ", unknown)} on this disc (see 'rip-dvd info').");
+				Console.Error.WriteLine($"No playlist {string.Join(", ", unknown)} on this disc (see 'lunadr info').");
 				return 1;
 			}
 			selected = numbers.Select(n => disc.Titles.First(t => t.Playlist == n)).ToList();
@@ -357,7 +357,7 @@ public static class Program {
 	/// <summary>mkv with cells:LIST: the chosen cells, joined in the order given, into one file.</summary>
 	private static int MkvCells(DiscSummary disc, List<int> cells, string outputFolder, string? name, RipOptions options, bool overwrite, bool dryRun) {
 		if (CellSelection.Validate(disc.CellMap, cells) is { } error) {
-			Console.Error.WriteLine($"{error.TrimEnd('.')} (see 'rip-dvd info --cells').");
+			Console.Error.WriteLine($"{error.TrimEnd('.')} (see 'lunadr info --cells').");
 			return 1;
 		}
 		string discName = OutputNaming.Sanitize(name ?? OutputNaming.DiscName(disc.VolumeName));

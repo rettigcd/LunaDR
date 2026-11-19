@@ -3,7 +3,7 @@
 		xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 		xmlns:c="clr-namespace:RipDvd.Gui.Controls"
 		xmlns:g="clr-namespace:RipDvd.Gui"
-		Title="rip-dvd" Width="1280" Height="900" MinWidth="800" MinHeight="560">
+		Title="LunaDR" Width="1280" Height="900" MinWidth="800" MinHeight="560">
 	<Window.Resources>
 		<g:NotConverter x:Key="Not" />
 		<BooleanToVisibilityConverter x:Key="Visible" />

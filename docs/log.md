@@ -577,3 +577,11 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 
 ## 2026-11-19 08:16
 - **BR7.1 done: the whole movie.** The Goonies playlist 00000 ripped with probe `bdrip` in 19 min 50 s (25.6 GB read, about 21 MB/s): 23.0 GB file, 1:53:55.36, no warnings. ffmpeg decodes the video and all 7 audio tracks with no message at all; every audio track ends at 6,835.33 s (the title is 6,835.36 s), so the sound stays in sync to the end; 37 chapters. The file is in the session scratchpad for the owner to play (BR7.2).
+
+## 2026-11-19 17:50
+- **Question answered: program name.** Owner: the program is now **LunaDR**.
+	Done: the CLI is `lunadr.exe` and the GUI `lunadr-gui.exe` (not `LunaDR.exe`: on case-insensitive Windows it would clash with `lunadr.exe` in one folder);
+	help texts, window and message-box titles, and the MKV "writing application" (`LunaDR 0.1`) use the new name; README and plan updated.
+	GUI settings move to `%APPDATA%\LunaDR\gui-settings.json`; the old `%APPDATA%\rip-dvd` file is read until the new one is saved, so the owner's folder carries over.
+	The repo, solution, projects and namespaces keep `rip-dvd` / `RipDvd.*` for now: renaming them touches every file and no user sees them.
+- **Question deferred: MakeMKV evaluation.** Owner: "not now". Moved to the deferred questions.

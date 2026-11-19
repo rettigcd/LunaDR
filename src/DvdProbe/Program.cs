@@ -278,7 +278,7 @@ public static class Commands {
 	[ProbeCommand("canceltest", "Start ripping a title, cancel after N seconds, and check the partial file was removed. Args: <drive> <title> <seconds>")]
 	public static int CancelTest(string[] args) {
 		string videoTs = IfoProbe.ResolveVideoTs(args[0]);
-		string path = Path.Combine(Path.GetTempPath(), "rip-dvd-canceltest.mkv");
+		string path = Path.Combine(Path.GetTempPath(), "lunadr-canceltest.mkv");
 		using var cancel = new CancellationTokenSource(TimeSpan.FromSeconds(double.Parse(args[2])));
 		var lastPhase = (RipDvd.Core.Ripping.RipPhase)(-1);
 		try {

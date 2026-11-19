@@ -6,7 +6,7 @@
 		<UseWPF>true</UseWPF>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
-		<AssemblyName>rip-dvd-gui</AssemblyName>
+		<AssemblyName>lunadr-gui</AssemblyName>
 		<RootNamespace>RipDvd.Gui</RootNamespace>
 		<!-- WPF0001: the Fluent theme (ThemeMode) is still marked experimental in .NET 10. -->
 		<NoWarn>$(NoWarn);WPF0001</NoWarn>

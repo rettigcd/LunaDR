@@ -1,10 +1,10 @@
-# rip-dvd
+# LunaDR
 
-Rips movies and TV episodes from a DVD or a Blu-ray into MKV files, much like [MakeMKV](https://www.makemkv.com/) does.
+(Formerly rip-dvd.) Rips movies and TV episodes from a DVD or a Blu-ray into MKV files, much like [MakeMKV](https://www.makemkv.com/) does.
 Everything is C# on .NET 10, with no external tools or native libraries needed at run time.
 
-- **Command line** (`rip-dvd`): lists a disc's titles and rips the ones you name.
-- **Windows app** (`rip-dvd-gui`): scans the disc when it is inserted, shows the titles and which parts of the disc they share,
+- **Command line** (`lunadr`): lists a disc's titles and rips the ones you name.
+- **Windows app** (`lunadr-gui`): scans the disc when it is inserted, shows the titles and which parts of the disc they share,
 	and rips the titles you check, with progress and remaining time.
 
 The output is laid out like MakeMKV's: the video and audio are copied unchanged; DVD subtitles become VobSub tracks;
@@ -30,16 +30,16 @@ The unit tests (`tests/RipDvd.Core.Tests`) need no disc and take about a second.
 ```
 dotnet run --project src/RipDvd.Cli -- <command> [arguments] [options]
 ```
-or run `src/RipDvd.Cli/bin/Debug/net10.0/rip-dvd.exe` directly.
+or run `src/RipDvd.Cli/bin/Debug/net10.0/lunadr.exe` directly.
 
 | Command | What it does |
 |---|---|
-| `rip-dvd info E:` | List the titles: length, chapters, size, audio, subtitles, closed captions. Duplicates and "play all" compilations are marked. |
-| `rip-dvd mkv E: all C:\Rips` | Rip every title of at least 120 s to `C:\Rips\<Disc name> - title NN.mkv`. |
-| `rip-dvd mkv E: 1,3,6 C:\Rips` | Rip titles 1, 3 and 6 (the disc's own title numbers, as shown by `info`). |
-| `rip-dvd info E: --cells` | Also list every cell (a piece of video on the disc) with its number and the titles that play it. |
-| `rip-dvd mkv E: cells:30-33 C:\Rips` | Rip cells 30 to 33, joined into one file `<Disc name> - cells 30-33.mkv` (cells of one title set; one chapter per cell). |
-| `rip-dvd help mkv` | All options, with examples. |
+| `lunadr info E:` | List the titles: length, chapters, size, audio, subtitles, closed captions. Duplicates and "play all" compilations are marked. |
+| `lunadr mkv E: all C:\Rips` | Rip every title of at least 120 s to `C:\Rips\<Disc name> - title NN.mkv`. |
+| `lunadr mkv E: 1,3,6 C:\Rips` | Rip titles 1, 3 and 6 (the disc's own title numbers, as shown by `info`). |
+| `lunadr info E: --cells` | Also list every cell (a piece of video on the disc) with its number and the titles that play it. |
+| `lunadr mkv E: cells:30-33 C:\Rips` | Rip cells 30 to 33, joined into one file `<Disc name> - cells 30-33.mkv` (cells of one title set; one chapter per cell). |
+| `lunadr help mkv` | All options, with examples. |
 
 The disc can be `disc:0` (the first DVD drive), a drive letter such as `E:`, or a folder that contains `VIDEO_TS`.
 Useful `mkv` options: `--audio=eng`, `--subtitles=none`, `--captions=off`, `--no-compilations`, `--no-duplicates`, `--dry-run`, `--overwrite`.
@@ -48,20 +48,20 @@ Ctrl+C stops a rip cleanly; the unfinished file is removed.
 ## Blu-ray
 `info` and `mkv` (and the Windows app) also work on a Blu-ray. Its titles are the disc's playlists, listed longest first and ripped by playlist number:
 ```
-rip-dvd info E:
-rip-dvd mkv E: 0 C:\Rips          (playlist 00000 -> C:\Rips\<Disc name> - playlist 00000.mkv)
+lunadr info E:
+lunadr mkv E: 0 C:\Rips          (playlist 00000 -> C:\Rips\<Disc name> - playlist 00000.mkv)
 ```
 - Formats: VC-1, H.264 and MPEG-2 video; AC3, E-AC3, DTS / DTS-HD, TrueHD (written as TrueHD plus its AC3 core) and LPCM audio; PGS subtitles.
 	Tested on one disc so far (The Goonies: VC-1, AC3, TrueHD, PGS); the others are unit-tested only.
 - Encrypted (AACS) discs need a key file in libaacs's `KEYDB.cfg` format that has the disc's entry, placed next to the program or in
-	`%APPDATA%\aacs\` or `%LOCALAPPDATA%\aacs\`. The program never downloads keys. `rip-dvd info` says which key file it found.
+	`%APPDATA%\aacs\` or `%LOCALAPPDATA%\aacs\`. The program never downloads keys. `lunadr info` says which key file it found.
 - Not supported: UHD (4K) discs, BD+ protection, 3D, menus.
 
 ## Windows app
 ```
 dotnet run --project src/RipDvd.Gui
 ```
-or run `src/RipDvd.Gui/bin/Debug/net10.0-windows/rip-dvd-gui.exe`.
+or run `src/RipDvd.Gui/bin/Debug/net10.0-windows/lunadr-gui.exe`.
 
 1. Insert a disc (or pick the drive and click **Scan**). The title list shows every title; short titles are dimmed,
 	and the Note column says when a title repeats another one or is a compilation of other titles.
@@ -73,7 +73,7 @@ or run `src/RipDvd.Gui/bin/Debug/net10.0-windows/rip-dvd-gui.exe`.
 	Finished files are listed below the bars, with **Open folder**.
 	Check **Play a sound when done** to hear the Windows notification sound at the end.
 
-The folder and the sound setting are remembered in `%APPDATA%\rip-dvd\gui-settings.json`.
+The folder and the sound setting are remembered in `%APPDATA%\LunaDR\gui-settings.json`.
 
 ## Project layout
 | Folder | Contents |

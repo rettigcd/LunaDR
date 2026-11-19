@@ -405,7 +405,7 @@ public sealed class MainViewModel : ViewModelBase {
 		string folder = OutputFolder.Trim();
 		try {
 			Directory.CreateDirectory(folder);
-			string probe = Path.Combine(folder, $".rip-dvd-write-test-{Guid.NewGuid():N}");
+			string probe = Path.Combine(folder, $".lunadr-write-test-{Guid.NewGuid():N}");
 			File.WriteAllText(probe, "");
 			File.Delete(probe);
 			return folder;

@@ -33,7 +33,7 @@ public sealed record RipResult(string OutputPath, long DurationNs, long Sectors,
 /// The same mapping joins any cells of one title set, so chosen cells play continuously in the order given.
 /// </summary>
 public sealed class TitleRipper {
-	public const string AppName = "rip-dvd 0.1";
+	public const string AppName = "LunaDR 0.1";
 
 	private readonly string _videoTs;
 	private readonly int _titleSet;

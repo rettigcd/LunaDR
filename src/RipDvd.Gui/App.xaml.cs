@@ -4,7 +4,7 @@ namespace RipDvd.Gui;
 
 /// <summary>
 /// Starts the main window.
-/// For testing without a person at the screen: "rip-dvd-gui --screenshot file.png [--drive E]" scans the disc,
+/// For testing without a person at the screen: "lunadr-gui --screenshot file.png [--drive E]" scans the disc,
 /// saves a picture of the window and exits; adding "--rip 3,6 --to C:\folder" first rips those titles as if Start had been clicked,
 /// and "--cells 23-27 --to C:\folder" selects those cells in the cell map and rips them as if "Rip selected cells" had been clicked.
 /// "--midshot file.png" also saves a picture when the rip is half done (to see the progress in the cell map).

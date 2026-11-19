@@ -33,14 +33,14 @@ public partial class MainWindow : Window {
 			var dialog = new Microsoft.Win32.OpenFolderDialog { Title = "Save the MKV files to", InitialDirectory = Directory.Exists(start) ? start : "" };
 			return dialog.ShowDialog(this) == true ? dialog.FolderName : null;
 		};
-		_vm.ShowMessage = text => MessageBox.Show(this, text, "rip-dvd", MessageBoxButton.OK, MessageBoxImage.Warning);
+		_vm.ShowMessage = text => MessageBox.Show(this, text, "LunaDR", MessageBoxButton.OK, MessageBoxImage.Warning);
 		_vm.ConfirmCancel = () => MessageBox.Show(this, "Stop ripping? The title being ripped is not saved; titles already finished are kept.",
-			"rip-dvd", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;
+			"LunaDR", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;
 		_vm.AskAboutExistingFiles = files => {
 			string list = string.Join("\n", files.Take(10)) + (files.Count > 10 ? $"\n… and {files.Count - 10} more" : "");
 			var answer = MessageBox.Show(this,
 				$"{files.Count} file(s) already exist:\n\n{list}\n\nYes: replace them.   No: skip those titles.   Cancel: don't start.",
-				"rip-dvd", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+				"LunaDR", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
 			return answer switch {
 				MessageBoxResult.Yes => ExistingFilesChoice.Overwrite,
 				MessageBoxResult.No => ExistingFilesChoice.Skip,
