@@ -24,6 +24,23 @@ internal static class IfoDisc {
 	}
 }
 
+/// <summary>Gypsy (2004) vol. 1: one title with 16-bit LPCM stereo audio and no language, no volume label, no CSS (log 12:34).</summary>
+public class GypsyTests {
+	private const string Disc = "GYPSY_VOL1";
+	private static string Folder => IfoDisc.Folder(Disc)!;
+
+	[IfoFact(Disc)]
+	public void OneTitle_WithLpcmAudio() {
+		var title = Assert.Single(DiscScanner.Scan(Folder).Titles);
+		Assert.Equal(11, title.Chapters);
+		Assert.Equal(["LPCM stereo und"], title.Audio);
+		var description = new TitleRipper(Folder, 1).Describe();
+		// MakeMKV converts LPCM to little-endian PCM and writes no Language when the disc gives none.
+		Assert.Contains(description, l => l.StartsWith("audio") && l.Contains("A_PCM/INT/LIT") && l.Contains("(no language)"));
+		Assert.Contains("chapters  11", description);
+	}
+}
+
 /// <summary>Beauty and the Beast (Disney): titles 16-18 have two interleaved angles (log 2026-11-18 22:22).</summary>
 public class BeautyAndTheBeastTests {
 	private const string Disc = "BEAUTY_AND_THE_BEAST";

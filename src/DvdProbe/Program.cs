@@ -200,6 +200,14 @@ public static class Commands {
 	[ProbeCommand("mkvcompare", "Compare two MKV files track by track (frames, bytes, SHA-256 of payloads, times, chapters). Args: <a.mkv> <b.mkv>")]
 	public static int MkvCompareCommand(string[] args) => MkvCompare.Run(args[0], args[1]);
 
+	[ProbeCommand("copyright", "Ask the drive whether the disc is copy-protected (copyright descriptor: 0 none, 1 CSS/CPPM, 2 CPRM). Args: <drive>")]
+	public static int Copyright(string[] args) {
+		string videoTs = IfoProbe.ResolveVideoTs(args.Length > 0 ? args[0] : "E:");
+		bool? css = RipDvd.Core.Dvd.DriveUnlocker.IsCssProtected(videoTs);
+		Console.WriteLine(css switch { true => "CSS-protected", false => "not protected", null => "unknown (the drive could not be asked)" });
+		return 0;
+	}
+
 	[ProbeCommand("navwalk", "List the nav packs (VOBUs) from a sector, following VOBU end addresses: ILVU fields for interleaved cells. Args: <drive> <vts> <first sector> [count]")]
 	public static int NavWalk(string[] args) {
 		string videoTs = IfoProbe.ResolveVideoTs(args[0]);

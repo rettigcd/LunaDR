@@ -19,6 +19,7 @@ public sealed class WindowsCssDrive : ICssDrive {
 	private const uint IoctlDvdReadKey = 0x00335004;        // 0x401
 	private const uint IoctlDvdSendKey = 0x00335008;        // 0x402
 	private const uint IoctlDvdEndSession = 0x0033500C;     // 0x403
+	private const uint IoctlDvdReadStructure = 0x00335140;  // 0x450
 
 	private const int HeaderLength = 24;
 
@@ -37,6 +38,20 @@ public sealed class WindowsCssDrive : ICssDrive {
 		var buffer = new byte[4];
 		Ioctl(IoctlDvdStartSession, buffer, buffer, "start an authentication session");
 		return BitConverter.ToInt32(buffer);
+	}
+
+	/// <summary>
+	/// The disc's copy protection type from its copyright descriptor (IOCTL_DVD_READ_STRUCTURE, format DvdCopyrightDescriptor):
+	/// 0 = none, 1 = CSS/CPPM, 2 = CPRM. libdvdcss reads the same byte to decide whether a disc is scrambled.
+	/// Input DVD_READ_STRUCTURE: BlockByteOffset (8), Format (4), SessionId (4), LayerNumber (1), padded to 24 bytes.
+	/// Output: a 4-byte header, then CopyrightProtectionType, RegionManagementInformation, 2 reserved bytes.
+	/// </summary>
+	public int ReadCopyrightProtectionType() {
+		var input = new byte[24];
+		BitConverter.TryWriteBytes(input.AsSpan(8), 1);   // DvdCopyrightDescriptor
+		var output = new byte[8];
+		Ioctl(IoctlDvdReadStructure, input, output, "read the disc's copyright descriptor");
+		return output[4];
 	}
 
 	public void EndSession(int agid) => Ioctl(IoctlDvdEndSession, BitConverter.GetBytes(agid), [], "end the authentication session");
@@ -84,6 +99,23 @@ public sealed class WindowsCssDrive : ICssDrive {
 
 /// <summary>Unlocks a DVD drive for reading scrambled sectors, where the operating system needs it.</summary>
 public static class DriveUnlocker {
+	/// <summary>
+	/// Whether the disc in the drive holding <paramref name="videoTsFolder"/> says it is CSS-protected (its copyright descriptor);
+	/// null when that can't be asked (not an optical drive, not Windows, or the drive refuses), e.g. for a VIDEO_TS folder on a hard disk.
+	/// </summary>
+	public static bool? IsCssProtected(string videoTsFolder) {
+		if (!OperatingSystem.IsWindows()) return null;
+		string? root = Path.GetPathRoot(Path.GetFullPath(videoTsFolder));
+		if (root is null || root.Length < 2 || root[1] != ':') return null;
+		try {
+			if (new DriveInfo(root).DriveType != DriveType.CDRom) return null;
+			using var drive = new WindowsCssDrive(root[..1]);
+			return drive.ReadCopyrightProtectionType() != 0;
+		} catch (IOException) {
+			return null;
+		}
+	}
+
 	/// <summary>
 	/// If <paramref name="videoTsFolder"/> is on an optical drive (Windows), run the CSS handshake.
 	/// Returns null on success or when not needed, else a message describing why it failed (reading may still work).

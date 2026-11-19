@@ -98,6 +98,21 @@ public class SectorReaderTests {
 	}
 
 	[Fact]
+	public void KeySearch_DiscSaysUnprotected_ReadsNothing() {
+		// Regression (Gypsy, B2): on an unprotected disc the key search read up to 400,000 sectors (800 MB) before giving up,
+		// minutes with "finding the title key" and no progress. When the disc's copyright descriptor says "no CSS", nothing may be read.
+		var disc = new FakeSectorSource(400_000) { FailWith = new IOException("no read expected") };
+		Assert.Null(TitleSectorReader.FindKey(disc, discProtected: false));
+	}
+
+	[Fact]
+	public void KeySearch_Unknown_ScansAndFindsNoKeyOnUnscrambledSectors() {
+		// A folder on a hard disk can't be asked; then the sectors are scanned (fast from a disk) and an unscrambled title gives no key.
+		var disc = new FakeSectorSource(2_000);
+		Assert.Null(TitleSectorReader.FindKey(disc, discProtected: null));
+	}
+
+	[Fact]
 	public void BadSectorInAnInterleavedCell_SkipsTheRestOfThatVobuOnly() {
 		var disc = InterleavedDisc();
 		disc.Bad.Add(4);

@@ -34,7 +34,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 	Cells can be selected in the cell map (click, Ctrl+click, Shift+click) and ripped into one file ("Rip selected cells"); during a rip the cell map shows progress (green strip above the cells, green blocks on the ripped title's row).
 	Output identical to the CLI's (Butterfly Effect titles 3 and 6; Beauty and the Beast cells 32,45 = title 5). Test mode `--screenshot file.png [--drive E] [--rip 3,6 | --cells 32,45] [--to folder] [--midshot file.png]`.
 	Screenshot: [gui-phase3-butterfly-effect.png](gui-phase3-butterfly-effect.png).
-- Probe `src/DvdProbe`: `drives`, `files`, `titles [-v]`, `scramble`, `crack` (old), `key`, `duration`, `bench`, `demux`, `mkvinfo [-dumptrack]`, `rip [-cells N] [-bad sectors]`, `cellmap`, `navwalk`, `canceltest`, `mkvcompare`.
+- Probe `src/DvdProbe`: `drives`, `files`, `titles [-v]`, `scramble`, `crack` (old), `key`, `duration`, `bench`, `demux`, `mkvinfo [-dumptrack]`, `rip [-cells N] [-bad sectors]`, `cellmap`, `navwalk`, `copyright`, `canceltest`, `mkvcompare`.
 - **Unit tests** `tests/RipDvd.Core.Tests` (xUnit, `dotnet test RipDvd.slnx`, 55 tests, < 1 s, no disc needed): regression tests for every bug in the log that a test could catch
 	(LPCM pointer, palette, duration, caption and pulldown timing, references, clusters, empty tracks, DTS channels, interleaved angles, angle chapters, audio gaps, read errors, sizes),
 	plus cell selection, naming, languages, duplicates/compilations, nav packs and the MKV writer.
@@ -76,6 +76,8 @@ This file describes the present state only; the history is in [log.md](log.md).
 	NN and the CLI's title arguments are the disc's own title numbers (as a DVD player numbers them), not MakeMKV's renumbered ids.
 - CSS: recover title keys from the scrambled data (libdvdcss "AttackPattern"), accepting the first key that descrambles to valid MPEG.
 	Before reading, run the CSS drive handshake (needed on a freshly inserted disc); on unprotected discs the drive rejects it, which is only reported if reading then fails.
+	First ask the disc's copyright descriptor whether it uses CSS at all (as libdvdcss does); if not, skip the handshake and the key search (which read up to 800 MB first).
+	When it can't be asked (a VIDEO_TS folder on a hard disk), the key search runs as before.
 - CSS code is ported from libdvdcss rather than linked: readable, no native DLL. libdvdcss could be an optional fallback if a disc defeats the port.
 - License: GPL v2 or later because of the libdvdcss port; the full text is in `LICENSE` at the repo root. GPL-derived files: `src/RipDvd.Core/Css/Css.cs`, `Css/CssTables.cs`, `Css/CssAuthentication.cs`; each starts with a "LICENSE NOTE" block listing all of them.
 	Any further GPL-derived file gets the same note and goes on this list.

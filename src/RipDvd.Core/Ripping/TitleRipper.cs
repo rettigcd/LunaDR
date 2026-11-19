@@ -152,13 +152,16 @@ public sealed class TitleRipper {
 		// First report before touching the drive: opening the VOBs can take seconds while the disc spins up.
 		Report(RipPhase.Unlocking);
 		using var vobs = VobReader.ForTitleSet(_videoTs, _titleSet);
+		// Ask the disc whether it is CSS-protected (its copyright descriptor, as libdvdcss does). If it says no, there is nothing to unlock
+		// and no key to search for: the search would otherwise read up to 800 MB first (Gypsy: minutes with no progress shown).
+		bool? discProtected = DriveUnlocker.IsCssProtected(_videoTs);
 		// A drive only returns scrambled sectors after the CSS handshake (unless something, e.g. MakeMKV, already did it).
 		// Unprotected discs make the drive reject the handshake ("Incorrect function"), so a failure only matters if reading then fails.
-		string? unlockError = DriveUnlocker.TryUnlock(_videoTs);
+		string? unlockError = discProtected == false ? null : DriveUnlocker.TryUnlock(_videoTs);
 		Report(RipPhase.FindingKey);
 		CssKey? key;
 		try {
-			key = TitleSectorReader.FindKey(vobs, cancel: cancel);
+			key = TitleSectorReader.FindKey(vobs, discProtected, cancel: cancel);
 		} catch (IOException ex) when (unlockError is not null) {
 			throw new IOException($"{ex.Message} (drive authentication failed: {unlockError})", ex);
 		}

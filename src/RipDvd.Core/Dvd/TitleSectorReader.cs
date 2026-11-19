@@ -225,7 +225,12 @@ public sealed class TitleSectorReader {
 	/// Find the title key by scanning the title set's VOBs from the start until a candidate is
 	/// validated. Returns null if the VOBs contain no scrambled sectors (not CSS protected).
 	/// </summary>
-	public static CssKey? FindKey(ISectorSource reader, int maxSectors = 400_000, CancellationToken cancel = default) {
+	/// <param name="discProtected">
+	/// What the disc's copyright descriptor says (null = unknown, e.g. a folder on a hard disk).
+	/// False: the disc is not CSS-protected, so no sector is read and null is returned at once.
+	/// </param>
+	public static CssKey? FindKey(ISectorSource reader, bool? discProtected = null, int maxSectors = 400_000, CancellationToken cancel = default) {
+		if (discProtected == false) return null;
 		var finder = new TitleKeyFinder();
 		var buffer = new byte[64 * VobReader.SectorSize];
 		long limit = Math.Min(reader.SectorCount, maxSectors);
