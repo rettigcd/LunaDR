@@ -126,9 +126,8 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 Test disc: The Goonies (AACS 1, no bus encryption; VC-1, AC3, TrueHD, PGS). The drive (HL-DT-ST BP50NB40) works; MakeMKV failed only because its Blu-ray support is shareware.
 No MakeMKV rips to compare with, so the bar is the owner's: the file plays (ffmpeg decodes it), with the playlist's length, chapters and tracks.
 
-**BR7 – Check the whole movie** (in progress at the time of writing; see the log)
-1. Full rip of The Goonies playlist 00000 (25.6 GB): ffmpeg decodes every stream with no errors; duration 1:53:55; 37 chapters; audio in sync at the end.
-2. *Owner:* play the file (e.g. in Plex/VLC): picture, each audio track (TrueHD needs a player that supports it), subtitles.
+**BR7 – Check the whole movie** (the full rip decodes cleanly, 1:53:55, 37 chapters, audio in sync to the end; log 2026-11-19)
+1. *Owner:* play the file (e.g. in Plex/VLC): picture, each audio track (TrueHD needs a player that supports it), subtitles.
 
 **BR8 – Formats not on the test disc** (unit-tested, and ripped from a stream made by ffmpeg with probe `bdclip`: H.264, E-AC3, DTS core, LPCM decode cleanly with the source's times; never seen on a real disc)
 1. *Owner:* a Blu-ray with H.264 video and DTS-HD MA audio (most Blu-ray movies), ideally also one with LPCM or E-AC3; a home-burned BD-R would test an unencrypted disc.

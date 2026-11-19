@@ -574,3 +574,6 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	**Bug fixed:** the LPCM track's header said the channel count guessed from the playlist (6) while the samples were stereo; channels, rate and bit depth are now taken from the first LPCM packet before the header is written.
 	**Known, left as is:** the last DTS frame of a title (10.7 ms) is dropped, because the framer waits for an extension substream that may follow it.
 	Not covered by this test: DTS-HD extensions (ffmpeg writes core only), E-AC3 dependent substreams, TrueHD from another encoder.
+
+## 2026-11-19 08:16
+- **BR7.1 done: the whole movie.** The Goonies playlist 00000 ripped with probe `bdrip` in 19 min 50 s (25.6 GB read, about 21 MB/s): 23.0 GB file, 1:53:55.36, no warnings. ffmpeg decodes the video and all 7 audio tracks with no message at all; every audio track ends at 6,835.33 s (the title is 6,835.36 s), so the sound stays in sync to the end; 37 chapters. The file is in the session scratchpad for the owner to play (BR7.2).
