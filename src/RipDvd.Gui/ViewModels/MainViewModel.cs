@@ -70,7 +70,7 @@ public sealed class MainViewModel : ViewModelBase {
 				System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", $"\"{folder}\"") { UseShellExecute = true });
 		}, () => !IsRipping && _lastOutputFolder is not null);
 		RipCellsCommand = new RelayCommand(() => _ = RipSelectedCellsAsync(),
-			() => !IsScanning && !IsRipping && CellMap is { } map && CellSelection.Validate(map, SelectedCells) is null && !string.IsNullOrWhiteSpace(OutputFolder));
+			() => !IsScanning && !IsRipping && CellMap is { Bluray: false } map && CellSelection.Validate(map, SelectedCells) is null && !string.IsNullOrWhiteSpace(OutputFolder));
 		ClearCellsCommand = new RelayCommand(() => SelectedCells = [], () => !IsRipping && SelectedCells.Count > 0);
 		RefreshDrives();
 	}
@@ -98,6 +98,12 @@ public sealed class MainViewModel : ViewModelBase {
 	public string SelectedCellsText {
 		get {
 			if (CellMap is not { } map) return "";
+			if (map.Bluray) {
+				if (SelectedCells.Count == 0) return "Clip segments (Blu-ray): click a playlist to see which playlists share its video; hover for details.";
+				var total = TimeSpan.FromTicks(SelectedCells.Where(n => n >= 1 && n <= map.Cells.Count).Sum(n => map.Cells[n - 1].DurationNs) / 100);
+				return $"{(SelectedCells.Count == 1 ? "Segment" : "Segments")} {CellSelection.Format(SelectedCells)}: " +
+					   $"{(int)total.TotalHours}:{total.Minutes:00}:{total.Seconds:00}. Ripping chosen segments works on DVDs only, for now.";
+			}
 			if (SelectedCells.Count == 0) return "Select cells to rip them on their own: click a cell, Ctrl+click to add, Shift+click for a range.";
 			if (CellSelection.Validate(map, SelectedCells) is { } error) return error;
 			var length = TimeSpan.FromTicks(CellSelection.DurationNs(map, SelectedCells) / 100);
@@ -343,7 +349,7 @@ public sealed class MainViewModel : ViewModelBase {
 	}
 
 	/// <summary>
-	/// Blu-ray (BR6): the playlists fill the title list (numbered by playlist; there is no cell map).
+	/// Blu-ray (BR6): the playlists fill the title list (numbered by playlist), and the map shows which playlists play which clip segments.
 	/// Checked at first: long enough and not a repeat of an earlier playlist.
 	/// </summary>
 	private async Task ScanBlurayAsync(DriveItem drive, string root) {
@@ -353,6 +359,7 @@ public sealed class MainViewModel : ViewModelBase {
 		_bluray = true;
 		Raise(nameof(FileNameSuffix));
 		Raise(nameof(IsBluray));
+		CellMap = disc.Segments;
 		DiscName = OutputNaming.DiscName(disc.VolumeName);
 		FileName = DiscName;
 		foreach (var t in disc.Titles.OrderByDescending(t => t.DurationNs)) {
@@ -484,6 +491,17 @@ public sealed class MainViewModel : ViewModelBase {
 		if (!cancelled && PlaySoundWhenDone) NotificationSound.Play();
 	}
 
+	/// <summary>Which segment (position in <paramref name="segments"/>, 1-based cell numbers) a fraction of the playlist falls in, and how far into it.</summary>
+	internal static (int Position, double Fraction) SegmentPosition(CellMap map, IReadOnlyList<int> segments, double fraction) {
+		var lengths = segments.Select(n => (double)map.Cells[n - 1].DurationNs).ToList();
+		double target = Math.Clamp(fraction, 0, 1) * lengths.Sum(), done = 0;
+		for (int i = 0; i < lengths.Count; i++) {
+			if (target < done + lengths[i]) return (i, lengths[i] > 0 ? (target - done) / lengths[i] : 0);
+			done += lengths[i];
+		}
+		return (lengths.Count, 0);
+	}
+
 	private void OnRipProgress(RipJobProgress p) {
 		string Time(TimeSpan? t) => t is { } r ? $"{(int)r.TotalHours}:{r.Minutes:00}:{r.Seconds:00} left" : "estimating time…";
 		string state = p.Title.Phase switch {
@@ -498,12 +516,18 @@ public sealed class MainViewModel : ViewModelBase {
 		if (p.Index != _ripIndex) {
 			// A new item: show its playlist in the cell map (a title's cells from the map, or the chosen cells).
 			_ripIndex = p.Index;
-			RipTitle = p.Item.Cells is null ? p.Item.TitleNumber : null;
+			int number = p.Item.Playlist ?? p.Item.TitleNumber;
+			RipTitle = p.Item.Cells is null ? number : null;
 			RipCells = p.Item.Cells?.ToList()
-					   ?? CellMap?.Titles.FirstOrDefault(t => t.TitleNumber == p.Item.TitleNumber)?.Cells.Select(c => c + 1).ToList();
+					   ?? CellMap?.Titles.FirstOrDefault(t => t.TitleNumber == number)?.Cells.Select(c => c + 1).ToList();
 		}
-		RipPosition = p.Title.CellPosition;
-		RipCellFraction = p.Title.CellFraction;
+		if (CellMap is { Bluray: true } map && RipCells is { Count: > 0 } segments) {
+			// The Blu-ray ripper reports progress by play item, not by segment: place the share read so far on the segments by their lengths.
+			(RipPosition, RipCellFraction) = SegmentPosition(map, segments, p.TitleFraction);
+		} else {
+			RipPosition = p.Title.CellPosition;
+			RipCellFraction = p.Title.CellFraction;
+		}
 		OverallProgress = p.OverallFraction;
 		OverallProgressText = $"All titles ({p.Index + 1} of {p.Count}): {p.OverallFraction:P0}   ·   {Time(p.OverallRemaining)}";
 	}

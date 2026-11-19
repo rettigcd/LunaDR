@@ -2,9 +2,23 @@ using RipDvd.Core.Ifo;
 
 namespace RipDvd.Core.Ripping;
 
-/// <summary>One physical cell of a title set: a run of sectors in that set's VOBs.</summary>
+/// <summary>
+/// One physical cell of a title set: a run of sectors in that set's VOBs.
+/// On a Blu-ray (<see cref="Bluray.BdSegmentMap"/>) it is a segment of a clip instead: <see cref="Clip"/> from <see cref="ClipIn"/> to
+/// <see cref="ClipOut"/>; TitleSet is then the clip number, CellId the segment's number within the clip, and the sectors are 0.
+/// </summary>
 public sealed record CellInfo(int TitleSet, int VobId, int CellId, uint FirstSector, uint LastSector, long DurationNs) {
-	public string Label => $"{TitleSet}:{VobId}/{CellId}";
+	/// <summary>Blu-ray: the clip (e.g. "00113") this segment is part of; null on a DVD.</summary>
+	public string? Clip { get; init; }
+
+	/// <summary>Blu-ray: start and end of the segment on the clip's timeline (45 kHz ticks).</summary>
+	public uint ClipIn { get; init; }
+	public uint ClipOut { get; init; }
+
+	public string Label => Clip is null ? $"{TitleSet}:{VobId}/{CellId}" : $"{Clip}/{CellId}";
+
+	/// <summary>The group the cell is drawn in: its title set (DVD) or clip (Blu-ray).</summary>
+	public string Group => Clip ?? TitleSet.ToString();
 }
 
 /// <summary>A title's playlist: indexes into <see cref="CellMap.Cells"/> in playback order, and which playlist positions start a chapter.</summary>
@@ -17,6 +31,9 @@ public sealed record TitlePlaylist(int TitleNumber, IReadOnlyList<int> Cells, IR
 public sealed class CellMap {
 	public required IReadOnlyList<CellInfo> Cells { get; init; }
 	public required IReadOnlyList<TitlePlaylist> Titles { get; init; }
+
+	/// <summary>A Blu-ray's segment map: titles are playlists and cells are clip segments (see <see cref="Bluray.BdSegmentMap"/>).</summary>
+	public bool Bluray { get; init; }
 
 	/// <summary>Cells shorter than this (e.g. the 0.5 s end cells many titles share) are ignored when comparing titles.</summary>
 	public const long SignificantCellNs = 2_000_000_000;

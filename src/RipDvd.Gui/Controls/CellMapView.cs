@@ -89,7 +89,7 @@ public sealed class CellMapView : FrameworkElement {
 	// Layout computed from the map: x of each cell column, users per cell, title-set groups.
 	private double[] _cellX = [];
 	private int[] _usersPerCell = [];
-	private List<(int TitleSet, double X)> _setStarts = [];
+	private List<(string Group, double X)> _setStarts = [];
 	private double _width;
 	private int _hoverRow = -1, _hoverCell = -1;
 
@@ -110,11 +110,11 @@ public sealed class CellMapView : FrameworkElement {
 		}
 		_cellX = new double[map.Cells.Count];
 		double x = LabelWidth;
-		int lastSet = -1;
+		string? lastSet = null;
 		for (int i = 0; i < map.Cells.Count; i++) {
-			if (map.Cells[i].TitleSet != lastSet) {
-				if (lastSet != -1) x += SetGap;
-				lastSet = map.Cells[i].TitleSet;
+			if (map.Cells[i].Group != lastSet) {
+				if (lastSet is not null) x += SetGap;
+				lastSet = map.Cells[i].Group;
 				_setStarts.Add((lastSet, x));
 			}
 			_cellX[i] = x;
@@ -135,8 +135,12 @@ public sealed class CellMapView : FrameworkElement {
 		double dpi = VisualTreeHelper.GetDpi(this).PixelsPerDip;
 		dc.DrawRectangle(Brushes.Transparent, null, new Rect(0, 0, ActualWidth, ActualHeight));   // so the whole area takes mouse input
 
-		// Title-set numbers above their groups.
-		foreach (var (set, x) in _setStarts) DrawText(dc, $"{set}", x, 1, 10, dpi, 0.7);
+		// Title-set numbers (DVD) or clip names (Blu-ray) above their groups, where there is room (a one-segment clip is too narrow for its name).
+		for (int s = 0; s < _setStarts.Count; s++) {
+			var (group, x) = _setStarts[s];
+			double room = (s + 1 < _setStarts.Count ? _setStarts[s + 1].X : _width) - x;
+			if (TextWidth(group, 10, dpi) <= room - 2) DrawText(dc, group, x, 1, 10, dpi, 0.7);
+		}
 
 		var selected = map.Titles.FirstOrDefault(t => t.TitleNumber == SelectedTitle);
 		var selectedCells = selected?.Cells.ToHashSet() ?? [];
@@ -190,10 +194,14 @@ public sealed class CellMapView : FrameworkElement {
 		}
 	}
 
+	private FormattedText Text(string text, double size, double dpi, bool bold = false) => new(text, CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
+		new Typeface(new FontFamily("Segoe UI"), FontStyles.Normal, bold ? FontWeights.Bold : FontWeights.Normal, FontStretches.Normal),
+		size, Foreground, dpi);
+
+	private double TextWidth(string text, double size, double dpi) => Text(text, size, dpi).Width;
+
 	private void DrawText(DrawingContext dc, string text, double x, double y, double size, double dpi, double opacity, bool bold = false) {
-		var ft = new FormattedText(text, CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
-			new Typeface(new FontFamily("Segoe UI"), FontStyles.Normal, bold ? FontWeights.Bold : FontWeights.Normal, FontStretches.Normal),
-			size, Foreground, dpi);
+		var ft = Text(text, size, dpi, bold);
 		dc.PushOpacity(opacity);
 		dc.DrawText(ft, new Point(x, y));
 		dc.Pop();
@@ -224,6 +232,10 @@ public sealed class CellMapView : FrameworkElement {
 			return;
 		}
 		var title = map.Titles[row];
+		if (map.Bluray) {
+			HoverText = BlurayHoverText(map, title, cell);
+			return;
+		}
 		if (cell < 0) {
 			HoverText = $"Title {title.TitleNumber}: {title.Cells.Count} cells, {title.ChapterStarts.Count} chapters";
 			return;
@@ -238,6 +250,25 @@ public sealed class CellMapView : FrameworkElement {
 		string length = TimeSpan.FromTicks(info.DurationNs / 100).ToString(@"m\:ss\.f");
 		HoverText = $"Cell {cell + 1} (title set {info.TitleSet}, VOB {info.VobId}, cell {info.CellId}): sectors {info.FirstSector:N0}–{info.LastSector:N0}, " +
 					$"length {length}; used by title{(users.Count == 1 ? "" : "s")} {string.Join(", ", users)}; {inTitle}.";
+	}
+
+	/// <summary>Hover text on a Blu-ray map: rows are playlists, cells are clip segments.</summary>
+	private static string BlurayHoverText(CellMap map, TitlePlaylist playlist, int cell) {
+		static string Clock(long ns) => TimeSpan.FromTicks(ns / 100).ToString(ns >= 3_600_000_000_000 ? @"h\:mm\:ss" : @"m\:ss");
+		if (cell < 0) {
+			int clips = playlist.Cells.Select(c => map.Cells[c].Clip).Distinct().Count();
+			return $"Playlist {playlist.TitleNumber:00000}: {playlist.Cells.Count} segments of {clips} clip{(clips == 1 ? "" : "s")}, {playlist.ChapterStarts.Count} chapters";
+		}
+		var info = map.Cells[cell];
+		var positions = playlist.Cells.Select((c, i) => (c, i)).Where(x => x.c == cell).Select(x => x.i).ToList();
+		string inPlaylist = positions.Count == 0
+			? $"not played by playlist {playlist.TitleNumber:00000}"
+			: $"playlist {playlist.TitleNumber:00000} plays it as segment {string.Join(", ", positions.Select(i => i + 1))}" +
+			  (positions.Any(playlist.ChapterStarts.Contains) ? " (a chapter starts here)" : "");
+		var users = map.TitlesUsing(cell).Select(n => $"{n:00000}").ToList();
+		long start = info.ClipIn * 1_000_000_000L / 45_000, end = info.ClipOut * 1_000_000_000L / 45_000;
+		return $"Segment {cell + 1} (clip {info.Clip}, part {info.CellId}): {Clock(start)}–{Clock(end)} on the clip's timeline, length {Clock(info.DurationNs)}; " +
+			   $"used by playlist{(users.Count == 1 ? "" : "s")} {string.Join(", ", users)}; {inPlaylist}.";
 	}
 
 	protected override void OnMouseLeave(MouseEventArgs e) {

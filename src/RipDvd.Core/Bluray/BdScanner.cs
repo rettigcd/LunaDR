@@ -17,7 +17,10 @@ public sealed record BdTitle(
 	public int? DuplicateOf { get; init; }
 }
 
-public sealed record BdDiscSummary(string Root, string VolumeName, IReadOnlyList<BdTitle> Titles);
+public sealed record BdDiscSummary(string Root, string VolumeName, IReadOnlyList<BdTitle> Titles) {
+	/// <summary>Which playlists play which parts of which clips (the Blu-ray version of the DVD cell map); rows longest playlist first.</summary>
+	public CellMap? Segments { get; init; }
+}
 
 /// <summary>Reads a Blu-ray disc's playlists into a title list (plan step BR2).</summary>
 public static class BdScanner {
@@ -70,6 +73,7 @@ public static class BdScanner {
 
 		var titles = new List<BdTitle>();
 		var seen = new Dictionary<string, int>();
+		var playlists = new List<(int, Mpls)>();
 		foreach (var file in Directory.GetFiles(Path.Combine(root, "BDMV", "PLAYLIST"), "*.mpls").Order(StringComparer.OrdinalIgnoreCase)) {
 			string name = Path.GetFileNameWithoutExtension(file);
 			if (!int.TryParse(name, out int number)) continue;
@@ -85,8 +89,10 @@ public static class BdScanner {
 			if (seen.TryGetValue(key, out int first)) title = title with { DuplicateOf = first };
 			else seen[key] = number;
 			titles.Add(title);
+			playlists.Add((number, mpls));
 		}
-		return new BdDiscSummary(root, VolumeName(root), titles);
+		var longestFirst = playlists.Zip(titles).OrderByDescending(p => p.Second.DurationNs).Select(p => p.First);
+		return new BdDiscSummary(root, VolumeName(root), titles) { Segments = BdSegmentMap.Build(longestFirst) };
 	}
 
 	private static BdTitle Describe(int number, Mpls mpls, Func<string, (long Bytes, long Ticks)> clip) {

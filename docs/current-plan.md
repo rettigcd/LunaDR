@@ -34,8 +34,9 @@ This file describes the present state only; the history is in [log.md](log.md).
 	Cells can be selected in the cell map (click, Ctrl+click, Shift+click) and ripped into one file ("Rip selected cells"); during a rip the cell map shows progress (green strip above the cells, green blocks on the ripped title's row).
 	Output identical to the CLI's (Butterfly Effect titles 3 and 6; Beauty and the Beast cells 32,45 = title 5). Test mode `--screenshot file.png [--drive E] [--rip 3,6 | --cells 32,45] [--to folder] [--midshot file.png]`.
 	Screenshot: [gui-phase3-butterfly-effect.png](gui-phase3-butterfly-effect.png).
+	For a Blu-ray the map shows playlists against clip segments ([gui-bluray-segments.png](gui-bluray-segments.png)); "Rip selected cells" is DVD-only for now.
 - Probe `src/DvdProbe`: `drives`, `files`, `titles [-v]`, `scramble`, `crack` (old), `key`, `duration`, `bench`, `demux`, `mkvinfo [-dumptrack]`, `rip [-cells N] [-bad sectors]`, `cellmap`, `navwalk`, `copyright`, `canceltest`, `mkvcompare`.
-- **Unit tests** `tests/RipDvd.Core.Tests` (xUnit, `dotnet test RipDvd.slnx`, 85 tests, < 1 s, no disc needed): regression tests for every bug in the log that a test could catch
+- **Unit tests** `tests/RipDvd.Core.Tests` (xUnit, `dotnet test RipDvd.slnx`, 87 tests, < 1 s, no disc needed): regression tests for every bug in the log that a test could catch
 	(LPCM pointer, palette, duration, caption and pulldown timing, references, clusters, empty tracks, DTS channels, interleaved angles, angle chapters, audio gaps, read errors, sizes),
 	plus cell selection, naming, languages, duplicates/compilations, nav packs and the MKV writer.
 	Tests on real IFO files read git-ignored `reference/ifo/<disc>/` (now: Beauty and the Beast) and are skipped without it.
@@ -110,6 +111,9 @@ This file describes the present state only; the history is in [log.md](log.md).
 	Initially checked: titles ≥ 120 s that are neither duplicates nor compilations (proposed default; the owner may change it).
 	No track options in the first version: all tracks are kept, as with the CLI default. Exception: the Blu-ray "AC3 copy of TrueHD" checkbox.
 - Cell map: every cell drawn the same narrow width (owner); a cell's length and details are shown on hover.
+	Blu-ray (owner asked for the same table): `BdSegmentMap` cuts each clip wherever a playlist's play item starts or ends or a chapter starts;
+	the pieces ("segments") are the map's cells, grouped by clip; rows are playlists, longest first like the title list.
+	Rip progress is placed on the segments by the share of the playlist read (the Blu-ray ripper reports by play item).
 	Clicking a cell selects it (Ctrl+click adds/removes, Shift+click selects a range; click order = playback order); selected columns get a green band; "Rip selected cells" rips them.
 	During a rip: a strip above the cells fills green cell by cell (current cell partly), and the ripped title's blocks turn green.
 - Completion sound: the Windows default notification sound, for now (owner).

@@ -595,3 +595,14 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 ## 2026-11-19 18:30
 - **GUI: compact title rows** (owner: rows were taller than needed, with empty space under the text). The Fluent theme's minimum heights for the row and the checkbox are set to 0,
 	and cell contents are centered vertically: rows are about 25 px instead of 33, so 12 titles fit where 9 did (screenshot with The Goonies).
+
+## 2026-11-19 19:05
+- **Blu-ray segment map in the GUI** (owner: a table like the DVD cell map for Blu-rays). A Blu-ray has no cells: a play item is a clip with an in and out time,
+	and playlists can use different parts of one clip. New `Bluray/BdSegmentMap` cuts each clip at every play item start and end and every chapter start;
+	each piece is a "segment" and becomes a cell of the existing `CellMap` (new `CellInfo.Clip`/`ClipIn`/`ClipOut`, `CellMap.Bluray`), so `CellMapView` draws it unchanged,
+	grouped by clip (a clip's name is shown where there is room), with Blu-ray hover texts. `BdScanner.Scan` returns it as `Segments`, rows longest first like the title list.
+	`Mpls.EntryMarks()` now holds the chapter-mark rule shared by `ChapterStartsNs` and the map.
+	"Rip selected cells" stays DVD-only (disabled for Blu-rays; the hint says so). During a rip the playlist's segments fill by the share read, since the Blu-ray ripper reports by play item.
+	The Goonies: the movie's two versions are two clips (00113 for playlists 0/26/31, 00112 for 8/16/30), each cut into 37-38 chapter segments; extras are small clips of their own.
+	Tests: a synthetic map (partial clip use, chapter cuts, an unplayed gap left out) and The Goonies (duplicates share segments, 37 chapter starts, total length = playlist length).
+	Screenshot: docs/gui-bluray-segments.png.

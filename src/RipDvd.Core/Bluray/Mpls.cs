@@ -96,16 +96,25 @@ public sealed class Mpls {
 	/// Chapter start times (ns) on the playlist's timeline, from the entry marks; marks at the same time count once and a mark at the very end is dropped.
 	/// </summary>
 	public List<long> ChapterStartsNs() {
-		var starts = ItemStartsNs();
 		var result = new List<long>();
+		foreach (var (_, _, t) in EntryMarks())
+			if (result.Count == 0 || t > result[^1]) result.Add(t);
+		if (result.Count == 0 || result[0] != 0) result.Insert(0, 0);
+		return result;
+	}
+
+	/// <summary>
+	/// The entry marks that count as chapters: the play item, the time on its clip (45 kHz) and the time on the playlist (ns).
+	/// Marks before their item's in time, or within 1 s of the playlist's end, are left out.
+	/// </summary>
+	public IEnumerable<(int Item, uint ClipTime, long StartNs)> EntryMarks() {
+		var starts = ItemStartsNs();
 		foreach (var m in Marks.Where(m => m.Type == 1 && m.PlayItem < Items.Count)) {
 			var item = Items[m.PlayItem];
 			long t = starts[m.PlayItem] + ((long)m.Time - item.InTime) * 1_000_000_000 / 45_000;
 			if (t < 0 || t >= DurationNs - 1_000_000_000) continue;
-			if (result.Count == 0 || t > result[^1]) result.Add(t);
+			yield return (m.PlayItem, m.Time, t);
 		}
-		if (result.Count == 0 || result[0] != 0) result.Insert(0, 0);
-		return result;
 	}
 
 	public static Mpls Parse(byte[] b, string name) {
