@@ -118,7 +118,6 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 ## Next steps
 What is left needs the owner's hands or is a small follow-up from the Beauty and the Beast disc.
 
-
 **B1 – Chapter times after angle blocks** (Beauty and the Beast title 16: 10 of 23 chapter starts differ from MakeMKV's by 17–100 ms)
 1. MakeMKV seems to time chapters from the stream (where each cell actually starts on the title timeline), we from the IFO cell playback times.
 	Check that idea, and if it holds, write the chapters from the stream timeline (they are written in the header before the clusters, so this needs reserved space or a rewrite at the end).
