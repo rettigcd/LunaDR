@@ -238,8 +238,8 @@ public sealed class TitleRipper {
 			void WarnSkipped(long sectors, string where) {
 				reportedSkipped += sectors;
 				double seconds = total == 0 ? 0 : sectors * (playNs / 1e9) / total;
-				warnings.Add($"Read error (damaged disc?): {sectors:N0} unreadable sector(s) skipped {where}, about {Math.Max(seconds, 0.1):F1} s; " +
-							 "the picture and sound may jump there.");
+				warnings.Add($"Damaged or empty spot on the disc: {sectors:N0} sector(s) that could not be read or held no video data skipped {where}, " +
+							 $"about {Math.Max(seconds, 0.1):F1} s; the picture and sound may jump there.");
 			}
 
 			foreach (var sector in reader.ReadAll()) {

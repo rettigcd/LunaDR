@@ -200,6 +200,32 @@ public static class Commands {
 	[ProbeCommand("mkvcompare", "Compare two MKV files track by track (frames, bytes, SHA-256 of payloads, times, chapters). Args: <a.mkv> <b.mkv>")]
 	public static int MkvCompareCommand(string[] args) => MkvCompare.Run(args[0], args[1]);
 
+	[ProbeCommand("checkpacks", "Find sectors that don't start with an MPEG-2 pack header (00 00 01 BA) and show their first bytes. Args: <drive> <vts> <from> <to> [max]")]
+	public static int CheckPacks(string[] args) {
+		string videoTs = IfoProbe.ResolveVideoTs(args[0]);
+		int vts = int.Parse(args[1]);
+		long from = long.Parse(args[2]), to = long.Parse(args[3]);
+		int max = args.Length > 4 ? int.Parse(args[4]) : 20;
+		using var reader = RipDvd.Core.Dvd.VobReader.ForTitleSet(videoTs, vts);
+		const int chunk = 512;
+		var buffer = new byte[chunk * RipDvd.Core.Dvd.VobReader.SectorSize];
+		int found = 0;
+		var sw = System.Diagnostics.Stopwatch.StartNew();
+		for (long s = from; s <= to && found < max; s += chunk) {
+			int n = (int)Math.Min(chunk, to - s + 1);
+			reader.Read(s, n, buffer);
+			for (int i = 0; i < n && found < max; i++) {
+				var sector = buffer.AsSpan(i * RipDvd.Core.Dvd.VobReader.SectorSize, RipDvd.Core.Dvd.VobReader.SectorSize);
+				if (sector[0] == 0 && sector[1] == 0 && sector[2] == 1 && sector[3] == 0xBA) continue;
+				bool allZero = !sector.ContainsAnyExcept((byte)0);
+				Console.WriteLine($"  sector {s + i}: {(allZero ? "all zero" : Convert.ToHexString(sector[..24]))}");
+				found++;
+			}
+		}
+		Console.WriteLine($"{found} sector(s) found in {sw.Elapsed.TotalSeconds:F0} s");
+		return 0;
+	}
+
 	[ProbeCommand("copyright", "Ask the drive whether the disc is copy-protected (copyright descriptor: 0 none, 1 CSS/CPPM, 2 CPRM). Args: <drive>")]
 	public static int Copyright(string[] args) {
 		string videoTs = IfoProbe.ResolveVideoTs(args.Length > 0 ? args[0] : "E:");

@@ -98,6 +98,21 @@ public class SectorReaderTests {
 	}
 
 	[Fact]
+	public void SectorsWithoutMpegData_AreDroppedAndCounted() {
+		// Regression (Gypsy vol. 1): runs of all-zero sectors in mid-title stopped the rip with "Sector does not start with an MPEG-2 pack header";
+		// MakeMKV rips the title. Each pack stands alone, so those sectors are dropped, counted as skipped, and the next pack is used.
+		var disc = PlainDisc();
+		disc.Set(5, new byte[TestData.SectorSize]);
+		disc.Set(6, new byte[TestData.SectorSize]);
+		var reader = new TitleSectorReader(disc, [Plain], key: null);
+		var sectors = reader.ReadAll(sectorsPerRead: 8).Select(s => (s.SectorNumber, s.SkippedBefore)).ToList();
+		Assert.Equal(28, sectors.Count);
+		Assert.DoesNotContain(sectors, s => s.SectorNumber is 5 or 6);
+		Assert.Equal(2, sectors.Single(s => s.SectorNumber == 7).SkippedBefore);
+		Assert.Equal((5L, 2L), (reader.Skipped.Single().FirstSector, reader.Skipped.Single().Sectors));
+	}
+
+	[Fact]
 	public void KeySearch_DiscSaysUnprotected_ReadsNothing() {
 		// Regression (Gypsy, B2): on an unprotected disc the key search read up to 400,000 sectors (800 MB) before giving up,
 		// minutes with "finding the title key" and no progress. When the disc's copyright descriptor says "no CSS", nothing may be read.

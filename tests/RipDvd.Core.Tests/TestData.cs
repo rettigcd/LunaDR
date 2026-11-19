@@ -51,7 +51,7 @@ internal static class TestData {
 }
 
 /// <summary>
-/// Sectors in memory. Sectors not set explicitly hold their own sector number in the first 8 bytes (so tests can see which were returned).
+/// Sectors in memory. Sectors not set explicitly are MPEG-2 pack starts holding their own sector number at byte 8 (so tests can see which were returned).
 /// Sectors in <see cref="Bad"/> fail like a damaged disc (ERROR_CRC); <see cref="FailWith"/> makes every read fail with another error.
 /// </summary>
 internal sealed class FakeSectorSource(long sectorCount) : ISectorSource {
@@ -76,7 +76,9 @@ internal sealed class FakeSectorSource(long sectorCount) : ISectorSource {
 			if (_sectors.TryGetValue(s, out var data)) data.CopyTo(target);
 			else {
 				target.Clear();
-				BinaryPrimitives.WriteInt64LittleEndian(target, s);
+				target[2] = 1;
+				target[3] = 0xBA;   // an MPEG-2 pack header, so the reader keeps the sector
+				BinaryPrimitives.WriteInt64LittleEndian(target[8..], s);
 			}
 		}
 	}

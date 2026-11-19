@@ -92,6 +92,7 @@ public sealed class TitleSectorReader {
 	/// <see cref="ReadRetries"/> more times; if it still fails, reading continues at the next VOBU of the cell that can be read
 	/// (each VOBU starts with a nav pack and a key frame, so playback recovers there). The skipped stretch is listed in <see cref="Skipped"/>
 	/// and marked on the next sector (<see cref="Sector.SkippedBefore"/>). Other errors (e.g. the drive refusing encrypted sectors) still stop the rip.
+	/// Sectors that read fine but hold no MPEG-2 pack (e.g. all zeros) are dropped one by one the same way; the next sector is used as it is.
 	/// </summary>
 	public IEnumerable<Sector> ReadAll(int sectorsPerRead = 512) {
 		// A background thread reads ahead (up to 8 chunks of 1 MB) so the drive keeps streaming while the caller processes.
@@ -208,16 +209,39 @@ public sealed class TitleSectorReader {
 		});
 
 		try {
+			long carry = 0;   // sectors without MPEG data dropped just before the next sector handed out
 			foreach (var (cell, first, count, data, skippedBefore) in full.GetConsumingEnumerable()) {
+				carry += skippedBefore;
 				for (int i = 0; i < count; i++) {
 					var mem = data.AsMemory(i * VobReader.SectorSize, VobReader.SectorSize);
+					if (!IsPack(mem.Span)) {
+						// No MPEG-2 pack here (Gypsy vol. 1: two short runs of all-zero sectors in mid-title, read without an error).
+						// Each pack stands alone, so the sector is dropped and the next one is used, like an unreadable sector (counted in Skipped).
+						AddSkipped(cell, first + i);
+						carry++;
+						continue;
+					}
 					if (_key is { } key) Css.Css.Unscramble(key, mem.Span);
-					yield return new Sector(cell, first + i, mem, i == 0 ? skippedBefore : 0);
+					yield return new Sector(cell, first + i, mem, carry);
+					carry = 0;
 				}
 			}
 			producer.GetAwaiter().GetResult();   // surface read errors
 		} finally {
 			cancel.Cancel();   // caller stopped early: let the reader thread finish
+		}
+	}
+
+	/// <summary>An MPEG-2 pack starts with the pack start code 00 00 01 BA (not scrambled: CSS leaves the headers in the clear).</summary>
+	private static bool IsPack(ReadOnlySpan<byte> s) => s[0] == 0 && s[1] == 0 && s[2] == 1 && s[3] == 0xBA;
+
+	/// <summary>Records a dropped sector, joining it to the previous skipped stretch when they are adjacent.</summary>
+	private void AddSkipped(Cell cell, long sector) {
+		lock (_skipped) {
+			if (_skipped.Count > 0 && _skipped[^1] is var last && ReferenceEquals(last.Cell, cell) && last.FirstSector + last.Sectors == sector)
+				_skipped[^1] = last with { Sectors = last.Sectors + 1 };
+			else
+				_skipped.Add(new SkippedRange(cell, sector, 1));
 		}
 	}
 

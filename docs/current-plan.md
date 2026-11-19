@@ -70,6 +70,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 	each cell becomes a chapter named "Cell N"; tracks come from a title playing the first cell. File name `<Disc name> - cells LIST.mkv`.
 - Damaged discs (as MakeMKV): a media read error (CRC, sector not found, read fault, I/O device) is retried 3 times, then reading continues at the next readable VOBU of the cell;
 	each skip is a warning with the title time and approximate length. Other errors (e.g. a locked drive refusing encrypted sectors) still fail the title.
+	Sectors that read fine but hold no MPEG-2 pack (Gypsy: runs of all-zero sectors) are dropped one by one and counted the same way.
 	Duration = end of the longest audio/video track, whole milliseconds. CC pairs timed one per 1/29.97 s frame.
 - Defaults as MakeMKV: keep all tracks and chapters; `all` skips titles under 120 s (they can still be ripped by number).
 - Output naming (owner: clearer than MakeMKV's): `<Disc name> - title NN.mkv`, e.g. `Dead Zone S4 D1 - title 01.mkv`. Disc name = volume label with `_` → space, all-caps words capitalized, words with digits kept as written, `DVD` if no label; `--name` overrides.
