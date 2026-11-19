@@ -18,6 +18,13 @@ internal static class MkvProbe {
 	/// <summary>Track whose block payloads are printed in full as UTF-8 text (for subtitle tracks), or 0.</summary>
 	public static long DumpTrack;
 
+	/// <summary>
+	/// Option -saveblock T N file: writes the payload of block N (0-based) of track T to a file, to compare single frames byte by byte.
+	/// N = -1 writes all unlaced blocks of the track one after another (e.g. the whole video stream).
+	/// </summary>
+	public static (long Track, int Index, string Path)? SaveBlock;
+	private static readonly Dictionary<long, int> BlockIndex = [];
+
 	/// <summary>How many clusters to list with their time and size (option -clusters N).</summary>
 	public static int ListClusters;
 	private static readonly List<(long Start, long Size)> ClusterList = [];
@@ -137,6 +144,14 @@ internal static class MkvProbe {
 			t.MaxGap = Math.Max(t.MaxGap, gap);
 		}
 		t.PrevTime = time;
+		int index = BlockIndex[track] = BlockIndex.GetValueOrDefault(track, -1) + 1;
+		if (SaveBlock is { } save && save.Track == track) {
+			if (save.Index == index) File.WriteAllBytes(save.Path, b[(len + 3)..]);
+			else if (save.Index < 0 && lacing == 0) {
+				using var all = new FileStream(save.Path, index == 0 ? FileMode.Create : FileMode.Append);
+				all.Write(b, len + 3, b.Length - len - 3);
+			}
+		}
 		if (track == DumpTrack && t.FirstBlocks.Count < showBlocks) {
 			string text = System.Text.Encoding.UTF8.GetString(b, len + 3, b.Length - len - 3).Replace("\r", "\\r").Replace("\n", "\\n");
 			t.FirstBlocks.Add($"t={time} dur={duration} \"{text}\"");

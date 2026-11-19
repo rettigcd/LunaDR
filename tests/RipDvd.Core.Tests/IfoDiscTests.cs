@@ -62,6 +62,26 @@ public class AVeryLongEngagementTests {
 	}
 }
 
+/// <summary>Lost in Translation: DTS next to AC3 in the movie, a "play all" title, many short extras.</summary>
+public class LostInTranslationTests {
+	private const string Disc = "LOST_IN_TRANSLATION";
+	private static string Folder => IfoDisc.Folder(Disc)!;
+
+	[IfoFact(Disc)]
+	public void TitleList_MovieAndPlayAll() {
+		var titles = DiscScanner.Scan(Folder).Titles;
+		Assert.Equal(23, titles.Count);
+		var movie = titles.Single(t => t.TitleNumber == 16);
+		Assert.Equal(25, movie.Chapters);
+		// The IFO gives the DTS stream 5 channels; the rip takes the count from the stream (6, like MakeMKV).
+		Assert.Equal(["AC3 5.1 eng", "DTS 5ch eng", "AC3 5.1 fre"], movie.Audio);
+		Assert.Equal(["eng", "spa", "fre"], movie.Subtitles);
+		Assert.Equal([5, 6, 7, 8, 9], titles.Single(t => t.TitleNumber == 4).CompilationOf);
+		// The same ten titles as MakeMKV 2.0's list with --minlength=100 (MakeMKV's minimum is 120 s by default; ours too).
+		Assert.Equal([4, 7, 9, 10, 11, 12, 16, 20, 21, 22], titles.Where(t => t.DurationNs >= 120_000_000_000).Select(t => t.TitleNumber));
+	}
+}
+
 /// <summary>Beauty and the Beast (Disney): titles 16-18 have two interleaved angles (log 2026-11-18 22:22).</summary>
 public class BeautyAndTheBeastTests {
 	private const string Disc = "BEAUTY_AND_THE_BEAST";
