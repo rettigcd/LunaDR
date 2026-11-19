@@ -23,6 +23,8 @@ internal static class MkvCompare {
 		public readonly IncrementalHash RefHash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
 		public string RefDigest = "";
 		public long References;
+		public readonly IncrementalHash TimeHash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+		public string TimeDigest = "";
 	}
 
 	private sealed class Info {
@@ -62,6 +64,7 @@ internal static class MkvCompare {
 			Line("Payload SHA-256", ta.Digest[..16], tb.Digest[..16]);
 			Line("ReferenceBlocks (count, SHA)", $"{ta.References} {ta.RefDigest[..16]}", $"{tb.References} {tb.RefDigest[..16]}");
 			Line("First / last frame (ms)", $"{ta.First} / {ta.Last}", $"{tb.First} / {tb.Last}");
+			Line("Every frame time (SHA)", ta.TimeDigest[..16], tb.TimeDigest[..16]);
 		}
 		Console.WriteLine(same ? "RESULT: identical in all compared properties" : "RESULT: differences found");
 		return same ? 0 : 1;
@@ -85,6 +88,7 @@ internal static class MkvCompare {
 		foreach (var t in info.Tracks.Values) {
 			t.Digest = Convert.ToHexString(t.Hash.GetHashAndReset());
 			t.RefDigest = Convert.ToHexString(t.RefHash.GetHashAndReset());
+			t.TimeDigest = Convert.ToHexString(t.TimeHash.GetHashAndReset());
 		}
 		return info;
 	}
@@ -163,6 +167,7 @@ internal static class MkvCompare {
 		} else {
 			throw new NotSupportedException($"Lacing type {lacing} not handled by the compare probe.");
 		}
+		for (int i = 0; i < frames.Count; i++) t.TimeHash.AppendData(BitConverter.GetBytes(time + i * t.DefaultDurationNs / 1_000_000));
 		foreach (var (offset, length) in frames) {
 			t.Hash.AppendData(b, offset, length);
 			t.Bytes += length;

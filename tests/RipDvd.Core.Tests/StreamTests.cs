@@ -91,10 +91,23 @@ public class StreamTests {
 		framer.Flush();
 		var frames = framer.TakeReady();
 		Assert.Equal(6, frames.Count);
-		long Fields(int n) => 1000 * Ms + VideoFrame.FieldsToNs(n);
+		long Fields(int n) => 1000 * Ms + VideoFrame.FieldOffsetNs(n);
 		Assert.Equal([Fields(0), Fields(3 + 3 + 2), Fields(3), Fields(3 + 3)], frames.Take(4).Select(f => f.Pts));   // I P B B
-		Assert.Equal(Fields(10), frames[4].Pts);   // next GOP starts after 3+3+2+2 fields
+		Assert.Equal(1000 * Ms + VideoFrame.FieldsToNs(10), frames[4].Pts);   // next GOP starts after 3+3+2+2 fields
 		Assert.True(frames[0].IsKeyFrame);
 		Assert.Equal(3, frames[0].Fields);
+	}
+
+	[Fact]
+	public void Video_PictureBeforeTheAnchor_IsPlacedInWhole90kHzTicksLikeMakeMkv() {
+		// Regression (A Very Long Engagement title 5, log 2026-11-19): in an open GOP (display order B B I) the I picture has the PTS and the B pictures
+		// are placed before it. 5 fields before the I is 7507.5 ticks; MakeMKV uses 7507, so the B lands half a tick later.
+		// With exact field times our B was 500.4999 ms where MakeMKV's was 500.5056 ms: 500 vs 501 after rounding, in one GOP out of two.
+		var framer = new Mpeg2VideoFramer();
+		framer.Feed(Gop(true, ('I', 2, false), ('B', 0, false), ('B', 1, true)), 1000 * Ms);
+		framer.Flush();
+		var frames = framer.TakeReady();
+		Assert.Equal(1000 * Ms, frames[0].Pts);
+		Assert.Equal(1000 * Ms - 7507 * 100_000 / 9, frames[1].Pts);   // 2 + 3 fields before the I
 	}
 }

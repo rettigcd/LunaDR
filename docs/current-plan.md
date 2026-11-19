@@ -15,7 +15,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 	| Disc | What it tested | Result |
 	|---|---|---|
 	| DEAD_ZONE_S4_D1 (TV) | AC3, CC→text, STC reset in a cell | episode and extra identical to MakeMKV (captions within a few ms) |
-	| A_VERY_LONG_ENGAGEMENT_DISC1 (film) | 4 VobSub tracks, pulldown, dual layer, empty tracks | movie identical on every track |
+	| A_VERY_LONG_ENGAGEMENT_DISC1 (film) | 4 VobSub tracks, pulldown, dual layer, empty tracks | movie identical on every track; trailer (title 5) re-checked 2026-11-19 in GUI and CLI: identical to MakeMKV incl. every frame time |
 	| LOST_IN_TRANSLATION | DTS; fresh disc needing drive authentication | opening identical to owner's MakeMKV rip |
 	| Gypsy (2004) vol. 1 | 16-bit LPCM; disc without CSS | opening identical to owner's MakeMKV rip; set aside 2026-11-19: degraded, cell 7 reads back different corrupted data each time |
 	| BUTTERFLY_EFFECT | DTS-ES 6.1 | opening identical to owner's MakeMKV rip |
@@ -56,7 +56,8 @@ This file describes the present state only; the history is in [log.md](log.md).
 	LPCM → little-endian `A_PCM/INT/LIT` in 1/30 s blocks; closed captions → `S_TEXT/UTF8`, and the CC data is removed from the video.
 - Accepted differences from MakeMKV's files (owner: not important, not to be worked on): audio lacing breaks in slightly different places;
 	caption durations 1–4 ms longer; Duration can differ by 1 ms; each cluster is 4–10 bytes smaller (element size encoding). None affects playback.
-	Also accepted (not yet confirmed by the owner): after an angle-block join some video frames are 1 ms earlier than MakeMKV's (sub-ms rounding);
+	Also accepted (not yet confirmed by the owner): after an angle-block join some video frames are 1 ms earlier than MakeMKV's (sub-ms rounding;
+	possibly the half-tick rounding fixed 2026-11-19 for pulldown pictures, to re-check with B1);
 	caption decoding can differ where MakeMKV drops lines (Beauty and the Beast: ours has 38 more caption lines, e.g. "Oh, look out!" where MakeMKV has " )").
 - Tracks: video; then each audio stream the title's PGC marks available (AC3, DTS, LPCM 16-bit); then VobSub tracks (16:9 uses each stream's "wide" substream, duplicates merged); then CC text.
 	The first audio and first subtitle track are default (CC is default only if there's no VobSub). Tracks that end up empty are dropped. No Language element when the disc gives none.
@@ -114,7 +115,7 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 What is left needs the owner's hands or is a small follow-up from the Beauty and the Beast disc.
 
 **G4 – Finish the GUI** (Butterfly Effect and Beauty and the Beast are tested and the README is written)
-1. *Owner:* insert the other three test discs one at a time (DEAD_ZONE_S4_D1, A_VERY_LONG_ENGAGEMENT_DISC1, LOST_IN_TRANSLATION)
+1. *Owner:* insert the other two test discs one at a time (DEAD_ZONE_S4_D1, LOST_IN_TRANSLATION)
 	so each can be scanned in the GUI and a short title ripped and compared with the CLI's output (`mkvcompare`).
 	This also re-checks those discs after the changes of 2026-11-18 evening (angle cells, chapter timing, closing small audio gaps), which should not affect them.
 

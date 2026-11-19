@@ -17,6 +17,13 @@ public sealed class VideoFrame {
 
 	/// <summary>NTSC fields → nanoseconds, exactly (one field = 1001/60000 s), truncated.</summary>
 	public static long FieldsToNs(long fields) => fields * 1_001_000_000_000 / 60_000;
+
+	/// <summary>
+	/// A picture's offset within its GOP, in nanoseconds: whole 90 kHz ticks (1501.5 per field, truncated), as MakeMKV places pictures.
+	/// It differs from <see cref="FieldsToNs"/> only for an odd number of fields (3:2 pulldown), by half a tick, which decides the rounding to whole
+	/// milliseconds: A Very Long Engagement title 5 had one picture in every other GOP 1 ms earlier than MakeMKV's (log 2026-11-19).
+	/// </summary>
+	public static long FieldOffsetNs(long fields) => fields * 3003 / 2 * 100_000 / 9;
 }
 
 /// <summary>
@@ -169,7 +176,7 @@ public sealed class Mpeg2VideoFramer {
 		var display = Enumerable.Range(0, _gop.Count).OrderBy(i => _gop[i].TemporalReference).ToList();
 		var offset = new long[_gop.Count];
 		long fields = 0;
-		foreach (int i in display) { offset[i] = VideoFrame.FieldsToNs(fields); fields += _gop[i].Fields; }
+		foreach (int i in display) { offset[i] = VideoFrame.FieldOffsetNs(fields); fields += _gop[i].Fields; }
 		long t = VideoFrame.FieldsToNs(fields);
 
 		// Anchor on the first picture (decode order) that has a PTS.

@@ -41,6 +41,27 @@ public class GypsyTests {
 	}
 }
 
+/// <summary>A Very Long Engagement disc 1: film with 3:2 pulldown, four subtitle tracks, dual layer; the movie was ripped identical to MakeMKV's.</summary>
+public class AVeryLongEngagementTests {
+	private const string Disc = "A_VERY_LONG_ENGAGEMENT_DISC1";
+	private static string Folder => IfoDisc.Folder(Disc)!;
+
+	[IfoFact(Disc)]
+	public void TitleList_MatchesMakeMkv() {
+		// MakeMKV (reference/makemkv/A_VERY_LONG_ENGAGEMENT_DISC1-info.txt) lists 7 titles; the movie and the trailer are at least 120 s long.
+		var titles = DiscScanner.Scan(Folder).Titles;
+		Assert.Equal(7, titles.Count);
+		var movie = titles.Single(t => t.TitleNumber == 1);
+		Assert.Equal(39, movie.Chapters);
+		Assert.Equal(["AC3 5.1 fre", "AC3 stereo fre"], movie.Audio);
+		Assert.Equal(["eng", "fre", "spa", "eng"], movie.Subtitles);
+		Assert.True(movie.ClosedCaptions);
+		// The IFO time matches the ripped file (8,000 s, both ours and MakeMKV's), although MakeMKV's title list shows 2:12:54.
+		Assert.Equal(8000, movie.DurationNs / 1e9, 1.0);
+		Assert.Equal([1, 5], titles.Where(t => t.DurationNs >= 120_000_000_000).Select(t => t.TitleNumber));
+	}
+}
+
 /// <summary>Beauty and the Beast (Disney): titles 16-18 have two interleaved angles (log 2026-11-18 22:22).</summary>
 public class BeautyAndTheBeastTests {
 	private const string Disc = "BEAUTY_AND_THE_BEAST";

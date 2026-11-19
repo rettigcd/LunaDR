@@ -496,3 +496,11 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 
 ## 2026-11-19 05:58
 - **Decision (owner):** Gypsy vol. 1 is set aside; the owner believes the disc is degraded (cell 7 reads back different corrupted data on each pass, see 2026-11-18 23:27). Its opening rip, the B2 fix and the dropped-sector fix stay tested; the owner keeps the 2020 MakeMKV copy. G4.1 continues with the other three discs.
+
+## 2026-11-19 06:08
+- **G4.1 (part), A Very Long Engagement disc 1:** IFO files copied to `reference/ifo/A_VERY_LONG_ENGAGEMENT_DISC1/` (git-ignored); test `AVeryLongEngagementTests` (7 titles; movie: 39 chapters, audio, 4 subtitle tracks, CC, 8,000 s; titles 1 and 5 at least 120 s). Scan in the CLI and the GUI as before. Trailer (title 5, 2:05) ripped in test mode by the GUI (34 s) and the CLI (32 s): identical files. Screenshot checked.
+- **Finding:** compared with MakeMKV's file, the trailer's video payload was identical but the ReferenceBlock values differed: in every other GOP one B picture was 1 ms earlier (500 vs 501 ms; 125 of 3,000 pictures). Yesterday's rip had the same, so it is not a regression. The earlier "same timestamps" for the movie (12:10) was too strong: `mkvcompare` only compared the first and last frame time.
+	**Cause:** in an open GOP the B pictures are placed before the I picture that carries the PTS. 5 fields (3:2 pulldown) are 7,507.5 ticks of 90 kHz; MakeMKV uses whole ticks (7,507), so its B lands half a tick later, which here decides the rounding to whole ms.
+	**Fix:** picture offsets within a GOP are whole 90 kHz ticks, truncated (`VideoFrame.FieldOffsetNs`); only odd field counts change, so content without pulldown (Dead Zone) is unaffected. Result: all 3,000 video times and ReferenceBlocks identical to MakeMKV's; only Duration remains 1 ms off (accepted). Test `Video_PictureBeforeTheAnchor_IsPlacedInWhole90kHzTicksLikeMakeMkv` fails without the fix.
+	The 1 ms earlier frames after the angle join on Beauty and the Beast (22:22) may be the same cause; to re-check with B1.
+- **Step:** probe `mkvcompare` also compares every frame time (SHA-256 of the times, laced frames at DefaultDuration steps): it flags the old rip and passes the fixed one.
