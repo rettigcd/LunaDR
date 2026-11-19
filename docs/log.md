@@ -530,7 +530,7 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 - Status line: 63 unit tests (was 55).
 
 ## 2026-11-19 07:17
-- **Owner:** switched to branch `blu-ray`; unplugged the DVD drive and connected a Blu-ray drive; inserted The Goonies (Blu-ray). Owner left me to work alone: long operations allowed, commits on `blu-ray` only. The owner put a `keydb.cfg` key file in `%LOCALAPPDATA%acs\` (so the program looks there as well as in `%APPDATA%acs\`, libaacs's place).
+- **Owner:** switched to branch `blu-ray`; unplugged the DVD drive and connected a Blu-ray drive; inserted The Goonies (Blu-ray). Owner left me to work alone: long operations allowed, commits on `blu-ray` only. The owner put a `keydb.cfg` key file in `%LOCALAPPDATA%\aacs\` (so the program looks there as well as in `%APPDATA%\aacs\`, libaacs's place).
 - **BR1 done (probe the drive and the disc):**
 	New `RipDvd.Core/Bluray/WindowsScsiDrive` (INQUIRY and GET CONFIGURATION through IOCTL_SCSI_PASS_THROUGH) and probe commands `bddrive <drive>` and `bdfiles <drive>`.
 	Drive: HL-DT-ST BD-RE BP50NB40 (USB), firmware 1.02 (dated 2019-05-03); reads BD-ROM; AACS feature: version 1, bus encryption capable, binding nonce.
@@ -547,7 +547,7 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	Tests `GooniesBdTests` (on reference/bdmv/THE_GOONIES) and a made-up two-item playlist for chapter times.
 
 ## 2026-11-19 07:22
-- **BR3 done (AACS decryption with a key file):** `RipDvd.Core/Bluray/Aacs.cs`: `KeyDb` finds `KEYDB.cfg` next to the program, in `%APPDATA%acs` or `%LOCALAPPDATA%acs` and reads the disc's line (disc ID = SHA-1 of AACS/Unit_Key_RO.inf; fields V = VUK, U = unit keys); `AacsDecryptor` takes the listed unit keys, or decrypts Unit_Key_RO.inf's keys with the VUK, and decrypts 6,144-byte aligned units (clear first 16 bytes; AES-128 CBC with key AES(unit key, first 16) XOR first 16 and the AACS IV; checked by the 0x47 sync byte of all 32 packets; copy-permission bits cleared; with several unit keys the one that gives valid packets is used). Clear errors when the key file or the disc's entry is missing; no AACS folder = not encrypted.
+- **BR3 done (AACS decryption with a key file):** `RipDvd.Core/Bluray/Aacs.cs`: `KeyDb` finds `KEYDB.cfg` next to the program, in `%APPDATA%\aacs` or `%LOCALAPPDATA%\aacs` and reads the disc's line (disc ID = SHA-1 of AACS/Unit_Key_RO.inf; fields V = VUK, U = unit keys); `AacsDecryptor` takes the listed unit keys, or decrypts Unit_Key_RO.inf's keys with the VUK, and decrypts 6,144-byte aligned units (clear first 16 bytes; AES-128 CBC with key AES(unit key, first 16) XOR first 16 and the AACS IV; checked by the 0x47 sync byte of all 32 packets; copy-permission bits cleared; with several unit keys the one that gives valid packets is used). Clear errors when the key file or the disc's entry is missing; no AACS folder = not encrypted.
 	Probe `bdkey <drive> [clip]` (prints no keys). The Goonies: the unit key derived from the VUK equals the listed one; 201 sample units over the whole 25.6 GB movie clip all decrypt to valid packets.
 	7 unit tests with keys and data made up here (round trip, key choice, wrong key, clear units, VUK path, key-file line, missing entry).
 

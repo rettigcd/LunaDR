@@ -50,8 +50,11 @@ This file describes the present state only; the history is in [log.md](log.md).
 - Self-contained like MakeMKV: no external tools at run time. ffmpeg is used only as a development check.
 - Testing (owner): xUnit unit tests for the core run before every commit; every bug fix gets a test that fails without it. Rules that used to live inside `TitleRipper.Rip`
 	are small internal classes (`VideoReferences`, `ClusterRule`, `RipTiming`, `AudioContinuity`) so they can be tested. Disc comparisons with MakeMKV stay the end-to-end check.
-- Blu-ray is the current project (Next steps BR1–BR6): read the disc's files through Windows' UDF file system, one title per playlist,
-	AACS decryption with a per-disc key from a `KEYDB.cfg` key file the owner supplies. UHD, BD+, 3D and menus are out of scope for now.
+- Blu-ray (code in `RipDvd.Core/Bluray`): read the disc's files through Windows' UDF file system; one title per playlist, numbered by its file (00000 = 0);
+	files named `<Disc name> - playlist NNNNN.mkv`; AACS decryption with a per-disc key from a `KEYDB.cfg` key file the owner supplies (next to the program,
+	`%APPDATA%\aacs` or `%LOCALAPPDATA%\aacs`), never downloaded. Tracks: video, the first play item's audio (TrueHD as two tracks: TrueHD and its AC3 core),
+	PGS subtitles; chapters from the entry marks (a mark within 1 s of the end dropped). VC-1 is a VfW track with decode times plus the decoder delay.
+	PGS display sets without an END segment are closed 2 s after they start. UHD, BD+, 3D, menus and bus encryption are out of scope for now.
 - All ripping logic lives in the library; the CLI and the GUI only call it.
 - Output: Matroska, laid out like MakeMKV's files (log 10:22, 12:10); streams copied unchanged except where MakeMKV converts:
 	LPCM → little-endian `A_PCM/INT/LIT` in 1/30 s blocks; closed captions → `S_TEXT/UTF8`, and the CC data is removed from the video.
@@ -118,30 +121,26 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 | GUI | WPF, Windows only (owner: the GUI will be Windows-only) | none for the CLI; the GUI would need porting (e.g. Avalonia) if ever wanted on Linux |
 
 ## Next steps
-**Blu-ray probing and ripping** (owner, 2026-11-19). BR1-BR3 are done (log 2026-11-19; probes `bdtitles` list the playlists, `bdkey` checks decryption): the drive (HL-DT-ST BP50NB40) reads the disc through Windows; MakeMKV failed only because its Blu-ray support is shareware.
-	Test disc: The Goonies (AACS 1, MKB v8, no bus encryption); the owner's key file has its key. No MakeMKV rips to compare with.
-Steps marked *Owner* need the owner's hands; the rest can be done once a disc is in the drive (BR3 and BR5 also without one).
-Approach (as MakeMKV, libbluray and libaacs do): read the disc's files through Windows' own UDF file system; the titles are the playlists; decrypt with a per-disc key from a key file.
+**Blu-ray** (owner, 2026-11-19). BR1-BR6 are done (log 2026-11-19): probes `bddrive`, `bdfiles`, `bdtitles`, `bdkey`, `bdpes`, `bdrip`;
+`RipDvd.Core/Bluray` (playlists, clip info, AACS with a key file, transport-stream demuxing, `BdTitleRipper`); the CLI's `info`/`mkv` and the GUI handle Blu-rays.
+Test disc: The Goonies (AACS 1, no bus encryption; VC-1, AC3, TrueHD, PGS). The drive (HL-DT-ST BP50NB40) works; MakeMKV failed only because its Blu-ray support is shareware.
+No MakeMKV rips to compare with, so the bar is the owner's: the file plays (ffmpeg decodes it), with the playlist's length, chapters and tracks.
 
-**BR4 – Transport-stream demuxing** (`RipDvd.Core/Bluray/M2tsReader`, probe `bddemux`)
-1. `.m2ts` = 192-byte packets (4-byte arrival-time header + 188-byte MPEG-TS packet). Assemble PES packets per PID (PIDs from the playlist's STN table), with their PTS/DTS.
-2. A playlist plays clips in order: map each clip's in/out times to the title timeline (seamless connections: condition 5/6), as the DVD ripper maps cells.
-3. Progress and read errors: reuse the retry/skip ideas of the DVD reader (skip to the next aligned unit).
+**BR7 – Check the whole movie** (in progress at the time of writing; see the log)
+1. Full rip of The Goonies playlist 00000 (25.6 GB): ffmpeg decodes every stream with no errors; duration 1:53:55; 37 chapters; audio in sync at the end.
+2. *Owner:* play the file (e.g. in Plex/VLC): picture, each audio track (TrueHD needs a player that supports it), subtitles.
 
-**BR5 – MKV output for the common codecs** (The Goonies: VC-1 video, AC3 + TrueHD audio, PGS subtitles; most other movies: H.264, DTS-HD MA)
-1. H.264 → `V_MPEG4/ISO/AVC`: access units from the PES stream, start codes converted to 4-byte lengths, CodecPrivate (avcC) from SPS/PPS, key frames = IDR (or recovery-point I) pictures, B-frame timing from PTS.
-2. Audio: AC3 and DTS reuse the DVD framers; DTS-HD keeps core + extension in each frame as MakeMKV does (`A_DTS`); TrueHD → `A_TRUEHD` (its embedded AC3 frames as MakeMKV handles them);
-	E-AC3 → `A_EAC3`; Blu-ray LPCM (4-byte header, big-endian) → `A_PCM/INT/LIT`.
-3. PGS subtitles → `S_HDMV/PGS` (one display set per block).
-4. Then VC-1 (`V_MS/VFW/FOURCC` WVC1) and MPEG-2 (reuse), when a test disc has them.
-5. Rip a playlist end to end; check with ffmpeg (decode every stream with no errors) and against the playlist: duration, chapter marks, track list. No MakeMKV rips exist to compare with (owner), so the bar is a file that plays.
+**BR8 – Formats not on the test disc** (built and unit-tested with made-up data, never seen on a real disc)
+1. *Owner:* a Blu-ray with H.264 video and DTS-HD MA audio (most Blu-ray movies), ideally also one with LPCM or E-AC3; a home-burned BD-R would test an unencrypted disc.
+2. Check each: ffmpeg decode, durations, channel counts; fix what differs. Known gaps: E-AC3 dependent substreams (7.1) are not joined to their main frames;
+	H.264 display size of SD video assumes 4:3; DTS-HD channel count shows the core's (5.1 for a 7.1 track).
 
-**BR6 – CLI and GUI**
-1. `rip-dvd info` / `mkv` recognize a Blu-ray (a `BDMV` folder) and list/rip playlists by number, with the same options (audio/subtitle languages, chapters, min length, naming).
-2. GUI: the scan shows the playlists as titles; a clip map in place of the cell map; ripping and progress as for DVDs.
-3. Rename? The tool would no longer be DVD-only (`rip-dvd`); ask the owner when this step comes (open question then, not now).
+**BR9 – Playlists that use parts of clips or several clips** (none on The Goonies)
+1. Today each play item reads its whole clip file and keeps what falls between its in and out times; with seamless branching (several items over parts of clips)
+	this reads more than needed. Use the clip's EP map to start and stop at the right packets, as libbluray does. Needs a disc with such playlists to test.
+2. Multi-angle playlists: only angle 1 is ripped (as on DVD); decoy playlists ("playlist obfuscation") are not filtered yet.
 
-**Out of scope for now:** UHD Blu-ray (AACS 2.0, HEVC), BD+ (needs a virtual machine for the disc's program), 3D (MVC), BD-J menus.
+**Out of scope for now:** UHD Blu-ray (AACS 2.0, HEVC), BD+ (needs a virtual machine for the disc's program), 3D (MVC), BD-J menus, bus encryption.
 
 ## Future (desirable, not scheduled)
 - **Damaged discs: real test** (was G7.4; the owner has no damaged disc): rip a scratched or dirty DVD if one turns up.
@@ -153,6 +152,11 @@ Approach (as MakeMKV, libbluray and libaacs do): read the disc's files through W
 	match the ripped titles to episodes (by order and running time), and name the output files with the episode titles.
 
 ## Open questions
+Blu-ray (2026-11-19; my guesses are in force until answered):
+- **Program name.** It now rips Blu-rays too; keep `rip-dvd` / `rip-dvd-gui`, or rename (e.g. `rip-disc`)? Guess: keep the name until you decide.
+- **TrueHD's AC3 core.** Written as a separate AC3 track next to the TrueHD track (for players without TrueHD). Keep it, or leave it out? Guess: keep.
+- **MakeMKV evaluation.** MakeMKV's Blu-ray support asks to start a 30-day evaluation; starting it would give MakeMKV rips to compare with. Your choice; not needed for our ripper.
+
 Deferred by the owner (answer later):
 - **Episode naming: data source.** TheTVDB (paid per-user subscription PIN, has DVD order), or free TVmaze/TMDB (aired order), or TheTVDB with a free fallback? See [episode-matching-analysis.md](episode-matching-analysis.md).
 - **Episode naming: file names.** Plex-library style `sNNeMM - Episode name.mkv`, optionally in `Series (year)/Season N/` folders?

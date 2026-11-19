@@ -1,6 +1,6 @@
 # rip-dvd
 
-Rips movies and TV episodes from a DVD into MKV files, much like [MakeMKV](https://www.makemkv.com/) does for DVDs.
+Rips movies and TV episodes from a DVD or a Blu-ray into MKV files, much like [MakeMKV](https://www.makemkv.com/) does.
 Everything is C# on .NET 10, with no external tools or native libraries needed at run time.
 
 - **Command line** (`rip-dvd`): lists a disc's titles and rips the ones you name.
@@ -17,6 +17,7 @@ Rips from five test discs were compared with MakeMKV's rips of the same titles a
 - Windows 11 (the command line is written to be portable; see [docs/current-plan.md](docs/current-plan.md), "Platform").
 - The [.NET 10 SDK](https://dotnet.microsoft.com/download).
 - A DVD drive. CSS-protected discs are unlocked by the program itself.
+- For Blu-rays: a Blu-ray drive, and for AACS-encrypted discs a key file (see "Blu-ray" below).
 
 ## Build
 ```
@@ -44,6 +45,18 @@ The disc can be `disc:0` (the first DVD drive), a drive letter such as `E:`, or 
 Useful `mkv` options: `--audio=eng`, `--subtitles=none`, `--captions=off`, `--no-compilations`, `--no-duplicates`, `--dry-run`, `--overwrite`.
 Ctrl+C stops a rip cleanly; the unfinished file is removed.
 
+## Blu-ray
+`info` and `mkv` (and the Windows app) also work on a Blu-ray. Its titles are the disc's playlists, listed longest first and ripped by playlist number:
+```
+rip-dvd info E:
+rip-dvd mkv E: 0 C:\Rips          (playlist 00000 -> C:\Rips\<Disc name> - playlist 00000.mkv)
+```
+- Formats: VC-1, H.264 and MPEG-2 video; AC3, E-AC3, DTS / DTS-HD, TrueHD (written as TrueHD plus its AC3 core) and LPCM audio; PGS subtitles.
+	Tested on one disc so far (The Goonies: VC-1, AC3, TrueHD, PGS); the others are unit-tested only.
+- Encrypted (AACS) discs need a key file in libaacs's `KEYDB.cfg` format that has the disc's entry, placed next to the program or in
+	`%APPDATA%\aacs\` or `%LOCALAPPDATA%\aacs\`. The program never downloads keys. `rip-dvd info` says which key file it found.
+- Not supported: UHD (4K) discs, BD+ protection, 3D, menus.
+
 ## Windows app
 ```
 dotnet run --project src/RipDvd.Gui
@@ -65,7 +78,7 @@ The folder and the sound setting are remembered in `%APPDATA%\rip-dvd\gui-settin
 ## Project layout
 | Folder | Contents |
 |---|---|
-| `src/RipDvd.Core` | The ripping library: IFO parsing, CSS, reading the disc, MPEG demuxing, the Matroska writer, scanning and ripping. |
+| `src/RipDvd.Core` | The ripping library: IFO parsing, CSS, reading the disc, MPEG demuxing, the Matroska writer, scanning and ripping; `Bluray/` for Blu-rays (playlists, AACS, transport streams). |
 | `src/RipDvd.Cli` | The command-line app. |
 | `src/RipDvd.Gui` | The Windows app (WPF). |
 | `src/DvdProbe` | A developer tool for investigating discs and comparing MKV files. |
