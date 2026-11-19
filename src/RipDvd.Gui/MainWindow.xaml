@@ -36,8 +36,16 @@
 		<DataGrid Grid.Row="1" ItemsSource="{Binding Titles}" SelectedItem="{Binding SelectedTitle}"
 				  AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column" SelectionMode="Single"
 				  CanUserReorderColumns="False" GridLinesVisibility="Horizontal">
+			<!-- Compact rows: the Fluent theme's minimum heights (row and checkbox) leave empty space under the text. -->
+			<DataGrid.CellStyle>
+				<Style TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
+					<Setter Property="MinHeight" Value="0" />
+					<Setter Property="VerticalContentAlignment" Value="Center" />
+				</Style>
+			</DataGrid.CellStyle>
 			<DataGrid.RowStyle>
 				<Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+					<Setter Property="MinHeight" Value="0" />
 					<Style.Triggers>
 						<DataTrigger Binding="{Binding IsShort}" Value="True">
 							<Setter Property="Opacity" Value="0.5" />
@@ -51,6 +59,7 @@
 					<DataGridTemplateColumn.CellTemplate>
 						<DataTemplate>
 							<CheckBox IsChecked="{Binding IsChecked, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center"
+									  MinHeight="0" MinWidth="0" Padding="0" VerticalAlignment="Center"
 									  IsEnabled="{Binding DataContext.IsRipping, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource Not}}" />
 						</DataTemplate>
 					</DataGridTemplateColumn.CellTemplate>

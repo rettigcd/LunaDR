@@ -591,3 +591,7 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	Done: `RipOptions.TrueHdCore` (default true); CLI `--truehd-core=on|off`; GUI checkbox "AC3 copy of TrueHD" next to "Play a sound when done", shown only for a Blu-ray and remembered in the settings.
 	Test `GooniesBdTests.TrueHdCore_IsATrackUnlessTurnedOff`: playlist 00000 has 7 audio tracks by default and 6 with the option off. GUI screenshot with The Goonies checked: the box shows and is checked.
 - **BR7 done.** Owner played the Goonies rip: "It looks great!" Removed from Next steps.
+
+## 2026-11-19 18:30
+- **GUI: compact title rows** (owner: rows were taller than needed, with empty space under the text). The Fluent theme's minimum heights for the row and the checkbox are set to 0,
+	and cell contents are centered vertically: rows are about 25 px instead of 33, so 12 titles fit where 9 did (screenshot with The Goonies).
