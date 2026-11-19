@@ -118,18 +118,10 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 | GUI | WPF, Windows only (owner: the GUI will be Windows-only) | none for the CLI; the GUI would need porting (e.g. Avalonia) if ever wanted on Linux |
 
 ## Next steps
-**Blu-ray probing and ripping** (owner, 2026-11-19). BR1 is done (log 2026-11-19): the drive (HL-DT-ST BP50NB40) reads the disc through Windows; MakeMKV failed only because its Blu-ray support is shareware.
+**Blu-ray probing and ripping** (owner, 2026-11-19). BR1 and BR2 are done (log 2026-11-19; probe `bdtitles` lists the playlists): the drive (HL-DT-ST BP50NB40) reads the disc through Windows; MakeMKV failed only because its Blu-ray support is shareware.
 	Test disc: The Goonies (AACS 1, MKB v8, no bus encryption); the owner's key file has its key. No MakeMKV rips to compare with.
 Steps marked *Owner* need the owner's hands; the rest can be done once a disc is in the drive (BR3 and BR5 also without one).
 Approach (as MakeMKV, libbluray and libaacs do): read the disc's files through Windows' own UDF file system; the titles are the playlists; decrypt with a per-disc key from a key file.
-
-**BR2 – Disc structure and the title list** (probe `bdtitles`, then `RipDvd.Core/Bluray/`)
-1. Parsers (pure C#, unit-tested on copies of a disc's small metadata files in git-ignored `reference/bdmv/<disc>/`, like the IFO tests):
-	`.mpls` playlists: PlayItems (clip name, in/out time in 45 kHz ticks, connection condition), the STN table (streams: PID, codec, language), PlayListMarks (chapters);
-	`.clpi` clip info: stream PIDs and codec attributes, the clip's packet count (size), the EP map (key-frame positions, needed only for seeking and progress).
-2. Title list like MakeMKV's: one title per playlist, duration, chapters, size, video/audio/subtitle tracks with languages; drop playlists shorter than the minimum (120 s)
-	and duplicates (same clips and in/out times); compare with `makemkvcon info` if it can at least read the structure.
-3. Many newer discs carry hundreds of decoy playlists ("playlist obfuscation"); note it if the test disc has them, handle it later (the right playlist is the one index.bdmv's first-play/top-menu objects lead to).
 
 **BR3 – AACS decryption with a key file** (`RipDvd.Core/Bluray/Aacs`)
 1. Key file: libaacs's `KEYDB.cfg` text format; looked up next to the program, then in `%APPDATA%\aacs\` (as libaacs). The owner supplies the file; the program never downloads keys.
@@ -145,7 +137,7 @@ Approach (as MakeMKV, libbluray and libaacs do): read the disc's files through W
 2. A playlist plays clips in order: map each clip's in/out times to the title timeline (seamless connections: condition 5/6), as the DVD ripper maps cells.
 3. Progress and read errors: reuse the retry/skip ideas of the DVD reader (skip to the next aligned unit).
 
-**BR5 – MKV output for the common codecs** (most Blu-ray movies: H.264 video, DTS-HD MA / TrueHD / AC3 audio, PGS subtitles)
+**BR5 – MKV output for the common codecs** (The Goonies: VC-1 video, AC3 + TrueHD audio, PGS subtitles; most other movies: H.264, DTS-HD MA)
 1. H.264 → `V_MPEG4/ISO/AVC`: access units from the PES stream, start codes converted to 4-byte lengths, CodecPrivate (avcC) from SPS/PPS, key frames = IDR (or recovery-point I) pictures, B-frame timing from PTS.
 2. Audio: AC3 and DTS reuse the DVD framers; DTS-HD keeps core + extension in each frame as MakeMKV does (`A_DTS`); TrueHD → `A_TRUEHD` (its embedded AC3 frames as MakeMKV handles them);
 	E-AC3 → `A_EAC3`; Blu-ray LPCM (4-byte header, big-endian) → `A_PCM/INT/LIT`.

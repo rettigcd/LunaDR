@@ -538,3 +538,10 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	Key file: has an entry for this disc (VUK and unit key). So decryption needs only the key file.
 	**Why MakeMKV "never worked":** `makemkvcon -r info disc:0` says Blu-ray support is shareware with a 30-day evaluation, asks whether to start it, and (unattended: no) ends with "Failed to open disc". Not a drive problem. I did not start the evaluation (owner's choice). Side note: MakeMKV sent a firmware dump of the drive "for analysis" on its own.
 	Metadata copied for tests to git-ignored `reference/bdmv/THE_GOONIES/` (PLAYLIST, CLIPINF, index/MovieObject, AACS .inf/.cer).
+
+## 2026-11-19 07:19
+- **BR2 done (disc structure and title list):** `RipDvd.Core/Bluray/Mpls` (playlists: play items with clip, in/out time, connection condition, angles, the STN streams with PID, codec, format/rate, language; marks), `Clpi` (clip presentation time ranges, for sizes), `BdScanner` (one title per playlist, numbered by the playlist file: duration, chapters from the entry marks, size as each item's share of its clip file, video/audio/subtitles, duplicates = same clips and in/out times). Probe `bdtitles <drive> [-v]`.
+	The Goonies: 24 playlists, no decoys. The movie (1:53:55, VC-1 1080p 23.976) is in six playlists over two clips: 00000/00026/00031 play clip 00113 (25.6 GB: AC3 5.1, TrueHD, 4 more AC3 tracks, 14 PGS streams), 00008/00016/00030 play clip 00112 (20.5 GB: AC3 stereo only, 7 PGS). Extras are VC-1 480i; two tiny clips are MPEG-2.
+	**Consequence:** the first codecs to build are VC-1 (not H.264 as planned), AC3, TrueHD and PGS.
+	**Decision:** Blu-ray titles are named by playlist number (`mkv E: 0`, file `<Disc> - playlist 00000.mkv`), as the DVD side uses the disc's own title numbers; reason: stable and traceable to the disc. Chapters: entry marks; a mark within 1 s of the end is dropped.
+	Tests `GooniesBdTests` (on reference/bdmv/THE_GOONIES) and a made-up two-item playlist for chapter times.

@@ -115,3 +115,24 @@ internal static class BlurayProbe {
 
 	private static int ReadBe32(byte[] b, int p) => b[p] << 24 | b[p + 1] << 16 | b[p + 2] << 8 | b[p + 3];
 }
+
+internal static class BlurayTitlesProbe {
+	/// <summary>All playlists with their play items, streams and chapter marks (probe `bdtitles`).</summary>
+	public static void Print(string root, bool verbose) {
+		var disc = BdScanner.Scan(root);
+		Console.WriteLine($"Disc: {disc.VolumeName} ({disc.Root}), {disc.Titles.Count} playlists");
+		foreach (var t in disc.Titles.OrderByDescending(t => t.DurationNs)) {
+			var d = TimeSpan.FromTicks(t.DurationNs / 100);
+			Console.WriteLine($"  {t.Playlist:00000}  {(int)d.TotalHours}:{d.Minutes:00}:{d.Seconds:00}  {t.Chapters,3} ch  {t.SizeBytes / 1e9,6:F2} GB  {t.Video}" +
+							  $"  clips {string.Join(",", t.Clips)}{(t.Angles > 1 ? $"  {t.Angles} angles" : "")}{(t.DuplicateOf is { } o ? $"  (same as {o:00000})" : "")}");
+			if (!verbose) continue;
+			Console.WriteLine($"      audio: {string.Join(", ", t.Audio)}");
+			Console.WriteLine($"      subtitles: {string.Join(", ", t.Subtitles)}");
+			var mpls = BdScanner.LoadPlaylist(root, t.Playlist);
+			foreach (var i in mpls.Items)
+				Console.WriteLine($"      item {i.ClipId} in {i.InTime} out {i.OutTime} cc {i.ConnectionCondition} pids " +
+								  string.Join(" ", i.Video.Concat(i.Audio).Concat(i.Subtitles).Select(s => $"{s.Pid:X4}:{s.CodecName}")));
+			Console.WriteLine($"      chapters (s): {string.Join(" ", mpls.ChapterStartsNs().Select(c => (c / 1e9).ToString("0.###")))}");
+		}
+	}
+}
