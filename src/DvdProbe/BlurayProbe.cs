@@ -136,3 +136,36 @@ internal static class BlurayTitlesProbe {
 		}
 	}
 }
+
+internal static class BlurayKeyProbe {
+	/// <summary>Checks the key file against the disc without printing keys: VUK-derived vs listed unit keys, and decrypting sample units of a clip.</summary>
+	public static void Check(string root, string? clip) {
+		string? keyFile = KeyDb.Find();
+		Console.WriteLine($"Key file: {keyFile ?? "none found"} (searched: {string.Join(", ", KeyDb.SearchPaths())})");
+		var ukf = File.ReadAllBytes(Path.Combine(root, "AACS", "Unit_Key_RO.inf"));
+		string id = Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(ukf));
+		var entry = keyFile is null ? null : KeyDb.Lookup(keyFile, id);
+		Console.WriteLine($"Disc ID {id}: {(entry is null ? "not in the key file" : $"\"{entry.Title}\", VUK {(entry.Vuk is null ? "no" : "yes")}, unit keys {entry.UnitKeys.Count}")}");
+		if (entry is null) return;
+		if (entry.Vuk is not null && entry.UnitKeys.Count > 0) {
+			var derived = AacsDecryptor.UnitKeysFromVuk(entry.Vuk, ukf);
+			bool same = derived.Count == entry.UnitKeys.Count && derived.Zip(entry.UnitKeys).All(p => p.First.AsSpan().SequenceEqual(p.Second));
+			Console.WriteLine($"Unit keys from the VUK and Unit_Key_RO.inf {(same ? "match" : "DIFFER from")} the listed unit keys ({derived.Count} derived).");
+		}
+		using var aacs = AacsDecryptor.ForDisc(root, keyFile)!;
+		string file = clip is not null ? Path.Combine(root, "BDMV", "STREAM", clip + ".m2ts")
+			: Directory.GetFiles(Path.Combine(root, "BDMV", "STREAM"), "*.m2ts").OrderByDescending(f => new FileInfo(f).Length).First();
+		using var fs = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read);
+		var unit = new byte[AacsDecryptor.UnitSize];
+		int ok = 0, encrypted = 0, samples = 0;
+		long units = fs.Length / AacsDecryptor.UnitSize;
+		for (long u = 0; u < units; u += Math.Max(1, units / 200)) {
+			fs.Position = u * AacsDecryptor.UnitSize;
+			fs.ReadExactly(unit);
+			samples++;
+			if (AacsDecryptor.IsEncrypted(unit)) encrypted++;
+			if (aacs.DecryptUnit(unit)) ok++;
+		}
+		Console.WriteLine($"{Path.GetFileName(file)}: {samples} sample units, {encrypted} encrypted, {ok} decrypted to valid packets.");
+	}
+}

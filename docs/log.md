@@ -545,3 +545,8 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	**Consequence:** the first codecs to build are VC-1 (not H.264 as planned), AC3, TrueHD and PGS.
 	**Decision:** Blu-ray titles are named by playlist number (`mkv E: 0`, file `<Disc> - playlist 00000.mkv`), as the DVD side uses the disc's own title numbers; reason: stable and traceable to the disc. Chapters: entry marks; a mark within 1 s of the end is dropped.
 	Tests `GooniesBdTests` (on reference/bdmv/THE_GOONIES) and a made-up two-item playlist for chapter times.
+
+## 2026-11-19 07:22
+- **BR3 done (AACS decryption with a key file):** `RipDvd.Core/Bluray/Aacs.cs`: `KeyDb` finds `KEYDB.cfg` next to the program, in `%APPDATA%acs` or `%LOCALAPPDATA%acs` and reads the disc's line (disc ID = SHA-1 of AACS/Unit_Key_RO.inf; fields V = VUK, U = unit keys); `AacsDecryptor` takes the listed unit keys, or decrypts Unit_Key_RO.inf's keys with the VUK, and decrypts 6,144-byte aligned units (clear first 16 bytes; AES-128 CBC with key AES(unit key, first 16) XOR first 16 and the AACS IV; checked by the 0x47 sync byte of all 32 packets; copy-permission bits cleared; with several unit keys the one that gives valid packets is used). Clear errors when the key file or the disc's entry is missing; no AACS folder = not encrypted.
+	Probe `bdkey <drive> [clip]` (prints no keys). The Goonies: the unit key derived from the VUK equals the listed one; 201 sample units over the whole 25.6 GB movie clip all decrypt to valid packets.
+	7 unit tests with keys and data made up here (round trip, key choice, wrong key, clear units, VUK path, key-file line, missing entry).

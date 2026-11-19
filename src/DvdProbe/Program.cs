@@ -237,6 +237,13 @@ public static class Commands {
 		return 0;
 	}
 
+	[ProbeCommand("bdkey", "Check the AACS key file against a Blu-ray (no keys printed): disc ID, entry, VUK vs unit keys, decrypting sample units of a clip. Args: <drive or folder> [clip]")]
+	public static int BdKey(string[] args) {
+		string root = RipDvd.Core.Bluray.BdScanner.ResolveRoot(args.Length > 0 ? args[0] : "E:") ?? throw new IOException("No Blu-ray structure (BDMV/index.bdmv) found.");
+		BlurayKeyProbe.Check(root, args.Length > 1 ? args[1] : null);
+		return 0;
+	}
+
 	[ProbeCommand("cellmap", "Table of titles vs cells per title set ('*' = chapter start). Args: <drive> [title set]")]
 	public static int CellMap(string[] args) {
 		CellMapProbe.Print(IfoProbe.ResolveVideoTs(args.Length > 0 ? args[0] : "E:"), args.Length > 1 ? int.Parse(args[1]) : null);
