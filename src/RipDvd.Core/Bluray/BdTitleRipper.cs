@@ -22,11 +22,14 @@ public sealed class BdTitleRipper {
 	public int Playlist { get; }
 	public Mpls PlaylistInfo => _mpls;
 
-	public BdTitleRipper(string root, int playlist) {
+	public BdTitleRipper(string root, int playlist) : this(root, BdScanner.LoadPlaylist(root, playlist), playlist) { }
+
+	/// <summary>A playlist given directly, e.g. one made up by the probe to rip a test stream (BDMV/STREAM/&lt;clip&gt;.m2ts under <paramref name="root"/>).</summary>
+	public BdTitleRipper(string root, Mpls playlist, int number) {
 		_root = root;
-		Playlist = playlist;
-		_mpls = BdScanner.LoadPlaylist(root, playlist);
-		if (_mpls.Items.Count == 0) throw new ArgumentException($"Playlist {playlist:00000} has no play items.");
+		Playlist = number;
+		_mpls = playlist;
+		if (_mpls.Items.Count == 0) throw new ArgumentException($"Playlist {number:00000} has no play items.");
 	}
 
 	/// <summary>A video access unit (picture) on the title timeline.</summary>
@@ -316,9 +319,14 @@ public sealed class BdTitleRipper {
 						}
 						if (a.Framer is null) {
 							if (t is { } lt && InItem(lt) && pes.Payload.Length > 4) {
-								var (_, _, rate, bits) = BdLpcm.Header(pes.Payload);
-								a.Track.BitDepth = bits;
-								a.Track.SamplingFrequency = rate;
+								var (channels, _, rate, bits) = BdLpcm.Header(pes.Payload);
+								if (!headerWritten) {
+									// The track header (written at the first GOP) must say what the samples are.
+									a.Track.BitDepth = bits;
+									a.Track.SamplingFrequency = rate;
+									a.Track.Channels = channels;
+									a.Track.Name = TitleRipper.ChannelName(channels);
+								}
 								a.Queue.Enqueue(new AudioFrame { Data = BdLpcm.ToLittleEndian(pes.Payload), Pts = lt });
 							}
 							continue;

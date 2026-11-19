@@ -214,3 +214,29 @@ internal static class BlurayPesProbe {
 		}
 	}
 }
+
+internal static class BlurayClipProbe {
+	/// <summary>
+	/// Rips a loose .m2ts file (e.g. made by ffmpeg with -mpegts_m2ts_mode 1) through BdTitleRipper, with a one-item playlist made up here:
+	/// the streams are given as PID=coding type (hex), e.g. 1011=1B 1100=84. Tests formats no test disc has (H.264, E-AC3, DTS, LPCM).
+	/// </summary>
+	public static void Rip(string m2ts, string output, IEnumerable<string> streams) {
+		string root = Path.Combine(Path.GetTempPath(), "bdclip-" + Guid.NewGuid().ToString("N"));
+		Directory.CreateDirectory(Path.Combine(root, "BDMV", "STREAM"));
+		try {
+			File.Copy(m2ts, Path.Combine(root, "BDMV", "STREAM", "00001.m2ts"));
+			var list = streams.Select(s => s.Split('=')).Select(p => new BdStream(Convert.ToInt32(p[0], 16), Convert.ToInt32(p[1], 16), 6, 1, "eng")).ToList();
+			var item = new BdPlayItem("00001", 0, 45_000 * 3600, 1, 1,
+				list.Where(s => s.Kind == BdStreamKind.Video).ToList(), list.Where(s => s.Kind == BdStreamKind.Audio).ToList(),
+				list.Where(s => s.Kind == BdStreamKind.Subtitle).ToList());
+			var mpls = new Mpls { Name = "00001", Items = [item], Marks = [] };
+			var ripper = new BdTitleRipper(root, mpls, 1);
+			foreach (var line in ripper.Describe()) Console.WriteLine("  " + line);
+			var result = ripper.Rip(output);
+			Console.WriteLine($"Done: {result.OutputPath}, {TimeSpan.FromTicks(result.DurationNs / 100)}");
+			foreach (var w in result.Warnings) Console.WriteLine("  warning: " + w);
+		} finally {
+			Directory.Delete(root, recursive: true);
+		}
+	}
+}

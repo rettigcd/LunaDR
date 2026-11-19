@@ -567,3 +567,10 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 
 ## 2026-11-19 07:43
 - **BR6 (part): the GUI shows and rips Blu-rays.** On scan, a Blu-ray's playlists fill the title list (longest first; the Title column is the playlist number; checked at first: at least 120 s and not a repeat; notes "same video as playlist N"); the cell area is hidden (no cell map on Blu-ray); the file-name hint says "- playlist NNNNN.mkv"; Start rips the checked playlists through the same job and progress panel; the status line warns when the disc is AACS-encrypted and no key file was found. Audio and Subtitles columns are capped in width with "…" and a tooltip (Blu-ray track lists are long). Screenshot `docs/gui-bluray-goonies.png`.
+
+## 2026-11-19 07:46
+- **BR8 (part): formats not on The Goonies, tested with a stream made by ffmpeg.** New probe `bdclip <file.m2ts> <out.mkv> <pid=coding>...` rips a loose .m2ts through `BdTitleRipper` with a one-item playlist made up in memory (new constructor taking an `Mpls`). Test stream (ffmpeg, `-f mpegts -mpegts_m2ts_mode 1`, 20 s): H.264 1080p with B-frames, E-AC3 5.1, DTS 5.1, Blu-ray LPCM stereo, AC3.
+	Result: ffmpeg decodes every track with no message; first and last packet times of each track equal the source's (to the ms), except DTS, whose last frame is missing.
+	**Bug fixed:** the LPCM track's header said the channel count guessed from the playlist (6) while the samples were stereo; channels, rate and bit depth are now taken from the first LPCM packet before the header is written.
+	**Known, left as is:** the last DTS frame of a title (10.7 ms) is dropped, because the framer waits for an extension substream that may follow it.
+	Not covered by this test: DTS-HD extensions (ffmpeg writes core only), E-AC3 dependent substreams, TrueHD from another encoder.

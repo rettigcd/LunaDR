@@ -263,6 +263,12 @@ public static class Commands {
 		return 0;
 	}
 
+	[ProbeCommand("bdclip", "Rip a loose .m2ts (e.g. made by ffmpeg) with BdTitleRipper and a made-up playlist. Args: <file.m2ts> <out.mkv> <pid=coding hex>... (e.g. 1011=1B 1100=84)")]
+	public static int BdClip(string[] args) {
+		BlurayClipProbe.Rip(args[0], args[1], args.Skip(2));
+		return 0;
+	}
+
 	[ProbeCommand("cellmap", "Table of titles vs cells per title set ('*' = chapter start). Args: <drive> [title set]")]
 	public static int CellMap(string[] args) {
 		CellMapProbe.Print(IfoProbe.ResolveVideoTs(args.Length > 0 ? args[0] : "E:"), args.Length > 1 ? int.Parse(args[1]) : null);
