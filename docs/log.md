@@ -422,3 +422,11 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 
 ## 2026-11-18 19:10
 - **Step (G4.1, owner):** the owner ejected and inserted a disc with the GUI open; it scanned the disc automatically. Automatic scan on insert is verified; removed from Next steps.
+
+## 2026-11-18 20:00
+- **Owner questions answered:**
+	- Can individual cells be ripped? Yes: a rip is already a list of cell sector ranges; the track info is borrowed from a title that plays the cell. Not offered yet.
+	- Can several cells be joined into one file? Yes, within one title set (same video format, audio layout and CSS key); across title sets no.
+	- Can the cell map show progress? Yes, during ripping (the scan only reads the IFO files and takes about a second).
+	- What does a scratch wipe out? Usually one or more 32 KB error-correction blocks (16 sectors, about 30–50 ms of video); playback loses about half a second, up to the next key frame. Today any unreadable sector fails the whole title (no retry or skip); MakeMKV retries and skips.
+- **Decision (owner):** add all four to the plan, priority to cell ripping and cell-map progress. Added as G5 (rip chosen cells, alone or joined), G6 (progress in the cell map), G7 (retry and skip read errors). "Next steps" is no longer GUI-only; G4 waits on the owner, so G5 can start meanwhile.

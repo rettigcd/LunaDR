@@ -84,15 +84,31 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 | Drive authentication | Windows: `Dvd/WindowsCssDrive` behind `Css/ICssDrive` | needs an `ICssDrive` using `ioctl` DVD_AUTH / DVD_READ_STRUCT on `/dev/sr0` |
 | GUI | WPF, Windows only (owner: the GUI will be Windows-only) | none for the CLI; the GUI would need porting (e.g. Avalonia) if ever wanted on Linux |
 
-## Next steps: the GUI (Windows only)
-Owner's phases: (1) scan the disc and show what's on it, including which titles share cells, in a compact graphical cell map;
-(2) the user selects titles and clicks Start; (3) ripping with progress and remaining time for the current title and for all titles, then an optional sound.
-Framework and approach: see Design decisions → UI. All three phases are built (see Status); remaining:
+## Next steps
+The GUI's three phases are built (see Status). G4 waits on the owner (discs, license text), so work continues with G5–G7 meanwhile.
+Owner's priority: G5 and G6 before G7.
 
-**G4 – Finish** (Butterfly Effect is tested and the README is written; what is left needs the owner's hands)
+**G4 – Finish the GUI** (Butterfly Effect is tested and the README is written; what is left needs the owner's hands)
 1. *Owner:* insert the other four test discs one at a time (DEAD_ZONE_S4_D1, A_VERY_LONG_ENGAGEMENT_DISC1, LOST_IN_TRANSLATION, Gypsy vol. 1)
 	so each can be scanned in the GUI and a short title ripped and compared with the CLI's output (`mkvcompare`).
 2. Add the GPL v2 text as `LICENSE` (the download from gnu.org was refused by the network here; any copy of GPL v2 will do).
+
+**G5 – Rip chosen cells** (owner's request: one cell, or several cells joined into one file)
+1. Library: a rip from a list of cells instead of a title. Cells must all be in one title set (same video format, audio layout and CSS key); others are refused with a clear message.
+	Track list, languages and subtitle palette come from a title that plays the first cell. The user's order is kept; each cell becomes a chapter.
+2. CLI: a way to name cells, e.g. `rip-dvd mkv E: cells:5:1,5:3-5:6 <folder>` (title set:cell, as in the cell map), and a file name such as `<Disc name> - cells 5-1 to 5-6.mkv`.
+3. GUI: select cells in the cell map (click, Ctrl+click, Shift+click for a range), then "Rip selected cells" next to Start.
+4. Test: rip a single cell and a multi-cell selection; the joined file must play continuously (ffmpeg decode, check timestamps at the joins);
+	ripping exactly a title's cells this way must give the same streams as ripping the title (`mkvcompare`).
+
+**G6 – Rip progress in the cell map** (owner's request)
+1. Library: rip progress also reports the cell being read and how far into it.
+2. GUI: during a rip, the cell map marks finished cells and the cell being read (partly filled), for the title being ripped.
+
+**G7 – Damaged discs: retry and skip read errors** (owner's request; MakeMKV does this)
+1. On a read error: retry the sector a few times; if it still fails, skip to the next readable VOBU (the next ~0.5 s unit, which starts with a key frame) and keep ripping.
+2. Report each skipped spot (title time and length) as a warning in the CLI and in the GUI's results list, instead of failing the whole title.
+3. Test: simulate unreadable sectors in a test (a reader that fails on chosen sectors); a real test needs a scratched disc from the owner.
 
 ## Future (desirable, not scheduled)
 - **Audio not yet supported:** 20/24-bit LPCM and MPEG audio. Needs a disc with one of them to test (MPEG audio is most likely on PAL or home-made DVDs); the owner has none.
