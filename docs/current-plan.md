@@ -17,7 +17,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 	| DEAD_ZONE_S4_D1 (TV) | AC3, CC→text, STC reset in a cell | episode and extra identical to MakeMKV (captions within a few ms) |
 	| A_VERY_LONG_ENGAGEMENT_DISC1 (film) | 4 VobSub tracks, pulldown, dual layer, empty tracks | movie identical on every track |
 	| LOST_IN_TRANSLATION | DTS; fresh disc needing drive authentication | opening identical to owner's MakeMKV rip |
-	| Gypsy (2004) vol. 1 | 16-bit LPCM; disc without CSS | opening identical to owner's MakeMKV rip |
+	| Gypsy (2004) vol. 1 | 16-bit LPCM; disc without CSS | opening identical to owner's MakeMKV rip; set aside 2026-11-19: degraded, cell 7 reads back different corrupted data each time |
 	| BUTTERFLY_EFFECT | DTS-ES 6.1 | opening identical to owner's MakeMKV rip |
 	| Beauty and the Beast (Disney) | interleaved multi-angle cells, audio gap at a seamless join | title 16 (angle 1, 1:31): video, 3 audio, 2 VobSub identical to MakeMKV incl. times; differences in B1 and log 22:22 |
 
@@ -114,7 +114,7 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 What is left needs the owner's hands or is a small follow-up from the Beauty and the Beast disc.
 
 **G4 – Finish the GUI** (Butterfly Effect and Beauty and the Beast are tested and the README is written)
-1. *Owner:* insert the other four test discs one at a time (DEAD_ZONE_S4_D1, A_VERY_LONG_ENGAGEMENT_DISC1, LOST_IN_TRANSLATION, Gypsy vol. 1)
+1. *Owner:* insert the other three test discs one at a time (DEAD_ZONE_S4_D1, A_VERY_LONG_ENGAGEMENT_DISC1, LOST_IN_TRANSLATION)
 	so each can be scanned in the GUI and a short title ripped and compared with the CLI's output (`mkvcompare`).
 	This also re-checks those discs after the changes of 2026-11-18 evening (angle cells, chapter timing, closing small audio gaps), which should not affect them.
 
