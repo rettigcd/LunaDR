@@ -216,6 +216,20 @@ public static class Commands {
 		return 0;
 	}
 
+	[ProbeCommand("bddrive", "Blu-ray (or any optical) drive: model, firmware, current medium, and the feature list (BD read, AACS version, bus encryption). Args: <drive>")]
+	[System.Runtime.Versioning.SupportedOSPlatform("windows")]
+	public static int BdDrive(string[] args) {
+		BlurayProbe.Drive(args.Length > 0 ? args[0] : "E:");
+		return 0;
+	}
+
+	[ProbeCommand("bdfiles", "Blu-ray disc layout: BDMV/AACS folders, MKB version, bus encryption flag, disc ID, and whether the stream files are encrypted. Args: <drive or folder>")]
+	public static int BdFiles(string[] args) {
+		string root = args.Length > 0 ? args[0] : "E:";
+		BlurayProbe.Files(root.Length <= 3 ? root.TrimEnd('\\', '/') + "\\" : root);
+		return 0;
+	}
+
 	[ProbeCommand("cellmap", "Table of titles vs cells per title set ('*' = chapter start). Args: <drive> [title set]")]
 	public static int CellMap(string[] args) {
 		CellMapProbe.Print(IfoProbe.ResolveVideoTs(args.Length > 0 ? args[0] : "E:"), args.Length > 1 ? int.Parse(args[1]) : null);

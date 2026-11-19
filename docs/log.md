@@ -528,3 +528,13 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	**Decisions (in the plan):** read the files through Windows' UDF file system (as MakeMKV and libbluray do); one title per playlist (as MakeMKV); the program never downloads keys; UHD, BD+, 3D and menus out of scope for now. No MakeMKV reference rips exist, so the bar is a file that plays (ffmpeg) with duration, chapters and tracks matching the playlist.
 	Main risk: discs with AACS bus encryption need the drive's authentication even with the key; BR1 shows whether that applies.
 - Status line: 63 unit tests (was 55).
+
+## 2026-11-19 07:17
+- **Owner:** switched to branch `blu-ray`; unplugged the DVD drive and connected a Blu-ray drive; inserted The Goonies (Blu-ray). Owner left me to work alone: long operations allowed, commits on `blu-ray` only. The owner put a `keydb.cfg` key file in `%LOCALAPPDATA%acs\` (so the program looks there as well as in `%APPDATA%acs\`, libaacs's place).
+- **BR1 done (probe the drive and the disc):**
+	New `RipDvd.Core/Bluray/WindowsScsiDrive` (INQUIRY and GET CONFIGURATION through IOCTL_SCSI_PASS_THROUGH) and probe commands `bddrive <drive>` and `bdfiles <drive>`.
+	Drive: HL-DT-ST BD-RE BP50NB40 (USB), firmware 1.02 (dated 2019-05-03); reads BD-ROM; AACS feature: version 1, bus encryption capable, binding nonce.
+	Disc THE_GOONIES: 24 playlists, 22 clips, 47.9 GB of streams (two big clips, 25.6 and 20.5 GB); BD-J menus. AACS: MKB version 8, one unit key, disc ID CD9BD1A5…D8A2A8B4; bus encryption not enabled in either content certificate. Every stream unit is marked encrypted (copy-permission bits 3, only the clear first packet's sync byte readable). Stream files read fine through the Windows file system without any drive authentication.
+	Key file: has an entry for this disc (VUK and unit key). So decryption needs only the key file.
+	**Why MakeMKV "never worked":** `makemkvcon -r info disc:0` says Blu-ray support is shareware with a 30-day evaluation, asks whether to start it, and (unattended: no) ends with "Failed to open disc". Not a drive problem. I did not start the evaluation (owner's choice). Side note: MakeMKV sent a firmware dump of the drive "for analysis" on its own.
+	Metadata copied for tests to git-ignored `reference/bdmv/THE_GOONIES/` (PLAYLIST, CLIPINF, index/MovieObject, AACS .inf/.cer).

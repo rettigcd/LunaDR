@@ -118,18 +118,10 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 | GUI | WPF, Windows only (owner: the GUI will be Windows-only) | none for the CLI; the GUI would need porting (e.g. Avalonia) if ever wanted on Linux |
 
 ## Next steps
-**Blu-ray probing and ripping** (owner, 2026-11-19). The owner has a Blu-ray drive that never worked with MakeMKV, and no example Blu-ray rips.
+**Blu-ray probing and ripping** (owner, 2026-11-19). BR1 is done (log 2026-11-19): the drive (HL-DT-ST BP50NB40) reads the disc through Windows; MakeMKV failed only because its Blu-ray support is shareware.
+	Test disc: The Goonies (AACS 1, MKB v8, no bus encryption); the owner's key file has its key. No MakeMKV rips to compare with.
 Steps marked *Owner* need the owner's hands; the rest can be done once a disc is in the drive (BR3 and BR5 also without one).
 Approach (as MakeMKV, libbluray and libaacs do): read the disc's files through Windows' own UDF file system; the titles are the playlists; decrypt with a per-disc key from a key file.
-
-**BR1 – Probe the drive and the disc** (probe commands only; no ripping code yet)
-1. *Owner:* insert a Blu-ray movie the owner owns (ideally also a home-burned BD-R later: unencrypted, the easiest first rip). Tell which discs are available for testing.
-2. Probe `bddrive`: drive model and firmware (IOCTL_STORAGE_QUERY_PROPERTY), and the drive's feature list from SCSI GET CONFIGURATION
-	(IOCTL_SCSI_PASS_THROUGH_DIRECT): BD-ROM read, AACS feature (version, bus encryption capable, binding nonce), current media type.
-3. Probe `bdfiles`: list `BDMV` (index.bdmv, MovieObject.bdmv, PLAYLIST/*.mpls, CLIPINF/*.clpi, STREAM/*.m2ts) and `AACS` (Unit_Key_RO.inf, MKB_RO.inf, Content000.cer);
-	read the first `.m2ts` packets and report whether they are encrypted (copy-permission bits in each 192-byte packet's 4-byte header).
-4. Run `makemkvcon64 -r info disc:0` and record exactly how MakeMKV fails with this drive (message, log). Write the findings to the log;
-	they decide whether a drive-specific problem (e.g. no AACS authentication, bus encryption) affects us too.
 
 **BR2 – Disc structure and the title list** (probe `bdtitles`, then `RipDvd.Core/Bluray/`)
 1. Parsers (pure C#, unit-tested on copies of a disc's small metadata files in git-ignored `reference/bdmv/<disc>/`, like the IFO tests):
@@ -146,7 +138,7 @@ Approach (as MakeMKV, libbluray and libaacs do): read the disc's files through W
 2. Unit keys = the encrypted keys in Unit_Key_RO.inf decrypted with the VUK (AES-128 ECB). Each 6,144-byte aligned unit (32 packets) of an `.m2ts` is AES-128 CBC encrypted
 	except its first 16 bytes, with a key derived from the unit key and those 16 bytes (AES-G); decrypt only units whose packets are marked encrypted.
 3. Unit tests with data we encrypt ourselves (known keys), like the CSS tests. Clear message when the key file or the disc's entry is missing; unencrypted discs need no key.
-4. Risk: discs with bus encryption need the drive's AACS authentication (a host certificate) even with the VUK; BR1 shows whether the test disc and drive use it. If they do, record it as an open question before going further.
+4. Discs with bus encryption need the drive's AACS authentication (a host certificate) even with the key; The Goonies does not use it, so this is left out for now.
 
 **BR4 – Transport-stream demuxing** (`RipDvd.Core/Bluray/M2tsReader`, probe `bddemux`)
 1. `.m2ts` = 192-byte packets (4-byte arrival-time header + 188-byte MPEG-TS packet). Assemble PES packets per PID (PIDs from the playlist's STN table), with their PTS/DTS.
