@@ -130,7 +130,7 @@ No MakeMKV rips to compare with, so the bar is the owner's: the file plays (ffmp
 1. Full rip of The Goonies playlist 00000 (25.6 GB): ffmpeg decodes every stream with no errors; duration 1:53:55; 37 chapters; audio in sync at the end.
 2. *Owner:* play the file (e.g. in Plex/VLC): picture, each audio track (TrueHD needs a player that supports it), subtitles.
 
-**BR8 – Formats not on the test disc** (built and unit-tested with made-up data, never seen on a real disc)
+**BR8 – Formats not on the test disc** (unit-tested, and ripped from a stream made by ffmpeg with probe `bdclip`: H.264, E-AC3, DTS core, LPCM decode cleanly with the source's times; never seen on a real disc)
 1. *Owner:* a Blu-ray with H.264 video and DTS-HD MA audio (most Blu-ray movies), ideally also one with LPCM or E-AC3; a home-burned BD-R would test an unencrypted disc.
 2. Check each: ffmpeg decode, durations, channel counts; fix what differs. Known gaps: E-AC3 dependent substreams (7.1) are not joined to their main frames;
 	H.264 display size of SD video assumes 4:3; DTS-HD channel count shows the core's (5.1 for a 7.1 track).
