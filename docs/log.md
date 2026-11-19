@@ -469,3 +469,10 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	- Checked that the tests catch the bugs: with the interleaved-cell fix undone 3 tests fail; with the angle-chapter fix undone 1 fails (the real-disc chapter test did not, so it now also checks chapter times).
 - **Process:** CLAUDE.md: run `dotnet test RipDvd.slnx` before each commit and commit only when it passes; a bug fix comes with a test that fails without it; check the build's exit code.
 - **Owner question:** how to launch the GUI? **Answer:** `dotnet run --project src/RipDvd.Gui` from the repo folder, or run `src\RipDvd.Gui\bin\Debug\net10.0-windows\rip-dvd-gui.exe`; close it before building (it locks its files).
+
+## 2026-11-18 22:54
+- **Step (G4.2 done):** the owner supplied the GPL v2 text; saved as `LICENSE` at the repo root (CRLF; the title lines centered as in the official text, which the paste had lost). README and the plan's license decision point to it.
+- **Owner questions answered (between T1 and this step):**
+	- Why do DVDs hold cells that look the same (Beauty and the Beast cells 117 and 130)? They are the same scene in two cuts of the film, at the same playlist position (54): 117 (45.5 s) in title 16, 130 (24.5 s) in titles 17/18. With seamless branching a cell is the smallest unit a title can choose, so a scene that differs anywhere is stored once per cut; other reasons are angles, title sets (a title can only play its own set's cells) and authoring convenience.
+	- How did I know title 16 is the Special Edition and 17 the theatrical cut? I did not read it from the disc (DVDs carry no title names); it was an inference from the running times (91 vs 84 min, the known lengths of the two cuts) and the branching structure, and I had stated it as fact. To confirm: title 16 should contain the song "Human Again", titles 17/18 not.
+	- What next? G4.1 (owner: four test discs), B1 (chapter times, needs Beauty and the Beast in the drive), G7.4 (owner: a damaged disc).

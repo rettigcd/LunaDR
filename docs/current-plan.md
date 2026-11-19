@@ -77,7 +77,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 - CSS: recover title keys from the scrambled data (libdvdcss "AttackPattern"), accepting the first key that descrambles to valid MPEG.
 	Before reading, run the CSS drive handshake (needed on a freshly inserted disc); on unprotected discs the drive rejects it, which is only reported if reading then fails.
 - CSS code is ported from libdvdcss rather than linked: readable, no native DLL. libdvdcss could be an optional fallback if a disc defeats the port.
-- License: GPL v2 or later because of the libdvdcss port. GPL-derived files: `src/RipDvd.Core/Css/Css.cs`, `Css/CssTables.cs`, `Css/CssAuthentication.cs`; each starts with a "LICENSE NOTE" block listing all of them.
+- License: GPL v2 or later because of the libdvdcss port; the full text is in `LICENSE` at the repo root. GPL-derived files: `src/RipDvd.Core/Css/Css.cs`, `Css/CssTables.cs`, `Css/CssAuthentication.cs`; each starts with a "LICENSE NOTE" block listing all of them.
 	Any further GPL-derived file gets the same note and goes on this list.
 - Overlapping titles (`DiscScanner`, from cell lists; cells under 2 s ignored): a **duplicate** plays the same cells as an earlier title; a **compilation** ("play all") consists only of cells of 2+ other titles and isn't inside any single one. `info` marks both; `mkv … all --no-compilations / --no-duplicates` skips them (default keeps them, like MakeMKV). Probe `cellmap` shows the titles-vs-cells table.
 - Reading the disc: through the file system (`<drive>\VIDEO_TS\*.VOB`), after drive authentication.
@@ -114,7 +114,6 @@ What is left needs the owner's hands or is a small follow-up from the Beauty and
 1. *Owner:* insert the other four test discs one at a time (DEAD_ZONE_S4_D1, A_VERY_LONG_ENGAGEMENT_DISC1, LOST_IN_TRANSLATION, Gypsy vol. 1)
 	so each can be scanned in the GUI and a short title ripped and compared with the CLI's output (`mkvcompare`).
 	This also re-checks those discs after the changes of 2026-11-18 evening (angle cells, chapter timing, closing small audio gaps), which should not affect them.
-2. Add the GPL v2 text as `LICENSE` (the download from gnu.org was refused by the network here; any copy of GPL v2 will do).
 
 **B1 – Chapter times after angle blocks** (Beauty and the Beast title 16: 10 of 23 chapter starts differ from MakeMKV's by 17–100 ms)
 1. MakeMKV seems to time chapters from the stream (where each cell actually starts on the title timeline), we from the IFO cell playback times.

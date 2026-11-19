@@ -72,7 +72,7 @@ The folder and the sound setting are remembered in `%APPDATA%\rip-dvd\gui-settin
 | `docs` | [current-plan.md](docs/current-plan.md) (status, design decisions, next steps) and [log.md](docs/log.md) (history). |
 
 ## License
-GPL version 2 or later, because the CSS code is ported from [libdvdcss](https://www.videolan.org/developers/libdvdcss.html).
+GPL version 2 or later (full text in [LICENSE](LICENSE)), because the CSS code is ported from [libdvdcss](https://www.videolan.org/developers/libdvdcss.html).
 The ported files are `src/RipDvd.Core/Css/Css.cs`, `CssTables.cs` and `CssAuthentication.cs`; each begins with a LICENSE NOTE.
 
 Whether ripping a particular disc is legal where you live is for you to determine.
