@@ -430,3 +430,7 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	- Can the cell map show progress? Yes, during ripping (the scan only reads the IFO files and takes about a second).
 	- What does a scratch wipe out? Usually one or more 32 KB error-correction blocks (16 sectors, about 30–50 ms of video); playback loses about half a second, up to the next key frame. Today any unreadable sector fails the whole title (no retry or skip); MakeMKV retries and skips.
 - **Decision (owner):** add all four to the plan, priority to cell ripping and cell-map progress. Added as G5 (rip chosen cells, alone or joined), G6 (progress in the cell map), G7 (retry and skip read errors). "Next steps" is no longer GUI-only; G4 waits on the owner, so G5 can start meanwhile.
+
+## 2026-11-18 20:14
+- **Owner question:** could we build a Blu-ray probe and work out how to rip Blu-ray discs (the owner's Blu-ray drive never worked with MakeMKV; no example rips)? **Answer:** the probe, disc structure, transport-stream demuxing and MKV writing are all doable; AACS decryption needs a per-disc key that the owner supplies (key-file approach as in libaacs); testing would rely on ffmpeg and the disc's own playlists instead of reference rips.
+- **Decision (owner):** add Blu-ray probing and ripping as a future feature, after the current Next steps. The design decision "DVD only; Blu-ray is out of scope" became "DVD only for now". Owner's note recorded in the plan: https://fvonline-db.bplaced.net/ contains keys we can use.

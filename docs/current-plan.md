@@ -38,7 +38,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 ### Core (ripping library `RipDvd.Core` and the CLI)
 - C# on .NET 10, all managed code (no native C). The drive is the bottleneck (descrambling 430 MB/s vs ≤ 22 MB/s from a drive).
 - Self-contained like MakeMKV: no external tools at run time. ffmpeg is used only as a development check.
-- DVD only; Blu-ray is out of scope.
+- DVD only for now; Blu-ray is a future feature (see Future), to start after the current Next steps.
 - All ripping logic lives in the library; the CLI and the GUI only call it.
 - Output: Matroska, laid out like MakeMKV's files (log 10:22, 12:10); streams copied unchanged except where MakeMKV converts:
 	LPCM → little-endian `A_PCM/INT/LIT` in 1/30 s blocks; closed captions → `S_TEXT/UTF8`, and the CC data is removed from the video.
@@ -111,6 +111,12 @@ Owner's priority: G5 and G6 before G7.
 3. Test: simulate unreadable sectors in a test (a reader that fails on chosen sectors); a real test needs a scratched disc from the owner.
 
 ## Future (desirable, not scheduled)
+- **Blu-ray probing and ripping** (owner; after the current Next steps). The owner has a Blu-ray drive that never worked with MakeMKV, and no example Blu-ray rips.
+	1. Probe: identify the drive (model, firmware, reported Blu-ray/AACS features) and read the disc structure (`BDMV`: `.mpls` playlists, `.clpi` clip info, `.m2ts` streams); find out why MakeMKV fails with this drive.
+	2. Rip: playlists as titles; demux the MPEG transport stream; copy H.264/VC-1/MPEG-2 video, AC3/DTS/TrueHD/DTS-HD/LPCM audio and PGS subtitles into MKV.
+	3. AACS decryption (AES) using a per-disc key from a key file the owner supplies (the libaacs `KEYDB.cfg` approach); unencrypted discs (e.g. home-burned BD-R) work without one. BD+ discs need more.
+		Owner's note: https://fvonline-db.bplaced.net/ contains keys we can use.
+	4. Testing without reference rips: ffmpeg decoding, and durations/chapters/tracks checked against the disc's playlists.
 - **Audio not yet supported:** 20/24-bit LPCM and MPEG audio. Needs a disc with one of them to test (MPEG audio is most likely on PAL or home-made DVDs); the owner has none.
 - **Linux drive authentication** (`ICssDrive` via `ioctl` DVD_AUTH on /dev/sr0). Needs a Linux machine with a DVD drive to test; the owner has none.
 - GUI track options (audio/subtitle languages, captions, chapters), as the CLI has; not in the first GUI version.
