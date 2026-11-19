@@ -133,14 +133,24 @@ public static class Commands {
 		return 0;
 	}
 
-	[ProbeCommand("rip", "Rip a title to MKV with RipDvd.Core TitleRipper. Args: <drive> <title> <output.mkv> [-cells N]")]
+	[ProbeCommand("rip", "Rip a title to MKV with RipDvd.Core TitleRipper. Args: <drive> <title> <output.mkv> [-cells N] [-bad 1000-1010,5000] (simulated unreadable sectors)")]
 	public static int Rip(string[] args) {
 		string videoTs = IfoProbe.ResolveVideoTs(args[0]);
 		var ripper = new RipDvd.Core.Ripping.TitleRipper(videoTs, int.Parse(args[1]));
 		int lastPercent = -1;
 		int ci = Array.IndexOf(args, "-cells");
 		int maxCells = ci >= 0 ? int.Parse(args[ci + 1]) : int.MaxValue;
-		var result = ripper.Rip(args[2], maxCells: maxCells, progress: p => {
+		int bi = Array.IndexOf(args, "-bad");
+		var options = new RipDvd.Core.Ripping.RipOptions();
+		if (bi >= 0) {
+			var bad = new List<(long From, long To)>();
+			foreach (var part in args[bi + 1].Split(',')) {
+				var ends = part.Split('-');
+				bad.Add((long.Parse(ends[0]), long.Parse(ends[^1])));
+			}
+			options = new RipDvd.Core.Ripping.RipOptions { SimulateBadSector = s => bad.Any(r => s >= r.From && s <= r.To) };
+		}
+		var result = ripper.Rip(args[2], maxCells: maxCells, options: options, progress: p => {
 			if (p.Phase != RipDvd.Core.Ripping.RipPhase.Ripping) return;
 			int pct = (int)(p.Fraction * 100);
 			if (pct / 10 != lastPercent / 10) { Console.Write($"{pct}% "); lastPercent = pct; }
@@ -189,6 +199,29 @@ public static class Commands {
 
 	[ProbeCommand("mkvcompare", "Compare two MKV files track by track (frames, bytes, SHA-256 of payloads, times, chapters). Args: <a.mkv> <b.mkv>")]
 	public static int MkvCompareCommand(string[] args) => MkvCompare.Run(args[0], args[1]);
+
+	[ProbeCommand("navwalk", "List the nav packs (VOBUs) from a sector, following VOBU end addresses: ILVU fields for interleaved cells. Args: <drive> <vts> <first sector> [count]")]
+	public static int NavWalk(string[] args) {
+		string videoTs = IfoProbe.ResolveVideoTs(args[0]);
+		int vts = int.Parse(args[1]);
+		long s = long.Parse(args[2]);
+		int count = args.Length > 3 ? int.Parse(args[3]) : 40;
+		RipDvd.Core.Dvd.DriveUnlocker.TryUnlock(videoTs);
+		using var reader = RipDvd.Core.Dvd.VobReader.ForTitleSet(videoTs, vts);
+		var buffer = new byte[RipDvd.Core.Dvd.VobReader.SectorSize];
+		Console.WriteLine("  sector    lbn  vobu_ea  vob/cell  category  ilvu_ea  nxt_ilvu_sa");
+		for (int i = 0; i < count; i++) {
+			reader.Read(s, 1, buffer);
+			if (!RipDvd.Core.Dvd.NavPack.IsNavPack(buffer)) {
+				Console.WriteLine($"  {s,7}  not a nav pack");
+				return 1;
+			}
+			var nav = RipDvd.Core.Dvd.NavPack.Parse(buffer);
+			Console.WriteLine($"  {s,7} {nav.Lbn,6} {nav.VobuEndAddress,8}  {nav.VobId,3}/{nav.CellId,-3}   {nav.IlvuCategory:X4}  {nav.IlvuEndAddress,7}  {nav.NextIlvuStart,11}");
+			s += nav.VobuEndAddress + 1;
+		}
+		return 0;
+	}
 
 	[ProbeCommand("key", "Find CSS title keys with the library's TitleKeyFinder and verify them. Args: <drive> [vts numbers...]")]
 	public static int Key(string[] args) {

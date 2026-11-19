@@ -76,9 +76,16 @@
 				<TextBlock Text=" chapter start" Margin="0,0,14,0" />
 				<TextBlock Text="Click a row to select its title; titles sharing its cells are highlighted." Opacity="0.7" />
 			</StackPanel>
+			<!-- G5: cells selected in the map, ripped on their own into one file. -->
+			<DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0" LastChildFill="True">
+				<Button DockPanel.Dock="Right" Content="Clear" Command="{Binding ClearCellsCommand}" Margin="6,0,0,0" />
+				<Button DockPanel.Dock="Right" Content="Rip selected cells" Command="{Binding RipCellsCommand}" />
+				<TextBlock Text="{Binding SelectedCellsText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+			</DockPanel>
 			<TextBlock DockPanel.Dock="Bottom" Text="{Binding HoverInfo}" Margin="0,6,0,0" TextWrapping="Wrap" MinHeight="18" Opacity="0.85" />
 			<ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-				<c:CellMapView Map="{Binding CellMap}" SelectedTitle="{Binding SelectedTitleNumber}"
+				<c:CellMapView Map="{Binding CellMap}" SelectedTitle="{Binding SelectedTitleNumber}" SelectedCells="{Binding SelectedCells}"
+							   RipCells="{Binding RipCells}" RipPosition="{Binding RipPosition}" RipCellFraction="{Binding RipCellFraction}" RipTitle="{Binding RipTitle}"
 							   HoverText="{Binding HoverInfo, Mode=OneWayToSource}" HorizontalAlignment="Left" VerticalAlignment="Top" />
 			</ScrollViewer>
 		</DockPanel>

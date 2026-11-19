@@ -9,8 +9,12 @@ namespace RipDvd.Core.Ripping;
 /// <summary>What a rip is doing.</summary>
 public enum RipPhase { Unlocking, FindingKey, Ripping, Finishing, Done }
 
-/// <summary>Progress of one title's rip: the phase, sectors read so far out of the total, and time since the rip started.</summary>
-public sealed record RipProgress(RipPhase Phase, long SectorsDone, long SectorsTotal, TimeSpan Elapsed) {
+/// <summary>
+/// Progress of one title's rip: the phase, sectors read so far out of the total, and time since the rip started.
+/// While ripping, <see cref="CellPosition"/> is the cell being read (0-based position in the title's playlist, or in the chosen cells)
+/// and <see cref="CellFraction"/> how far into it; -1 and 0 before the first cell.
+/// </summary>
+public sealed record RipProgress(RipPhase Phase, long SectorsDone, long SectorsTotal, TimeSpan Elapsed, int CellPosition = -1, double CellFraction = 0) {
 	public double Fraction => SectorsTotal == 0 ? 0 : (double)SectorsDone / SectorsTotal;
 }
 
@@ -18,32 +22,109 @@ public sealed record RipProgress(RipPhase Phase, long SectorsDone, long SectorsT
 public sealed record RipResult(string OutputPath, long DurationNs, long Sectors, TimeSpan Elapsed, IReadOnlyList<string> Warnings);
 
 /// <summary>
-/// Rips one DVD title to an MKV file, the way MakeMKV does:
+/// Rips one DVD title, or a list of cells chosen by the user, to an MKV file, the way MakeMKV does:
 ///   * tracks: the video, then each audio stream the title's PGC marks available;
-///   * chapters: one per PGC program, timed from the cell playback times;
+///   * chapters: one per PGC program, timed from the cell playback times (for chosen cells: one per cell);
 ///   * streams copied unchanged; timestamps mapped onto one title timeline that starts at 0.
 ///
 /// Timeline: each cell may restart the MPEG clock (STC). For each cell we take the first
 /// VOBU's start time from its nav pack, and map stream time t to
 ///   title time = (time of all earlier cells) + (t − cell's first VOBU start).
+/// The same mapping joins any cells of one title set, so chosen cells play continuously in the order given.
 /// </summary>
 public sealed class TitleRipper {
 	public const string AppName = "rip-dvd 0.1";
 
 	private readonly string _videoTs;
-	private readonly int _titleNumber;
-	private readonly VmgIfo _vmg;
-	private readonly TitleEntry _title;
+	private readonly int _titleSet;
 	private readonly VtsIfo _vts;
-	private readonly List<Pgc> _pgcs;
+	private readonly Pgc _pgc;                  // where the audio/subtitle settings and the subtitle palette come from
+	private readonly List<Cell> _cells;         // in playback order
+	private readonly List<MkvChapter> _chapters;
+	private readonly string? _setupWarning;
 
-	public TitleRipper(string videoTsFolder, int titleNumber) {
-		_videoTs = videoTsFolder;
-		_titleNumber = titleNumber;
-		_vmg = VmgIfo.Parse(File.ReadAllBytes(Path.Combine(videoTsFolder, "VIDEO_TS.IFO")));
-		_title = _vmg.Titles[titleNumber - 1];
-		_vts = VtsIfo.Parse(File.ReadAllBytes(Path.Combine(videoTsFolder, $"VTS_{_title.TitleSetNumber:00}_0.IFO")), _title.TitleSetNumber);
-		_pgcs = _vts.Chapters[_title.TitleSetTitleNumber - 1].Select(c => c.PgcNumber).Distinct().Select(n => _vts.Pgcs[n - 1]).ToList();
+	private TitleRipper(string videoTs, int titleSet, VtsIfo vts, Pgc pgc, List<Cell> cells, List<MkvChapter> chapters, string? setupWarning) {
+		_videoTs = videoTs;
+		_titleSet = titleSet;
+		_vts = vts;
+		_pgc = pgc;
+		_cells = cells;
+		_chapters = chapters;
+		_setupWarning = setupWarning;
+	}
+
+	/// <summary>Ripper for a title, by the disc's own title number.</summary>
+	public TitleRipper(string videoTsFolder, int titleNumber) : this(ForTitle(videoTsFolder, titleNumber)) { }
+
+	private TitleRipper(TitleRipper other)
+		: this(other._videoTs, other._titleSet, other._vts, other._pgc, other._cells, other._chapters, other._setupWarning) { }
+
+	private static TitleRipper ForTitle(string videoTs, int titleNumber) {
+		var vmg = VmgIfo.Parse(File.ReadAllBytes(Path.Combine(videoTs, "VIDEO_TS.IFO")));
+		var title = vmg.Titles[titleNumber - 1];
+		var vts = LoadVts(videoTs, title.TitleSetNumber);
+		var pgcs = TitlePgcs(vts, title);
+		string? warning = pgcs.Count > 1 ? $"Title uses {pgcs.Count} PGCs; only cells of all PGCs are concatenated (chapters from the first)." : null;
+		return new TitleRipper(videoTs, title.TitleSetNumber, vts, pgcs[0], pgcs.SelectMany(p => p.Cells).ToList(), PgcChapters(pgcs[0]), warning);
+	}
+
+	/// <summary>
+	/// Ripper for cells chosen by the user, joined in the order given into one file.
+	/// <paramref name="cellNumbers"/> are cell numbers as in the disc's cell map (1 = first cell of <see cref="CellMap.Cells"/>); see <see cref="CellSelection"/>.
+	/// All cells must be in one title set (same video format, audio layout and CSS key).
+	/// The audio/subtitle settings come from a title that plays the first cell; each cell becomes a chapter.
+	/// </summary>
+	public static TitleRipper ForCells(string videoTsFolder, IReadOnlyList<int> cellNumbers) {
+		var vmg = VmgIfo.Parse(File.ReadAllBytes(Path.Combine(videoTsFolder, "VIDEO_TS.IFO")));
+		var vtsCache = new Dictionary<int, VtsIfo>();
+		VtsIfo Vts(int n) => vtsCache.TryGetValue(n, out var v) ? v : vtsCache[n] = LoadVts(videoTsFolder, n);
+		var map = CellMap.Build(vmg, Vts);
+		if (CellSelection.Validate(map, cellNumbers) is { } error) throw new ArgumentException(error);
+
+		var chosen = cellNumbers.Select(n => map.Cells[n - 1]).ToList();
+		var vts = Vts(chosen[0].TitleSet);
+		var title = vmg.Titles[map.TitlesUsing(cellNumbers[0] - 1).First() - 1];
+		var pgcs = TitlePgcs(vts, title);
+		var pgc = pgcs.FirstOrDefault(p => p.Cells.Any(c => c.VobId == chosen[0].VobId && c.CellId == chosen[0].CellId)) ?? pgcs[0];
+		var allCells = vts.Pgcs.SelectMany(p => p.Cells).ToList();
+		var cells = chosen.Select(ci => allCells.First(c => c.VobId == ci.VobId && c.CellId == ci.CellId)).ToList();
+
+		var chapters = new List<MkvChapter>();
+		var elapsed = default(DvdTime);
+		for (int i = 0; i < cells.Count; i++) {
+			long start = elapsed.ToNanoseconds();
+			elapsed += cells[i].PlaybackTime;   // add frame counts, convert once (exact)
+			chapters.Add(new MkvChapter(start, elapsed.ToNanoseconds(), $"Cell {cellNumbers[i]}"));
+		}
+		return new TitleRipper(videoTsFolder, chosen[0].TitleSet, vts, pgc, cells, chapters, null);
+	}
+
+	private static VtsIfo LoadVts(string videoTs, int titleSet) =>
+		VtsIfo.Parse(File.ReadAllBytes(Path.Combine(videoTs, $"VTS_{titleSet:00}_0.IFO")), titleSet);
+
+	private static List<Pgc> TitlePgcs(VtsIfo vts, TitleEntry title) =>
+		vts.Chapters[title.TitleSetTitleNumber - 1].Select(c => c.PgcNumber).Distinct().Select(n => vts.Pgcs[n - 1]).ToList();
+
+	/// <summary>
+	/// Chapters of a title: program n starts at its entry cell, timed from the IFO cell playback times.
+	/// Cells of angles other than the first are not played, so their time is not counted (in an angle block every angle has the same length).
+	/// </summary>
+	private static List<MkvChapter> PgcChapters(Pgc pgc) {
+		var cellStartNs = new long[pgc.Cells.Count + 1];
+		var elapsed = default(DvdTime);
+		for (int c = 0; c < pgc.Cells.Count; c++) {
+			var cell = pgc.Cells[c];
+			if (cell.BlockType != 1 || cell.BlockMode == 1) elapsed += cell.PlaybackTime;   // add frame counts, convert once (exact)
+			cellStartNs[c + 1] = elapsed.ToNanoseconds();
+		}
+		long ifoDurationNs = cellStartNs[^1];
+		var chapterStarts = pgc.ProgramEntryCells.Select(cell => cellStartNs[cell - 1]).ToList();
+		var chapters = new List<MkvChapter>();
+		for (int i = 0; i < chapterStarts.Count; i++) {
+			long end = i + 1 < chapterStarts.Count ? chapterStarts[i + 1] : ifoDurationNs;
+			chapters.Add(new MkvChapter(chapterStarts[i], end, $"Chapter {i + 1:00}"));
+		}
+		return chapters;
 	}
 
 	/// <summary>
@@ -56,14 +137,21 @@ public sealed class TitleRipper {
 		options ??= RipOptions.Default;
 		var started = DateTime.UtcNow;
 		long sectorsDone = 0, total = 0;
-		void Report(RipPhase phase) => progress?.Invoke(new RipProgress(phase, sectorsDone, total, DateTime.UtcNow - started));
+		int cellPosition = -1;
+		long cellSectorsDone = 0;
+		IReadOnlyList<long> cellSectors = [];
+		void Report(RipPhase phase) {
+			double cellFraction = phase == RipPhase.Done ? 1
+				: cellPosition < 0 || cellSectors[cellPosition] == 0 ? 0
+				: Math.Min(1, (double)cellSectorsDone / cellSectors[cellPosition]);
+			progress?.Invoke(new RipProgress(phase, sectorsDone, total, DateTime.UtcNow - started, cellPosition, cellFraction));
+		}
 		var warnings = new List<string>();
-		var pgc = _pgcs[0];
-		if (_pgcs.Count > 1) warnings.Add($"Title uses {_pgcs.Count} PGCs; only cells of all PGCs are concatenated (chapters from the first).");
+		if (_setupWarning is not null) warnings.Add(_setupWarning);
 
 		// First report before touching the drive: opening the VOBs can take seconds while the disc spins up.
 		Report(RipPhase.Unlocking);
-		using var vobs = VobReader.ForTitleSet(_videoTs, _title.TitleSetNumber);
+		using var vobs = VobReader.ForTitleSet(_videoTs, _titleSet);
 		// A drive only returns scrambled sectors after the CSS handshake (unless something, e.g. MakeMKV, already did it).
 		// Unprotected discs make the drive reject the handshake ("Incorrect function"), so a failure only matters if reading then fails.
 		string? unlockError = DriveUnlocker.TryUnlock(_videoTs);
@@ -74,9 +162,10 @@ public sealed class TitleRipper {
 		} catch (IOException ex) when (unlockError is not null) {
 			throw new IOException($"{ex.Message} (drive authentication failed: {unlockError})", ex);
 		}
-		var cells = _pgcs.SelectMany(p => p.Cells).Take(maxCells).ToList();
-		var reader = new TitleSectorReader(vobs, cells, key);
+		vobs.SimulateBadSector = options.SimulateBadSector;
+		var reader = new TitleSectorReader(vobs, _cells.Take(maxCells).ToList(), key);
 		total = reader.TotalSectors;
+		cellSectors = reader.CellSectors;
 
 		var (video, tracks, audioTracks, subtitleTracks, captionTrack, captionDecoder, chapters) = BuildPlan(options, warnings);
 
@@ -91,6 +180,7 @@ public sealed class TitleRipper {
 			bool headerWritten = false;
 			var pendingVideo = new List<VideoFrame>();
 			var audioQueues = audioTracks.Values.Select(v => (v.Track, v.Framer, Queue: new Queue<AudioFrame>())).ToList();
+			var audioContinuity = audioTracks.Values.ToDictionary(v => v.Track, v => new AudioContinuity(v.Framer));
 			var subtitleQueues = subtitleTracks.Values.ToDictionary(v => v.Track, v => new Queue<SubpictureUnit>());
 
 			// Subtitles are written into the cluster of the GOP they start in.
@@ -161,12 +251,32 @@ public sealed class TitleRipper {
 				}
 			}
 
+			// Damaged discs: stretches the reader had to skip become warnings, with the title time where they are and their approximate length.
+			long lastTitleNs = 0;
+			long reportedSkipped = 0;
+			long playNs = TitleSectorReader.PlayedCells(_cells.Take(maxCells).ToList()).Aggregate(default(DvdTime), (sum, c) => sum + c.PlaybackTime).ToNanoseconds();
+			void WarnSkipped(long sectors, string where) {
+				reportedSkipped += sectors;
+				double seconds = total == 0 ? 0 : sectors * (playNs / 1e9) / total;
+				warnings.Add($"Read error (damaged disc?): {sectors:N0} unreadable sector(s) skipped {where}, about {Math.Max(seconds, 0.1):F1} s; " +
+							 "the picture and sound may jump there.");
+			}
+
 			foreach (var sector in reader.ReadAll()) {
+				if (sector.SkippedBefore > 0) {
+					var t = TimeSpan.FromTicks(lastTitleNs / 100);
+					WarnSkipped(sector.SkippedBefore, $"at {(int)t.TotalHours}:{t.Minutes:00}:{t.Seconds:00}");
+					sectorsDone += sector.SkippedBefore;
+				}
 				if (!ReferenceEquals(sector.Cell, currentCell)) {
 					if (currentCell is not null && cellFirstPtm is { } f0 && cellLastPtm is { } l0) elapsedBeforeCell += ToNs90k(l0 - f0);
 					currentCell = sector.Cell;
 					cellFirstPtm = cellLastPtm = null;
+					cellPosition++;
+					cellSectorsDone = 0;
+					Report(RipPhase.Ripping);
 				}
+				cellSectorsDone++;
 				foreach (var p in ProgramStreamParser.Parse(sector.Data)) {
 					if (p.Stream.Kind == StreamKind.Navigation) {
 						if (p.Stream.Number == 0) {   // PCI: VOBU start/end presentation times
@@ -180,12 +290,13 @@ public sealed class TitleRipper {
 						continue;
 					}
 					long? pts = p.Pts is { } raw ? ToNs90k(raw) + cellOffsetNs : null;
+					if (pts is { } shown && shown > lastTitleNs) lastTitleNs = shown;
 					if (p.Stream.Kind == StreamKind.Video) {
 						framer.Feed(p.Payload.Span, pts);
 					} else if (audioTracks.TryGetValue(p.Stream, out var at)) {
 						at.Framer.Feed(p.Payload.Span, pts, p.FirstAccessUnit);
 						var q = audioQueues.First(x => x.Track == at.Track).Queue;
-						foreach (var af in at.Framer.TakeReady()) q.Enqueue(af);
+						foreach (var af in at.Framer.TakeReady()) q.Enqueue(audioContinuity[at.Track].Place(af));
 					} else if (p.Stream.Kind == StreamKind.Subpicture && subtitleTracks.TryGetValue(p.Stream.Number, out var st)) {
 						st.Assembler.Feed(p.Payload.Span, pts);
 						foreach (var unit in st.Assembler.TakeReady()) subtitleQueues[st.Track].Enqueue(unit);
@@ -205,13 +316,17 @@ public sealed class TitleRipper {
 				if (++sectorsDone % 512 == 0) Report(RipPhase.Ripping);
 			}
 
+			// Sectors skipped at the very end are not followed by a sector that could carry the mark.
+			long trailing = reader.Skipped.Sum(r => r.Sectors) - reportedSkipped;
+			if (trailing > 0) WarnSkipped(trailing, "at the end");
+
 			Report(RipPhase.Finishing);
 			framer.Flush();
 			pendingVideo.AddRange(framer.TakeReady());
 			if (pendingVideo.Count > 0) WriteGop(pendingVideo, long.MaxValue);
 			foreach (var (track, af, queue) in audioQueues) {
 				af.Flush();
-				foreach (var f in af.TakeReady()) queue.Enqueue(f);
+				foreach (var f in af.TakeReady()) queue.Enqueue(audioContinuity[track].Place(f));
 				if (queue.Count > 0) WriteAudio(mkv, track, af, queue, long.MaxValue);
 			}
 			if (headerWritten) WriteSubtitles(long.MaxValue);
@@ -243,7 +358,7 @@ public sealed class TitleRipper {
 		MkvTrack? CaptionTrack, Captions.Eia608Decoder? CaptionDecoder, List<MkvChapter> Chapters);
 
 	private Plan BuildPlan(RipOptions options, List<string> warnings) {
-		var pgc = _pgcs[0];
+		var pgc = _pgc;
 		var video = new MkvTrack {
 			Number = 1,
 			Type = MkvTrackType.Video,
@@ -339,21 +454,8 @@ public sealed class TitleRipper {
 			captionDecoder = new Captions.Eia608Decoder();
 		}
 
-		// ---- Chapters: program n starts at its entry cell ----
-		var cellStartNs = new long[pgc.Cells.Count + 1];
-		var elapsed = default(DvdTime);
-		for (int c = 0; c < pgc.Cells.Count; c++) {
-			elapsed += pgc.Cells[c].PlaybackTime;   // add frame counts, convert once (exact)
-			cellStartNs[c + 1] = elapsed.ToNanoseconds();
-		}
-		long ifoDurationNs = cellStartNs[^1];
-		var chapterStarts = pgc.ProgramEntryCells.Select(cell => cellStartNs[cell - 1]).ToList();
-		var chapters = new List<MkvChapter>();
-		for (int i = 0; i < chapterStarts.Count; i++) {
-			long end = i + 1 < chapterStarts.Count ? chapterStarts[i + 1] : ifoDurationNs;
-			chapters.Add(new MkvChapter(chapterStarts[i], end, $"Chapter {i + 1:00}"));
-		}
 		// A single chapter carries no information; MakeMKV writes no Chapters element then.
+		var chapters = new List<MkvChapter>(_chapters);
 		if (chapters.Count == 1 || !options.Chapters) chapters.Clear();
 
 		return new Plan(video, tracks, audioTracks, subtitleTracks, captionTrack, captionDecoder, chapters);
@@ -412,6 +514,31 @@ public sealed class TitleRipper {
 			if (group.Count == perBlock) Emit();
 		}
 		Emit();
+	}
+
+	/// <summary>
+	/// Closes small audio gaps, as MakeMKV does.
+	/// At some seamless cell joins the disc leaves a gap shorter than one audio frame (Beauty and the Beast: 17 ms at 50:41).
+	/// MakeMKV plays the next frame right after the previous one and keeps that shift for the rest of the title (checked: its AC3 frame times);
+	/// we do the same, so the audio stays contiguous. Gaps of a frame or longer are real silence and are kept.
+	/// </summary>
+	private sealed class AudioContinuity(AudioFramer framer) {
+		private long _shift;
+		private long? _nextPts;
+
+		public AudioFrame Place(AudioFrame f) {
+			long pts = f.Pts + _shift;
+			long frameNs = framer.FrameNs;
+			if (_nextPts is { } expected && frameNs > 0) {
+				long gap = pts - expected;
+				if (gap > 1000 && gap < frameNs) {   // more than rounding (1 µs), less than a frame
+					_shift -= gap;
+					pts -= gap;
+				}
+			}
+			_nextPts = pts + frameNs;
+			return pts == f.Pts ? f : new AudioFrame { Data = f.Data, Pts = pts };
+		}
 	}
 
 	private static void SetDisplaySize(MkvTrack v, string aspect) {

@@ -20,14 +20,18 @@ public static class Program {
 				"Titles are listed by the disc's own title numbers; use those numbers with 'mkv'.",
 				"Titles shorter than --minlength are only named at the end (use --all to list them in full).",
 				"Compilations (\"play all\" titles made of other titles) and duplicates (same video as another title) are marked.",
+				"--cells adds the cell table: every cell with its number (for 'mkv … cells:') and which titles play it.",
 			],
-			["rip-dvd info", "rip-dvd info E:", "rip-dvd info E: --all"]),
-		new("mkv", "<disc> <titles|all> <output folder>",
-			"Rip titles to MKV files named \"<Disc name> - title NN.mkv\".",
+			["rip-dvd info", "rip-dvd info E:", "rip-dvd info E: --all", "rip-dvd info E: --cells"]),
+		new("mkv", "<disc> <titles|all|cells:LIST> <output folder>",
+			"Rip titles to MKV files named \"<Disc name> - title NN.mkv\", or chosen cells to one file.",
 			[
 				"<titles> is one title number or a comma-separated list (e.g. 1 or 1,3,6), as listed by 'info'.",
 				"Any title can be ripped by number, even a short one. 'all' rips every title at least --minlength seconds long",
 				"(minus compilations and duplicates with --no-compilations / --no-duplicates).",
+				"cells:LIST rips the listed cells, joined in the order given, into one file \"<Disc name> - cells LIST.mkv\";",
+				"LIST is cell numbers and ranges as shown by 'info --cells' (e.g. cells:23 or cells:23-27,30). The cells must be in one title set.",
+				"Each cell becomes a chapter; the audio and subtitle tracks are those of a title that plays the first cell.",
 				"By default every audio and subtitle track is kept, closed captions become a text subtitle track, and chapters are written",
 				"(MakeMKV's defaults). Existing files are skipped unless --overwrite is given.",
 			],
@@ -37,6 +41,7 @@ public static class Program {
 				"rip-dvd mkv E: 1,2 C:\\Rips --audio=eng --subtitles=none",
 				"rip-dvd mkv E: all C:\\Rips --no-compilations --no-duplicates",
 				"rip-dvd mkv E: all C:\\Rips --dry-run",
+				"rip-dvd mkv E: cells:23-27 C:\\Rips",
 			]),
 		new("help", "[command]", "Show this help, or the help for one command.", [], ["rip-dvd help mkv"]),
 	];
@@ -44,6 +49,7 @@ public static class Program {
 	private static readonly Option[] Options = [
 		new("minlength", "SECONDS", ["info", "mkv"], "Titles shorter than this are left out of 'info' and of 'mkv … all'.", "120 (MakeMKV's default)"),
 		new("all", null, ["info"], "List every title in full, including the short ones."),
+		new("cells", null, ["info"], "Also show the cell table: each cell's number, length, and the titles that play it."),
 		new("name", "NAME", ["mkv"], "Disc name used in the file names, instead of the one made from the volume label."),
 		new("audio", "LANGS", ["mkv"], "Audio tracks to keep, by language: e.g. eng or eng,fre (2-letter codes like en also work); all; none. " +
 			"'und' matches tracks with no language.", "all"),
@@ -73,9 +79,9 @@ public static class Program {
 			switch (command) {
 				case "info":
 					if (positional.Count > 2) return Fail("info takes at most one argument: the disc.", command);
-					return Info(positional.ElementAtOrDefault(1) ?? "disc:0", minLength, values.ContainsKey("all"));
+					return Info(positional.ElementAtOrDefault(1) ?? "disc:0", minLength, values.ContainsKey("all"), values.ContainsKey("cells"));
 				case "mkv":
-					if (positional.Count != 4) return Fail("mkv needs three arguments: <disc> <titles|all> <output folder>.", command);
+					if (positional.Count != 4) return Fail("mkv needs three arguments: <disc> <titles|all|cells:LIST> <output folder>.", command);
 					var options = new RipOptions {
 						AudioLanguages = values.TryGetValue("audio", out var au) ? RipOptions.ParseLanguages(au!) : null,
 						SubtitleLanguages = values.TryGetValue("subtitles", out var su) ? RipOptions.ParseLanguages(su!) : null,
@@ -179,7 +185,7 @@ public static class Program {
 
 	private static bool LongEnough(TitleSummary t, TimeSpan minLength) => t.DurationNs >= (long)(minLength.TotalSeconds * 1e9);
 
-	private static int Info(string discArg, TimeSpan minLength, bool all) {
+	private static int Info(string discArg, TimeSpan minLength, bool all, bool cells) {
 		var disc = DiscScanner.Scan(DiscScanner.ResolveVideoTs(discArg));
 		var listed = disc.Titles.Where(t => all || LongEnough(t, minLength)).ToList();
 		Console.WriteLine($"Disc: {OutputNaming.DiscName(disc.VolumeName)}   (volume label \"{disc.VolumeName}\", {disc.VideoTsFolder})");
@@ -198,6 +204,10 @@ public static class Program {
 		if (skipped.Count > 0)
 			Console.WriteLine($"\nShorter than {minLength.TotalSeconds:0} s (not in 'all'; can still be ripped by number; --all lists them): " +
 							  $"titles {string.Join(", ", skipped.Select(t => $"{t.TitleNumber} ({Format(t.DurationNs)})"))}");
+		if (cells) {
+			Console.WriteLine();
+			foreach (var line in CellMapTable.Lines(disc.CellMap)) Console.WriteLine(line);
+		}
 		return 0;
 	}
 
@@ -210,6 +220,8 @@ public static class Program {
 		bool overwrite, bool dryRun, bool skipCompilations, bool skipDuplicates) {
 		string videoTs = DiscScanner.ResolveVideoTs(discArg);
 		var disc = DiscScanner.Scan(videoTs);
+		if (which.StartsWith("cells:", StringComparison.OrdinalIgnoreCase))
+			return MkvCells(disc, CellSelection.Parse(which[6..]), outputFolder, name, options, overwrite, dryRun);
 		List<TitleSummary> selected;
 		if (which == "all") {
 			selected = disc.Titles.Where(t => LongEnough(t, minLength)).ToList();
@@ -251,7 +263,35 @@ public static class Program {
 			Console.WriteLine("\nDry run: nothing was written. Tracks that turn out to carry no data are dropped during a real rip.");
 			return 0;
 		}
+		return RunJob(videoTs, items, options, skippedExisting);
+	}
 
+	/// <summary>mkv with cells:LIST: the chosen cells, joined in the order given, into one file.</summary>
+	private static int MkvCells(DiscSummary disc, List<int> cells, string outputFolder, string? name, RipOptions options, bool overwrite, bool dryRun) {
+		if (CellSelection.Validate(disc.CellMap, cells) is { } error) {
+			Console.Error.WriteLine($"{error.TrimEnd('.')} (see 'rip-dvd info --cells').");
+			return 1;
+		}
+		string discName = OutputNaming.Sanitize(name ?? OutputNaming.DiscName(disc.VolumeName));
+		string path = Path.Combine(outputFolder, OutputNaming.CellsFileName(discName, cells));
+		string what = $"Cells {CellSelection.Format(cells)} ({Format(CellSelection.DurationNs(disc.CellMap, cells))})";
+		if (dryRun) {
+			Console.WriteLine($"{what} -> {path}");
+			if (File.Exists(path)) Console.WriteLine(overwrite ? "  (exists; would be replaced)" : "  (exists; would be skipped)");
+			foreach (var line in TitleRipper.ForCells(disc.VideoTsFolder, cells).Describe(options)) Console.WriteLine($"  {line}");
+			Console.WriteLine("\nDry run: nothing was written. Tracks that turn out to carry no data are dropped during a real rip.");
+			return 0;
+		}
+		if (File.Exists(path) && !overwrite) {
+			Console.WriteLine($"{what} skipped: {path} already exists (use --overwrite to replace it)");
+			return 0;
+		}
+		var item = RipJobItem.ForCells(cells, path, CellSelection.Sectors(disc.CellMap, cells));
+		return RunJob(disc.VideoTsFolder, [item], options, 0);
+	}
+
+	/// <summary>Runs the rip job with a status line, then prints a line per file.</summary>
+	private static int RunJob(string videoTs, List<RipJobItem> items, RipOptions options, int skippedExisting) {
 		// Ctrl+C cancels cleanly: the title being ripped stops and its partial file is removed.
 		using var cancel = new CancellationTokenSource();
 		Console.CancelKeyPress += (_, e) => {
@@ -267,7 +307,7 @@ public static class Program {
 			results = job.Run(p => {
 				if (p.Index != lastIndex) {
 					if (lastIndex >= 0) Console.WriteLine();
-					Console.WriteLine($"Title {p.Item.TitleNumber} ({p.Index + 1} of {p.Count}) -> {p.Item.OutputPath}");
+					Console.WriteLine($"{p.Item.Name} ({p.Index + 1} of {p.Count}) -> {p.Item.OutputPath}");
 					lastIndex = p.Index;
 				}
 				// Rewrite the status line at most twice a second.
@@ -289,9 +329,9 @@ public static class Program {
 		Console.WriteLine();
 
 		foreach (var r in results) {
-			if (r.Error is not null) Console.WriteLine($"Title {r.Item.TitleNumber} FAILED: {r.Error.Message}");
+			if (r.Error is not null) Console.WriteLine($"{r.Item.Name} FAILED: {r.Error.Message}");
 			else if (r.Result is { } res) {
-				Console.WriteLine($"Title {r.Item.TitleNumber}: {Format(res.DurationNs)} in {res.Elapsed.TotalSeconds:F0} s " +
+				Console.WriteLine($"{r.Item.Name}: {Format(res.DurationNs)} in {res.Elapsed.TotalSeconds:F0} s " +
 								  $"({res.Sectors * 2048 / 1e6 / Math.Max(1, res.Elapsed.TotalSeconds):F1} MB/s) -> {Path.GetFileName(res.OutputPath)}");
 				foreach (var w in res.Warnings) Console.WriteLine($"  warning: {w}");
 			}

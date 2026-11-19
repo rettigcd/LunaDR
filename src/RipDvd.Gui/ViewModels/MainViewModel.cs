@@ -41,6 +41,12 @@ public sealed class MainViewModel : ViewModelBase {
 	private double _titleProgress, _overallProgress;
 	private string _titleProgressText = "", _overallProgressText = "";
 	private string? _lastOutputFolder;
+	private IReadOnlyList<int> _selectedCells = [];
+	// G6: rip progress in the cell map.
+	private IReadOnlyList<int>? _ripCells;
+	private int _ripPosition = -1, _ripIndex = -1;
+	private double _ripCellFraction;
+	private int? _ripTitle;
 
 	public MainViewModel() {
 		_outputFolder = _settings.OutputFolder;
@@ -59,7 +65,41 @@ public sealed class MainViewModel : ViewModelBase {
 			if (_lastOutputFolder is { } folder && Directory.Exists(folder))
 				System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", $"\"{folder}\"") { UseShellExecute = true });
 		}, () => !IsRipping && _lastOutputFolder is not null);
+		RipCellsCommand = new RelayCommand(() => _ = RipSelectedCellsAsync(),
+			() => !IsScanning && !IsRipping && CellMap is { } map && CellSelection.Validate(map, SelectedCells) is null && !string.IsNullOrWhiteSpace(OutputFolder));
+		ClearCellsCommand = new RelayCommand(() => SelectedCells = [], () => !IsRipping && SelectedCells.Count > 0);
 		RefreshDrives();
+	}
+
+	/// <summary>G6: the playlist being ripped (cell numbers), the position being read, how far into that cell, and the title (null for chosen cells).</summary>
+	public IReadOnlyList<int>? RipCells { get => _ripCells; private set => Set(ref _ripCells, value); }
+	public int RipPosition { get => _ripPosition; private set => Set(ref _ripPosition, value); }
+	public double RipCellFraction { get => _ripCellFraction; private set => Set(ref _ripCellFraction, value); }
+	public int? RipTitle { get => _ripTitle; private set => Set(ref _ripTitle, value); }
+
+	public ICommand RipCellsCommand { get; }
+	public ICommand ClearCellsCommand { get; }
+
+	/// <summary>Cells selected in the cell map, as cell numbers in playback order (G5: rip chosen cells into one file).</summary>
+	public IReadOnlyList<int> SelectedCells {
+		get => _selectedCells;
+		set {
+			if (!Set(ref _selectedCells, value ?? [])) return;
+			Raise(nameof(SelectedCellsText));
+			RefreshButtons();
+		}
+	}
+
+	/// <summary>"Cells 23-27: 1:23 (title set 4)", or why the selection can't be ripped; a hint when nothing is selected.</summary>
+	public string SelectedCellsText {
+		get {
+			if (CellMap is not { } map) return "";
+			if (SelectedCells.Count == 0) return "Select cells to rip them on their own: click a cell, Ctrl+click to add, Shift+click for a range.";
+			if (CellSelection.Validate(map, SelectedCells) is { } error) return error;
+			var length = TimeSpan.FromTicks(CellSelection.DurationNs(map, SelectedCells) / 100);
+			return $"{(SelectedCells.Count == 1 ? "Cell" : "Cells")} {CellSelection.Format(SelectedCells)}: {(int)length.TotalHours}:{length.Minutes:00}:{length.Seconds:00}" +
+				   $" (title set {map.Cells[SelectedCells[0] - 1].TitleSet}){(SelectedCells.Count > 1 ? ", joined in this order, one chapter per cell" : "")}.";
+		}
 	}
 
 	public ICommand OpenFolderCommand { get; }
@@ -162,7 +202,14 @@ public sealed class MainViewModel : ViewModelBase {
 	}
 	public string Status { get => _status; private set => Set(ref _status, value); }
 	public string DiscName { get => _discName; private set => Set(ref _discName, value); }
-	public CellMap? CellMap { get => _cellMap; private set => Set(ref _cellMap, value); }
+	public CellMap? CellMap {
+		get => _cellMap;
+		private set {
+			if (!Set(ref _cellMap, value)) return;
+			SelectedCells = [];
+			Raise(nameof(SelectedCellsText));
+		}
+	}
 
 	/// <summary>Text about the cell under the mouse in the cell map.</summary>
 	public string HoverInfo { get => _hoverInfo; set => Set(ref _hoverInfo, value); }
@@ -285,45 +332,68 @@ public sealed class MainViewModel : ViewModelBase {
 			return;
 		}
 
-		// The folder must exist (or be creatable) and be writable.
+		if (CheckOutputFolder() is not { } folder) return;
+		string name = OutputName();
+		var items = chosen.Select(t => new RipJobItem(t.Number, Path.Combine(folder, OutputNaming.FileName(name, t.Number)), t.Title.SizeBytes / 2048)).ToList();
+		await RunAsync(items, folder);
+	}
+
+	/// <summary>G5: rips the cells selected in the cell map, joined in the order selected, into one file "&lt;name&gt; - cells LIST.mkv".</summary>
+	public async Task RipSelectedCellsAsync() {
+		if (_videoTs is null || IsRipping || CellMap is not { } map) return;
+		var cells = SelectedCells.ToList();
+		if (CellSelection.Validate(map, cells) is { } error) {
+			ShowMessage?.Invoke(error);
+			return;
+		}
+		if (CheckOutputFolder() is not { } folder) return;
+		var item = RipJobItem.ForCells(cells, Path.Combine(folder, OutputNaming.CellsFileName(OutputName(), cells)), CellSelection.Sectors(map, cells));
+		await RunAsync([item], folder);
+	}
+
+	private string OutputName() => OutputNaming.Sanitize(string.IsNullOrWhiteSpace(FileName) ? DiscName : FileName.Trim());
+
+	/// <summary>The output folder, created if needed and checked to be writable; null (after a message) if it can't be used.</summary>
+	private string? CheckOutputFolder() {
 		string folder = OutputFolder.Trim();
 		try {
 			Directory.CreateDirectory(folder);
 			string probe = Path.Combine(folder, $".rip-dvd-write-test-{Guid.NewGuid():N}");
 			File.WriteAllText(probe, "");
 			File.Delete(probe);
+			return folder;
 		} catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException) {
 			ShowMessage?.Invoke($"Can't write to the output folder \"{folder}\":\n{ex.Message}");
-			return;
+			return null;
 		}
+	}
 
-		string name = OutputNaming.Sanitize(string.IsNullOrWhiteSpace(FileName) ? DiscName : FileName.Trim());
-		var planned = chosen.Select(t => (Row: t, Path: Path.Combine(folder, OutputNaming.FileName(name, t.Number)))).ToList();
-		var existing = planned.Where(p => File.Exists(p.Path)).Select(p => Path.GetFileName(p.Path)).ToList();
+	/// <summary>Asks about files that already exist, then runs the job in the background with the progress panel (phase 3).</summary>
+	private async Task RunAsync(List<RipJobItem> items, string folder) {
+		var existing = items.Where(i => File.Exists(i.OutputPath)).Select(i => Path.GetFileName(i.OutputPath)).ToList();
 		if (existing.Count > 0) {
 			var choice = AskAboutExistingFiles?.Invoke(existing) ?? ExistingFilesChoice.Cancel;
 			if (choice == ExistingFilesChoice.Cancel) return;
-			if (choice == ExistingFilesChoice.Skip) planned = planned.Where(p => !File.Exists(p.Path)).ToList();
+			if (choice == ExistingFilesChoice.Skip) items = items.Where(i => !File.Exists(i.OutputPath)).ToList();
 		}
-		if (planned.Count == 0) {
+		if (items.Count == 0) {
 			RipStatus = "Nothing to rip: all the files already exist.";
 			return;
 		}
 
-		var items = planned.Select(p => new RipJobItem(p.Row.Number, p.Path, p.Row.Title.SizeBytes / 2048)).ToList();
 		IsRipping = true;
 		Results.Clear();
 		TitleProgress = OverallProgress = 0;
 		TitleProgressText = "Starting…";
 		OverallProgressText = $"All titles: 0 of {items.Count} done";
 		ShowProgress = true;
-		RipStatus = $"Ripping {items.Count} title(s)…";
+		RipStatus = items.Count == 1 ? $"Ripping {items[0].Name.ToLowerInvariant()}…" : $"Ripping {items.Count} titles…";
 		_lastOutputFolder = folder;
 		_cancel = new CancellationTokenSource();
 		// Progress<T> delivers the reports on the UI thread, so the bindings can update.
 		IProgress<RipJobProgress> progress = new Progress<RipJobProgress>(OnRipProgress);
 		IProgress<RipJobItemResult> finished = new Progress<RipJobItemResult>(r => Results.Add(new ResultRow(r)));
-		string videoTs = _videoTs;
+		string videoTs = _videoTs!;   // both callers return early when no disc is scanned
 		bool cancelled = false;
 		try {
 			var results = await Task.Run(() => new RipJob(videoTs, items).Run(progress.Report, _cancel.Token, finished.Report));
@@ -341,6 +411,11 @@ public sealed class MainViewModel : ViewModelBase {
 			IsRipping = false;
 			_cancel.Dispose();
 			_cancel = null;
+			// The progress panel lists what was done; the cell map goes back to showing the disc.
+			_ripIndex = -1;
+			RipCells = null;
+			RipTitle = null;
+			RipPosition = -1;
 		}
 		if (!cancelled && PlaySoundWhenDone) NotificationSound.Play();
 	}
@@ -355,7 +430,16 @@ public sealed class MainViewModel : ViewModelBase {
 			_ => $"{p.TitleFraction:P0}   ·   {Time(p.TitleRemaining)}   ·   {p.BytesPerSecond / 1e6:F1} MB/s",
 		};
 		TitleProgress = p.TitleFraction;
-		TitleProgressText = $"Title {p.Item.TitleNumber}: {state}";
+		TitleProgressText = $"{p.Item.Name}: {state}";
+		if (p.Index != _ripIndex) {
+			// A new item: show its playlist in the cell map (a title's cells from the map, or the chosen cells).
+			_ripIndex = p.Index;
+			RipTitle = p.Item.Cells is null ? p.Item.TitleNumber : null;
+			RipCells = p.Item.Cells?.ToList()
+					   ?? CellMap?.Titles.FirstOrDefault(t => t.TitleNumber == p.Item.TitleNumber)?.Cells.Select(c => c + 1).ToList();
+		}
+		RipPosition = p.Title.CellPosition;
+		RipCellFraction = p.Title.CellFraction;
 		OverallProgress = p.OverallFraction;
 		OverallProgressText = $"All titles ({p.Index + 1} of {p.Count}): {p.OverallFraction:P0}   ·   {Time(p.OverallRemaining)}";
 	}

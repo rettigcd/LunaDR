@@ -24,6 +24,18 @@ public sealed class NavPack {
 	public int VobId { get; init; }
 	public int CellId { get; init; }
 
+	/// <summary>
+	/// Seamless-playback category (DSI SML_PBI): bit 0x4000 = this VOBU is in an interleaved unit (ILVU), 0x2000 = first VOBU of its ILVU,
+	/// 0x1000 = last VOBU of its ILVU, 0x8000 = PREU (unit just before a branch).
+	/// </summary>
+	public int IlvuCategory { get; init; }
+	/// <summary>Last sector of the current ILVU, relative to this nav pack (interleaved cells only).</summary>
+	public uint IlvuEndAddress { get; init; }
+	/// <summary>First sector of this cell's next ILVU, relative to this nav pack; 0 when there is none.</summary>
+	public uint NextIlvuStart { get; init; }
+
+	public bool InIlvu => (IlvuCategory & 0x4000) != 0;
+
 	public static bool IsNavPack(ReadOnlySpan<byte> s) =>
 		s[0] == 0 && s[1] == 0 && s[2] == 1 && s[3] == 0xBA &&
 		s[0x26] == 0 && s[0x27] == 0 && s[0x28] == 1 && s[0x29] == 0xBF && s[0x2C] == 0x00 &&
@@ -39,6 +51,10 @@ public sealed class NavPack {
 			// DSI_GI: scr(4) lbn(4) vobu_ea(4) 1stref_ea(4) 2ndref_ea(4) 3rdref_ea(4) vobu_vob_idn(2) reserved(1) vobu_c_idn(1) c_eltm(4)
 			VobId = BinaryPrimitives.ReadUInt16BigEndian(s[(Dsi + 24)..]),
 			CellId = s[Dsi + 27],
+			// SML_PBI follows the 32-byte DSI_GI: category(2) ilvu_ea(4) nxt_ilvu_sa(4) nxt_ilvu_size(2) ...
+			IlvuCategory = BinaryPrimitives.ReadUInt16BigEndian(s[(Dsi + 32)..]),
+			IlvuEndAddress = BinaryPrimitives.ReadUInt32BigEndian(s[(Dsi + 34)..]),
+			NextIlvuStart = BinaryPrimitives.ReadUInt32BigEndian(s[(Dsi + 38)..]),
 		};
 	}
 }

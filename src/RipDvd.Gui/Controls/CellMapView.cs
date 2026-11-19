@@ -12,11 +12,36 @@ namespace RipDvd.Gui.Controls;
 ///   * blue block: the title plays this cell, and no other title does;
 ///   * orange block: the title plays this cell, and so does at least one other title (shared video: duplicates, compilations);
 ///   * dark notch at a block's left edge: a chapter starts there;
-///   * the selected title's row is highlighted, and so are the labels of the titles that share cells with it.
-/// Clicking a row selects that title; hovering a block reports the cell in <see cref="HoverText"/>.
+///   * the selected title's row is highlighted, and so are the labels of the titles that share cells with it;
+///   * selected cells (to rip on their own) are marked by a band down their column.
+/// Clicking a row selects that title. Clicking a cell column also selects that cell; Ctrl+click adds or removes a cell (the order of clicks is the
+/// playback order); Shift+click selects the range from the last clicked cell. Hovering a block reports the cell in <see cref="HoverText"/>.
 /// </summary>
 public sealed class CellMapView : FrameworkElement {
-	private const double CellWidth = 7, CellGap = 1, SetGap = 6, RowHeight = 16, LabelWidth = 34, HeaderHeight = 16;
+	private const double CellWidth = 7, CellGap = 1, SetGap = 6, RowHeight = 16, LabelWidth = 34, HeaderHeight = 22;
+	private const double StripY = 15, StripHeight = 5;   // rip progress strip, between the title-set numbers and the first row
+
+	/// <summary>
+	/// G6: while ripping, the playlist being ripped (cell numbers, 1-based, in order: a title's cells or the chosen cells),
+	/// the position being read in it, and how far into that cell. Finished cells and the current one are shown in a strip above the map,
+	/// and on the row of <see cref="RipTitle"/> (when a title, not chosen cells, is being ripped).
+	/// </summary>
+	public static readonly DependencyProperty RipCellsProperty = DependencyProperty.Register(
+		nameof(RipCells), typeof(IReadOnlyList<int>), typeof(CellMapView), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+	public static readonly DependencyProperty RipPositionProperty = DependencyProperty.Register(
+		nameof(RipPosition), typeof(int), typeof(CellMapView), new FrameworkPropertyMetadata(-1, FrameworkPropertyMetadataOptions.AffectsRender));
+	public static readonly DependencyProperty RipCellFractionProperty = DependencyProperty.Register(
+		nameof(RipCellFraction), typeof(double), typeof(CellMapView), new FrameworkPropertyMetadata(0.0, FrameworkPropertyMetadataOptions.AffectsRender));
+	public static readonly DependencyProperty RipTitleProperty = DependencyProperty.Register(
+		nameof(RipTitle), typeof(int?), typeof(CellMapView), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+
+	public IReadOnlyList<int>? RipCells { get => (IReadOnlyList<int>?)GetValue(RipCellsProperty); set => SetValue(RipCellsProperty, value); }
+	public int RipPosition { get => (int)GetValue(RipPositionProperty); set => SetValue(RipPositionProperty, value); }
+	public double RipCellFraction { get => (double)GetValue(RipCellFractionProperty); set => SetValue(RipCellFractionProperty, value); }
+	public int? RipTitle { get => (int?)GetValue(RipTitleProperty); set => SetValue(RipTitleProperty, value); }
+
+	private static readonly Brush DoneBrush = Frozen(Color.FromRgb(0x10, 0xB9, 0x81));
+	private static readonly Brush StripBackground = Frozen(Color.FromArgb(0x30, 0x80, 0x80, 0x80));
 
 	public static readonly DependencyProperty MapProperty = DependencyProperty.Register(
 		nameof(Map), typeof(CellMap), typeof(CellMapView),
@@ -25,6 +50,11 @@ public sealed class CellMapView : FrameworkElement {
 	public static readonly DependencyProperty SelectedTitleProperty = DependencyProperty.Register(
 		nameof(SelectedTitle), typeof(int?), typeof(CellMapView),
 		new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender | FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
+
+	/// <summary>Selected cells as cell numbers (1 = first cell of the map, as in <see cref="CellSelection"/>), in the order they were clicked.</summary>
+	public static readonly DependencyProperty SelectedCellsProperty = DependencyProperty.Register(
+		nameof(SelectedCells), typeof(IReadOnlyList<int>), typeof(CellMapView),
+		new FrameworkPropertyMetadata(Array.Empty<int>(), FrameworkPropertyMetadataOptions.AffectsRender | FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
 
 	public static readonly DependencyProperty HoverTextProperty = DependencyProperty.Register(
 		nameof(HoverText), typeof(string), typeof(CellMapView),
@@ -36,6 +66,7 @@ public sealed class CellMapView : FrameworkElement {
 
 	public CellMap? Map { get => (CellMap?)GetValue(MapProperty); set => SetValue(MapProperty, value); }
 	public int? SelectedTitle { get => (int?)GetValue(SelectedTitleProperty); set => SetValue(SelectedTitleProperty, value); }
+	public IReadOnlyList<int>? SelectedCells { get => (IReadOnlyList<int>?)GetValue(SelectedCellsProperty); set => SetValue(SelectedCellsProperty, value); }
 	public string HoverText { get => (string)GetValue(HoverTextProperty); set => SetValue(HoverTextProperty, value); }
 	public Brush Foreground { get => (Brush)GetValue(ForegroundProperty); set => SetValue(ForegroundProperty, value); }
 
@@ -45,6 +76,15 @@ public sealed class CellMapView : FrameworkElement {
 	private static readonly Brush SelectedRowBrush = Frozen(Color.FromArgb(0x40, 0x3B, 0x82, 0xF6));
 	private static readonly Brush RelatedRowBrush = Frozen(Color.FromArgb(0x30, 0xF5, 0x9E, 0x0B));
 	private static readonly Brush HoverBrush = Frozen(Color.FromArgb(0x30, 0x80, 0x80, 0x80));
+	private static readonly Brush SelectedCellBrush = Frozen(Color.FromArgb(0x50, 0x10, 0xB9, 0x81));
+	private static readonly Pen SelectedCellPen = FrozenPen(Color.FromRgb(0x05, 0x96, 0x69));
+	private int? _anchorCell;   // last plainly clicked or Ctrl+clicked cell, start of a Shift+click range
+
+	private static Pen FrozenPen(Color c) {
+		var p = new Pen(Frozen(c), 1);
+		p.Freeze();
+		return p;
+	}
 
 	// Layout computed from the map: x of each cell column, users per cell, title-set groups.
 	private double[] _cellX = [];
@@ -119,6 +159,35 @@ public sealed class CellMapView : FrameworkElement {
 				if (title.ChapterStarts.Contains(pos)) dc.DrawRectangle(ChapterBrush, null, new Rect(block.X, block.Y, 2, block.Height));
 			}
 		}
+
+		DrawRipProgress(dc, map);
+
+		// Selected cells: a band down each selected column.
+		double height = map.Titles.Count * RowHeight;
+		foreach (int number in SelectedCells ?? []) {
+			if (number < 1 || number > _cellX.Length) continue;
+			dc.DrawRectangle(SelectedCellBrush, SelectedCellPen, new Rect(_cellX[number - 1] - 0.5, HeaderHeight, CellWidth + 1, height));
+		}
+	}
+
+	/// <summary>
+	/// G6: rip progress. In the strip above the map, each cell of the playlist being ripped gets a grey slot, filled green when finished
+	/// (the current cell partly, by how much of it has been read). On the ripped title's row, finished blocks turn green the same way.
+	/// </summary>
+	private void DrawRipProgress(DrawingContext dc, CellMap map) {
+		if (RipCells is not { Count: > 0 } cells) return;
+		int position = RipPosition;
+		int row = RipTitle is { } t ? map.Titles.ToList().FindIndex(x => x.TitleNumber == t) : -1;
+		for (int pos = 0; pos < cells.Count; pos++) {
+			int index = cells[pos] - 1;
+			if (index < 0 || index >= _cellX.Length) continue;
+			double x = _cellX[index];
+			double fill = pos < position ? 1 : pos == position ? Math.Clamp(RipCellFraction, 0, 1) : 0;
+			dc.DrawRectangle(StripBackground, null, new Rect(x, StripY, CellWidth, StripHeight));
+			if (fill <= 0) continue;
+			dc.DrawRectangle(DoneBrush, null, new Rect(x, StripY, CellWidth * fill, StripHeight));
+			if (row >= 0) dc.DrawRectangle(DoneBrush, null, new Rect(x, HeaderHeight + row * RowHeight + 3, CellWidth * fill, RowHeight - 6));
+		}
 	}
 
 	private void DrawText(DrawingContext dc, string text, double x, double y, double size, double dpi, double opacity, bool bold = false) {
@@ -167,7 +236,7 @@ public sealed class CellMapView : FrameworkElement {
 			  (positions.Any(title.ChapterStarts.Contains) ? " (a chapter starts here)" : "");
 		var users = map.TitlesUsing(cell).ToList();
 		string length = TimeSpan.FromTicks(info.DurationNs / 100).ToString(@"m\:ss\.f");
-		HoverText = $"Cell {info.Label} (title set {info.TitleSet}, VOB {info.VobId}, cell {info.CellId}): sectors {info.FirstSector:N0}–{info.LastSector:N0}, " +
+		HoverText = $"Cell {cell + 1} (title set {info.TitleSet}, VOB {info.VobId}, cell {info.CellId}): sectors {info.FirstSector:N0}–{info.LastSector:N0}, " +
 					$"length {length}; used by title{(users.Count == 1 ? "" : "s")} {string.Join(", ", users)}; {inTitle}.";
 	}
 
@@ -180,7 +249,25 @@ public sealed class CellMapView : FrameworkElement {
 
 	protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e) {
 		base.OnMouseLeftButtonDown(e);
-		var (row, _) = HitTest(e.GetPosition(this));
-		if (row >= 0 && Map is { } map) SelectedTitle = map.Titles[row].TitleNumber;
+		var (row, cell) = HitTest(e.GetPosition(this));
+		if (row < 0 || Map is not { } map) return;
+		SelectedTitle = map.Titles[row].TitleNumber;
+		if (cell < 0) return;
+
+		int number = cell + 1;
+		var current = SelectedCells ?? [];
+		var modifiers = Keyboard.Modifiers;
+		if (modifiers.HasFlag(ModifierKeys.Shift) && _anchorCell is int anchor) {
+			// The range from the anchor to this cell, in the direction clicked.
+			int step = number >= anchor ? 1 : -1;
+			var range = new List<int>();
+			for (int n = anchor; n != number + step; n += step) range.Add(n);
+			SelectedCells = range;
+			return;
+		}
+		SelectedCells = modifiers.HasFlag(ModifierKeys.Control)
+			? (current.Contains(number) ? current.Where(n => n != number).ToList() : [.. current, number])
+			: [number];
+		_anchorCell = number;
 	}
 }

@@ -1,7 +1,18 @@
 namespace RipDvd.Core.Ripping;
 
-/// <summary>One title to rip as part of a job. <see cref="Sectors"/> (its size on the disc) weights the progress and time estimates.</summary>
-public sealed record RipJobItem(int TitleNumber, string OutputPath, long Sectors);
+/// <summary>
+/// One title to rip as part of a job, or (with <see cref="Cells"/>) a list of chosen cells joined into one file; then TitleNumber is 0.
+/// <see cref="Sectors"/> (its size on the disc) weights the progress and time estimates.
+/// </summary>
+public sealed record RipJobItem(int TitleNumber, string OutputPath, long Sectors) {
+	/// <summary>Cell numbers as in the cell map (see <see cref="CellSelection"/>), in playback order; null for a title.</summary>
+	public IReadOnlyList<int>? Cells { get; init; }
+
+	/// <summary>"Title 6" or "Cells 23-27", for messages.</summary>
+	public string Name => Cells is { } c ? $"Cells {CellSelection.Format(c)}" : $"Title {TitleNumber}";
+
+	public static RipJobItem ForCells(IReadOnlyList<int> cells, string outputPath, long sectors) => new(0, outputPath, sectors) { Cells = cells };
+}
 
 /// <summary>
 /// Progress of a job: the title being ripped (index of count) and its own progress, plus the job as a whole.
@@ -57,7 +68,8 @@ public sealed class RipJob(string videoTsFolder, IReadOnlyList<RipJobItem> items
 				double sectorsPerSecond = reading >= MinimumMeasureTime && read > 0 ? read / reading.TotalSeconds : 0;
 
 				long titleTotal = p.SectorsTotal > 0 ? p.SectorsTotal : item.Sectors;
-				double titleFraction = p.Phase == RipPhase.Done ? 1 : titleTotal == 0 ? 0 : (double)p.SectorsDone / titleTotal;
+				// The total is an estimate for interleaved (multi-angle) titles, so the fraction is capped.
+				double titleFraction = p.Phase == RipPhase.Done ? 1 : titleTotal == 0 ? 0 : Math.Min(0.999, (double)p.SectorsDone / titleTotal);
 				long overallDone = finishedSectors + (long)(titleFraction * item.Sectors);
 				TimeSpan? Remaining(long sectors) => sectorsPerSecond > 0 ? TimeSpan.FromSeconds(Math.Max(0, sectors) / sectorsPerSecond) : null;
 
@@ -69,12 +81,13 @@ public sealed class RipJob(string videoTsFolder, IReadOnlyList<RipJobItem> items
 			}
 
 			try {
-				var result = new TitleRipper(videoTsFolder, item.TitleNumber).Rip(item.OutputPath, OnProgress, options: options, cancel: cancel);
+				var ripper = item.Cells is { } cells ? TitleRipper.ForCells(videoTsFolder, cells) : new TitleRipper(videoTsFolder, item.TitleNumber);
+				var result = ripper.Rip(item.OutputPath, OnProgress, options: options, cancel: cancel);
 				results.Add(new RipJobItemResult(item, result, null));
 				itemFinished?.Invoke(results[^1]);
 			} catch (OperationCanceledException) {
 				throw;
-			} catch (Exception ex) when (ex is IOException or InvalidDataException or NotSupportedException or UnauthorizedAccessException) {
+			} catch (Exception ex) when (ex is IOException or InvalidDataException or NotSupportedException or UnauthorizedAccessException or ArgumentException) {
 				results.Add(new RipJobItemResult(item, null, ex));
 				itemFinished?.Invoke(results[^1]);
 			}

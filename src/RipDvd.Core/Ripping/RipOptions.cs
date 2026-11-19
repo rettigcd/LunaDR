@@ -16,6 +16,9 @@ public sealed class RipOptions {
 	/// <summary>Write the disc's chapters.</summary>
 	public bool Chapters { get; init; } = true;
 
+	/// <summary>Testing only: sectors (VOB sector numbers) that act as unreadable, to test damaged-disc handling (probe 'rip -bad').</summary>
+	public Func<long, bool>? SimulateBadSector { get; init; }
+
 	public static readonly RipOptions Default = new();
 
 	/// <summary>

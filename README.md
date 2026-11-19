@@ -34,6 +34,8 @@ or run `src/RipDvd.Cli/bin/Debug/net10.0/rip-dvd.exe` directly.
 | `rip-dvd info E:` | List the titles: length, chapters, size, audio, subtitles, closed captions. Duplicates and "play all" compilations are marked. |
 | `rip-dvd mkv E: all C:\Rips` | Rip every title of at least 120 s to `C:\Rips\<Disc name> - title NN.mkv`. |
 | `rip-dvd mkv E: 1,3,6 C:\Rips` | Rip titles 1, 3 and 6 (the disc's own title numbers, as shown by `info`). |
+| `rip-dvd info E: --cells` | Also list every cell (a piece of video on the disc) with its number and the titles that play it. |
+| `rip-dvd mkv E: cells:30-33 C:\Rips` | Rip cells 30 to 33, joined into one file `<Disc name> - cells 30-33.mkv` (cells of one title set; one chapter per cell). |
 | `rip-dvd help mkv` | All options, with examples. |
 
 The disc can be `disc:0` (the first DVD drive), a drive letter such as `E:`, or a folder that contains `VIDEO_TS`.
@@ -51,7 +53,9 @@ or run `src/RipDvd.Gui/bin/Debug/net10.0-windows/rip-dvd-gui.exe`.
 2. The cell map below the list shows which titles play which parts ("cells") of the disc: blue cells belong to one title, orange cells are shared.
 	Click a title to highlight the titles that share its cells; hover over a cell for its details.
 3. Check the titles to rip, choose the folder and the start of the file names, and click **Start**.
-4. Two progress bars show the current title and all titles, with the time left. Finished files are listed below them, with **Open folder**.
+	To rip just part of the disc, click cells in the map (Ctrl+click to add more, Shift+click for a range) and click **Rip selected cells**.
+4. Two progress bars show the current title and all titles, with the time left; the cell map fills in green as each cell is read.
+	Finished files are listed below the bars, with **Open folder**.
 	Check **Play a sound when done** to hear the Windows notification sound at the end.
 
 The folder and the sound setting are remembered in `%APPDATA%\rip-dvd\gui-settings.json`.

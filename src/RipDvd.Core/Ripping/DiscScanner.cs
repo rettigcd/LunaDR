@@ -85,7 +85,7 @@ public static class DiscScanner {
 
 			titles.Add(new TitleSummary(
 				t.TitleNumber, t.TitleSetNumber, chapters.Count, cells.Count, time.ToNanoseconds(),
-				cells.Sum(c => c.SectorCount) * 2048,
+				Dvd.TitleSectorReader.EstimateSectors(pgcs.SelectMany(p => p.Cells).ToList()) * 2048,   // interleaved angle cells: own share only
 				$"{vts.Video.Width}x{vts.Video.Height} {vts.Video.AspectRatio}",
 				audio,
 				subtitles,

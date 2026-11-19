@@ -5,8 +5,9 @@ This file describes the present state only; the history is in [log.md](log.md).
 
 ## Status
 - **Ripping works end to end on Windows.** CLI `src/RipDvd.Cli` (executable `rip-dvd`), modeled on makemkvcon; `rip-dvd help` / `help <command>` / `-h` explain everything:
-	`info [disc] [--all] [--minlength=N]` lists titles by the disc's own title numbers (length, chapters, size, audio, subtitles, CC);
-	`mkv <disc> <titles|all> <folder>` writes `<Disc name> - title NN.mkv`, titles like `1` or `1,3,6` (`all` = titles ≥ 120 s).
+	`info [disc] [--all] [--minlength=N] [--cells]` lists titles by the disc's own title numbers (length, chapters, size, audio, subtitles, CC); `--cells` adds the numbered cell table;
+	`mkv <disc> <titles|all> <folder>` writes `<Disc name> - title NN.mkv`, titles like `1` or `1,3,6` (`all` = titles ≥ 120 s);
+	`mkv <disc> cells:LIST <folder>` rips chosen cells (e.g. `cells:23-27,30`, one title set) joined into `<Disc name> - cells LIST.mkv`, one chapter per cell.
 	`mkv` options: `--name`, `--audio=LANGS|all|none`, `--subtitles=LANGS|all|none`, `--captions=on|off`, `--chapters=on|off`, `--overwrite` (default: skip existing files), `--dry-run`, `--minlength`, `--no-compilations`, `--no-duplicates`.
 	Disc = `disc:0`, `E:` or a folder.
 - **Verified against MakeMKV on five discs** (byte-level comparisons with `mkvinfo`, plus ffmpeg decoding with no errors; the owner has played the files):
@@ -18,18 +19,22 @@ This file describes the present state only; the history is in [log.md](log.md).
 	| LOST_IN_TRANSLATION | DTS; fresh disc needing drive authentication | opening identical to owner's MakeMKV rip |
 	| Gypsy (2004) vol. 1 | 16-bit LPCM; disc without CSS | opening identical to owner's MakeMKV rip |
 	| BUTTERFLY_EFFECT | DTS-ES 6.1 | opening identical to owner's MakeMKV rip |
+	| Beauty and the Beast (Disney) | interleaved multi-angle cells, audio gap at a seamless join | title 16 (angle 1, 1:31): video, 3 audio, 2 VobSub identical to MakeMKV incl. times; differences in B1 and log 22:22 |
 
 - **Full-disc test passed** (CLI `mkv E: all` on DEAD_ZONE_S4_D1, 8 titles, 30 min): the 3 titles with MakeMKV rips match on every compared property, including SHA-256 of all video/audio/caption payloads (one title: two caption times 1 ms off); all 8 decode with ffmpeg (log 14:34). Compare tool: probe `mkvcompare`.
 - Speed: drive-bound and at least as fast as MakeMKV (e.g. 6.4 GB movie in 1,583 s vs MakeMKV 1,836 s).
 - Library `src/RipDvd.Core`:
 	`Ifo/` (IFO parsing), `Css/` (descrambling, title-key recovery, drive authentication), `Dvd/` (VOB reading with read-ahead, nav packs, Windows drive commands),
 	`Mpeg/` (PES parsing; MPEG-2 video, AC3, DTS, LPCM framers; subpicture assembler), `Captions/` (EIA-608 decoder),
-	`Matroska/` (EBML reader/writer, MKV writer), `Ripping/` (disc scanner, cell map with duplicate/compilation detection, title ripper with progress phases and cancellation, batch runner `RipJob` with remaining-time estimates, options, naming, VobSub header, languages).
+	`Matroska/` (EBML reader/writer, MKV writer), `Ripping/` (disc scanner, cell map with duplicate/compilation detection, title ripper with progress phases, cell progress and cancellation, batch runner `RipJob` with remaining-time estimates, cell selection, options, naming, VobSub header, languages).
+	Interleaved (multi-angle) cells are read unit by unit following the nav packs; read errors are retried 3 times and then skipped to the next readable VOBU, with a warning.
 - **GUI** `src/RipDvd.Gui` (`rip-dvd-gui.exe`, WPF): all three phases built: drive picker, automatic scan on disc insert, title list (all titles, short ones dimmed, duplicate/compilation notes), compact cell map with selection highlighting and hover details;
 	a checkbox per title, output folder and file name (remembered in %APPDATA%\rip-dvd\gui-settings.json), Start/Cancel (Cancel asks first);
 	progress bars with % / time left / MB/s for the title and for all titles, a list of finished files (or per-title errors), Open folder, and "Play a sound when done" (remembered).
-	Output identical to the CLI's (Butterfly Effect titles 3 and 6). Test mode `--screenshot file.png [--drive E] [--rip 3,6 --to folder]`. Screenshot: [gui-phase3-butterfly-effect.png](gui-phase3-butterfly-effect.png).
-- Probe `src/DvdProbe`: `drives`, `files`, `titles [-v]`, `scramble`, `crack` (old), `key`, `duration`, `bench`, `demux`, `mkvinfo [-dumptrack]`, `rip [-cells N]`.
+	Cells can be selected in the cell map (click, Ctrl+click, Shift+click) and ripped into one file ("Rip selected cells"); during a rip the cell map shows progress (green strip above the cells, green blocks on the ripped title's row).
+	Output identical to the CLI's (Butterfly Effect titles 3 and 6; Beauty and the Beast cells 32,45 = title 5). Test mode `--screenshot file.png [--drive E] [--rip 3,6 | --cells 32,45] [--to folder] [--midshot file.png]`.
+	Screenshot: [gui-phase3-butterfly-effect.png](gui-phase3-butterfly-effect.png).
+- Probe `src/DvdProbe`: `drives`, `files`, `titles [-v]`, `scramble`, `crack` (old), `key`, `duration`, `bench`, `demux`, `mkvinfo [-dumptrack]`, `rip [-cells N] [-bad sectors]`, `cellmap`, `navwalk`, `canceltest`, `mkvcompare`.
 - `README.md`: what the project is, build, CLI and GUI usage, layout, license.
 - References: MakeMKV output listings in `reference/makemkv/`; reference rips in git-ignored `reference/rips/`; the owner's Plex library (D:) holds MakeMKV rips of many of the owner's DVDs.
 
@@ -44,11 +49,20 @@ This file describes the present state only; the history is in [log.md](log.md).
 	LPCM → little-endian `A_PCM/INT/LIT` in 1/30 s blocks; closed captions → `S_TEXT/UTF8`, and the CC data is removed from the video.
 - Accepted differences from MakeMKV's files (owner: not important, not to be worked on): audio lacing breaks in slightly different places;
 	caption durations 1–4 ms longer; Duration can differ by 1 ms; each cluster is 4–10 bytes smaller (element size encoding). None affects playback.
+	Also accepted (not yet confirmed by the owner): after an angle-block join some video frames are 1 ms earlier than MakeMKV's (sub-ms rounding);
+	caption decoding can differ where MakeMKV drops lines (Beauty and the Beast: ours has 38 more caption lines, e.g. "Oh, look out!" where MakeMKV has " )").
 - Tracks: video; then each audio stream the title's PGC marks available (AC3, DTS, LPCM 16-bit); then VobSub tracks (16:9 uses each stream's "wide" substream, duplicates merged); then CC text.
 	The first audio and first subtitle track are default (CC is default only if there's no VobSub). Tracks that end up empty are dropped. No Language element when the disc gives none.
 	Audio channel counts come from the stream (the IFO said 5 for 5.1 DTS).
-- Chapters: one per PGC program, from IFO cell times; none for a single-chapter title.
+- Chapters: one per PGC program, from IFO cell times (cells of other angles not counted); none for a single-chapter title.
+- Angles (as MakeMKV's first-angle title): only the first angle is ripped. Interleaved cells are read unit by unit (ILVU) following the nav packs' DSI pointers.
+	MakeMKV also offers each further angle as a separate title; we don't (yet).
 - Timing: each cell's stream time mapped to one title timeline (handles STC resets); times computed from field/sample counts so they don't drift.
+	Audio gaps shorter than one frame (at seamless joins) are closed and the shift kept, as MakeMKV does; longer gaps are kept as silence.
+- Chosen cells (owner): cells are numbered in cell-map order (title set, then disc position); a selection must be in one title set; the order given is the playback order;
+	each cell becomes a chapter named "Cell N"; tracks come from a title playing the first cell. File name `<Disc name> - cells LIST.mkv`.
+- Damaged discs (as MakeMKV): a media read error (CRC, sector not found, read fault, I/O device) is retried 3 times, then reading continues at the next readable VOBU of the cell;
+	each skip is a warning with the title time and approximate length. Other errors (e.g. a locked drive refusing encrypted sectors) still fail the title.
 	Duration = end of the longest audio/video track, whole milliseconds. CC pairs timed one per 1/29.97 s frame.
 - Defaults as MakeMKV: keep all tracks and chapters; `all` skips titles under 120 s (they can still be ripped by number).
 - Output naming (owner: clearer than MakeMKV's): `<Disc name> - title NN.mkv`, e.g. `Dead Zone S4 D1 - title 01.mkv`. Disc name = volume label with `_` → space, all-caps words capitalized, words with digits kept as written, `DVD` if no label; `--name` overrides.
@@ -71,6 +85,8 @@ This file describes the present state only; the history is in [log.md](log.md).
 	Initially checked: titles ≥ 120 s that are neither duplicates nor compilations (proposed default; the owner may change it).
 	No track options in the first version: all tracks are kept, as with the CLI default.
 - Cell map: every cell drawn the same narrow width (owner); a cell's length and details are shown on hover.
+	Clicking a cell selects it (Ctrl+click adds/removes, Shift+click selects a range; click order = playback order); selected columns get a green band; "Rip selected cells" rips them.
+	During a rip: a strip above the cells fills green cell by cell (current cell partly), and the ripped title's blocks turn green.
 - Completion sound: the Windows default notification sound, for now (owner).
 
 ## Platform (Windows 11 now, Linux possible later)
@@ -85,30 +101,19 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 | GUI | WPF, Windows only (owner: the GUI will be Windows-only) | none for the CLI; the GUI would need porting (e.g. Avalonia) if ever wanted on Linux |
 
 ## Next steps
-The GUI's three phases are built (see Status). G4 waits on the owner (discs, license text), so work continues with G5–G7 meanwhile.
-Owner's priority: G5 and G6 before G7.
+What is left needs the owner's hands or is a small follow-up from the Beauty and the Beast disc.
 
-**G4 – Finish the GUI** (Butterfly Effect is tested and the README is written; what is left needs the owner's hands)
+**G4 – Finish the GUI** (Butterfly Effect and Beauty and the Beast are tested and the README is written)
 1. *Owner:* insert the other four test discs one at a time (DEAD_ZONE_S4_D1, A_VERY_LONG_ENGAGEMENT_DISC1, LOST_IN_TRANSLATION, Gypsy vol. 1)
 	so each can be scanned in the GUI and a short title ripped and compared with the CLI's output (`mkvcompare`).
+	This also re-checks those discs after the changes of 2026-11-18 evening (angle cells, chapter timing, closing small audio gaps), which should not affect them.
 2. Add the GPL v2 text as `LICENSE` (the download from gnu.org was refused by the network here; any copy of GPL v2 will do).
 
-**G5 – Rip chosen cells** (owner's request: one cell, or several cells joined into one file)
-1. Library: a rip from a list of cells instead of a title. Cells must all be in one title set (same video format, audio layout and CSS key); others are refused with a clear message.
-	Track list, languages and subtitle palette come from a title that plays the first cell. The user's order is kept; each cell becomes a chapter.
-2. CLI: a way to name cells, e.g. `rip-dvd mkv E: cells:5:1,5:3-5:6 <folder>` (title set:cell, as in the cell map), and a file name such as `<Disc name> - cells 5-1 to 5-6.mkv`.
-3. GUI: select cells in the cell map (click, Ctrl+click, Shift+click for a range), then "Rip selected cells" next to Start.
-4. Test: rip a single cell and a multi-cell selection; the joined file must play continuously (ffmpeg decode, check timestamps at the joins);
-	ripping exactly a title's cells this way must give the same streams as ripping the title (`mkvcompare`).
+**B1 – Chapter times after angle blocks** (Beauty and the Beast title 16: 10 of 23 chapter starts differ from MakeMKV's by 17–100 ms)
+1. MakeMKV seems to time chapters from the stream (where each cell actually starts on the title timeline), we from the IFO cell playback times.
+	Check that idea, and if it holds, write the chapters from the stream timeline (they are written in the header before the clusters, so this needs reserved space or a rewrite at the end).
 
-**G6 – Rip progress in the cell map** (owner's request)
-1. Library: rip progress also reports the cell being read and how far into it.
-2. GUI: during a rip, the cell map marks finished cells and the cell being read (partly filled), for the title being ripped.
-
-**G7 – Damaged discs: retry and skip read errors** (owner's request; MakeMKV does this)
-1. On a read error: retry the sector a few times; if it still fails, skip to the next readable VOBU (the next ~0.5 s unit, which starts with a key frame) and keep ripping.
-2. Report each skipped spot (title time and length) as a warning in the CLI and in the GUI's results list, instead of failing the whole title.
-3. Test: simulate unreadable sectors in a test (a reader that fails on chosen sectors); a real test needs a scratched disc from the owner.
+**G7.4 – Damaged discs: real test** *Owner:* a scratched or dirty DVD, if one turns up (G7 itself is built and tested with simulated bad sectors).
 
 ## Future (desirable, not scheduled)
 - **Blu-ray probing and ripping** (owner; after the current Next steps). The owner has a Blu-ray drive that never worked with MakeMKV, and no example Blu-ray rips.

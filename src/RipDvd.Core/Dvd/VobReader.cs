@@ -34,8 +34,26 @@ public sealed class VobReader : IDisposable {
 		return new VobReader(files);
 	}
 
+	/// <summary>
+	/// For testing damaged-disc handling: sectors for which this returns true fail to read with the same error Windows gives for a bad sector
+	/// ("Data error (cyclic redundancy check)", ERROR_CRC).
+	/// </summary>
+	public Func<long, bool>? SimulateBadSector { get; set; }
+
+	/// <summary>Windows error codes that mean the disc itself could not be read there (scratch, dirt, defect), as opposed to e.g. a locked drive.</summary>
+	public static bool IsMediaError(IOException ex) => (ex.HResult & 0xFFFF) is
+		23 or     // ERROR_CRC: data error (cyclic redundancy check)
+		25 or     // ERROR_SEEK
+		27 or     // ERROR_SECTOR_NOT_FOUND
+		30 or     // ERROR_READ_FAULT
+		31 or     // ERROR_GEN_FAILURE
+		1117;     // ERROR_IO_DEVICE
+
 	/// <summary>Read <paramref name="count"/> sectors starting at <paramref name="sector"/> into the buffer.</summary>
 	public void Read(long sector, int count, Span<byte> buffer) {
+		if (SimulateBadSector is { } bad)
+			for (long s = sector; s < sector + count; s++)
+				if (bad(s)) throw new IOException($"Data error (cyclic redundancy check) at sector {s} (simulated).", unchecked((int)0x80070017));
 		int done = 0;
 		while (done < count) {
 			long s = sector + done;

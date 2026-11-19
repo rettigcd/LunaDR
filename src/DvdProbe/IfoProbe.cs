@@ -72,7 +72,7 @@ internal static class IfoProbe {
 			foreach (var c in pgc.Cells)
 				Console.WriteLine($"        cell {c.Number,2}: vob {c.VobId,2} cell {c.CellId,2}  sectors {c.FirstSector,7}-{c.LastSector,7}" +
 								  $" ({c.SectorCount,6})  time {c.PlaybackTime}  block {c.BlockMode}/{c.BlockType}" +
-								  $" seamless={c.SeamlessPlay} stc={c.StcDiscontinuity}");
+								  $" seamless={c.SeamlessPlay} stc={c.StcDiscontinuity} interleaved={c.Interleaved}");
 		}
 		Console.WriteLine();
 	}

@@ -21,9 +21,12 @@ public partial class MainWindow : Window {
 	private readonly MainViewModel _vm = new();
 	private readonly string? _screenshotPath;
 	private readonly (int[] Titles, string Folder)? _testRip;
+	private readonly (int[] Cells, string Folder)? _testCells;
 
-	public MainWindow(string? screenshotPath = null, string? startDrive = null, (int[] Titles, string Folder)? testRip = null) {
+	public MainWindow(string? screenshotPath = null, string? startDrive = null, (int[] Titles, string Folder)? testRip = null,
+		(int[] Cells, string Folder)? testCells = null) {
 		_testRip = testRip;
+		_testCells = testCells;
 		InitializeComponent();
 		DataContext = _vm;
 		_vm.PickFolder = start => {
@@ -80,8 +83,29 @@ public partial class MainWindow : Window {
 			_vm.PrepareTestRip(rip.Titles, rip.Folder);
 			await _vm.StartAsync();
 		}
+		if (_testCells is { } cells) {
+			// Test mode: select the given cells in the cell map and rip them as if "Rip selected cells" had been clicked.
+			_vm.AskAboutExistingFiles = _ => ExistingFilesChoice.Overwrite;
+			_vm.PrepareTestRip([], cells.Folder);
+			_vm.SelectedCells = cells.Cells;
+			await _vm.RipSelectedCellsAsync();
+		}
 		await Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+		SaveScreenshot(_screenshotPath!);
+		Close();
+	}
 
+	/// <summary>Test mode (--midshot): save a picture once the rip is half done, to see the progress in the cell map.</summary>
+	public void SaveScreenshotAtHalfway(string path) {
+		bool saved = false;
+		_vm.PropertyChanged += (_, e) => {
+			if (saved || e.PropertyName != nameof(MainViewModel.OverallProgress) || _vm.OverallProgress < 0.5) return;
+			saved = true;
+			Dispatcher.InvokeAsync(() => SaveScreenshot(path), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+		};
+	}
+
+	private void SaveScreenshot(string path) {
 		// The content has a margin; include it so nothing at the edges is cut off.
 		var content = (FrameworkElement)Content;
 		double width = content.ActualWidth + content.Margin.Left + content.Margin.Right;
@@ -94,7 +118,7 @@ public partial class MainWindow : Window {
 		bitmap.Render(content);
 		var encoder = new PngBitmapEncoder();
 		encoder.Frames.Add(BitmapFrame.Create(bitmap));
-		using (var file = File.Create(_screenshotPath!)) encoder.Save(file);
-		Close();
+		using var file = File.Create(path);
+		encoder.Save(file);
 	}
 }

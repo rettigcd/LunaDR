@@ -24,6 +24,14 @@ public sealed class CellMap {
 	/// <summary>The titles that play the cell at <paramref name="cellIndex"/>.</summary>
 	public IEnumerable<int> TitlesUsing(int cellIndex) => Titles.Where(t => t.Cells.Contains(cellIndex)).Select(t => t.TitleNumber);
 
+	/// <summary>Reads the IFO files of a VIDEO_TS folder and builds the map.</summary>
+	public static CellMap Load(string videoTsFolder) {
+		var vmg = VmgIfo.Parse(File.ReadAllBytes(Path.Combine(videoTsFolder, "VIDEO_TS.IFO")));
+		var cache = new Dictionary<int, VtsIfo>();
+		return Build(vmg, n => cache.TryGetValue(n, out var v) ? v
+			: cache[n] = VtsIfo.Parse(File.ReadAllBytes(Path.Combine(videoTsFolder, $"VTS_{n:00}_0.IFO")), n));
+	}
+
 	/// <summary>Builds the map from parsed IFO files. Angle blocks: only the first angle's cells are part of a title (as when ripping).</summary>
 	public static CellMap Build(VmgIfo vmg, Func<int, VtsIfo> titleSet) {
 		var cellIndex = new Dictionary<(int Vts, int Vob, int Cell), int>();

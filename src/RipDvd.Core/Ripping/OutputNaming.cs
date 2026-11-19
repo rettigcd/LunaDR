@@ -28,6 +28,10 @@ public static class OutputNaming {
 
 	public static string FileName(string discName, int titleNumber) => Sanitize($"{discName} - title {titleNumber:00}.mkv");
 
+	/// <summary>File name for chosen cells: "&lt;Disc name&gt; - cells 23-27,30.mkv" (cell numbers as in the cell map).</summary>
+	public static string CellsFileName(string discName, IReadOnlyList<int> cellNumbers) =>
+		Sanitize($"{discName} - cells {CellSelection.Format(cellNumbers)}.mkv");
+
 	/// <summary>Replaces characters that are not allowed in Windows (or Linux) file names.</summary>
 	public static string Sanitize(string name) {
 		var invalid = Path.GetInvalidFileNameChars().Concat(['<', '>', ':', '"', '/', '\\', '|', '?', '*']).ToHashSet();
