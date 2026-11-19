@@ -1,0 +1,28 @@
+{
+	// F5 = debug, Ctrl+F5 = run without debugging. Pick the configuration in the Run and Debug view (Ctrl+Shift+D).
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "GUI (lunadr-gui)",
+			"type": "coreclr",
+			"request": "launch",
+			"preLaunchTask": "build",
+			"program": "${workspaceFolder}/src/RipDvd.Gui/bin/Debug/net10.0-windows/lunadr-gui.exe",
+			"cwd": "${workspaceFolder}",
+			"console": "internalConsole",
+			"stopAtEntry": false
+		},
+		{
+			"name": "CLI (lunadr info)",
+			"type": "coreclr",
+			"request": "launch",
+			"preLaunchTask": "build",
+			"program": "${workspaceFolder}/src/RipDvd.Cli/bin/Debug/net10.0/lunadr.exe",
+			// Change the arguments to run another command, e.g. ["mkv", "E:", "0", "C:\\Rips", "--dry-run"].
+			"args": ["info", "E:"],
+			"cwd": "${workspaceFolder}",
+			"console": "integratedTerminal",
+			"stopAtEntry": false
+		}
+	]
+}
