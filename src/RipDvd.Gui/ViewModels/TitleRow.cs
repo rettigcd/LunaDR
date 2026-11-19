@@ -3,7 +3,8 @@ using RipDvd.Core.Ripping;
 namespace RipDvd.Gui.ViewModels;
 
 /// <summary>One row of the title list: a <see cref="TitleSummary"/> formatted for display.</summary>
-public sealed class TitleRow(TitleSummary title, TimeSpan minimumLength) : ViewModelBase {
+/// <param name="unit">"title" (DVD) or "playlist" (Blu-ray), for the notes.</param>
+public sealed class TitleRow(TitleSummary title, TimeSpan minimumLength, string unit = "title") : ViewModelBase {
 	private bool _isChecked;
 
 	public TitleSummary Title { get; } = title;
@@ -26,7 +27,7 @@ public sealed class TitleRow(TitleSummary title, TimeSpan minimumLength) : ViewM
 	/// <summary>"same video as title 1", "compilation of titles 7–11", or empty.</summary>
 	public string Note =>
 		Title.CompilationOf is { } c ? $"compilation of titles {Ranges(c)}" :
-		Title.DuplicateOf is { } d ? $"same video as title {d}" : "";
+		Title.DuplicateOf is { } d ? $"same video as {unit} {d}" : "";
 
 	public bool IsDuplicateOrCompilation => Title.CompilationOf is not null || Title.DuplicateOf is not null;
 

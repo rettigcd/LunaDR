@@ -7,6 +7,11 @@
 	<Window.Resources>
 		<g:NotConverter x:Key="Not" />
 		<BooleanToVisibilityConverter x:Key="Visible" />
+		<!-- Long track lists (Blu-ray) are cut with "…"; the tooltip shows all of it. -->
+		<Style x:Key="Trimmed" TargetType="TextBlock">
+			<Setter Property="TextTrimming" Value="CharacterEllipsis" />
+			<Setter Property="ToolTip" Value="{Binding Text, RelativeSource={RelativeSource Self}}" />
+		</Style>
 	</Window.Resources>
 	<Grid Margin="12">
 		<Grid.RowDefinitions>
@@ -55,8 +60,8 @@
 				<DataGridTextColumn Header="Chapters" Binding="{Binding Chapters}" />
 				<DataGridTextColumn Header="Size" Binding="{Binding Size}" />
 				<DataGridTextColumn Header="Video" Binding="{Binding Video}" />
-				<DataGridTextColumn Header="Audio" Binding="{Binding Audio}" />
-				<DataGridTextColumn Header="Subtitles" Binding="{Binding Subtitles}" />
+				<DataGridTextColumn Header="Audio" Binding="{Binding Audio}" MaxWidth="360" ElementStyle="{StaticResource Trimmed}" />
+				<DataGridTextColumn Header="Subtitles" Binding="{Binding Subtitles}" MaxWidth="200" ElementStyle="{StaticResource Trimmed}" />
 				<DataGridTextColumn Header="CC" Binding="{Binding Captions}" />
 				<DataGridTextColumn Header="Note" Binding="{Binding Note}" Width="*" />
 			</DataGrid.Columns>
@@ -65,7 +70,7 @@
 		<GridSplitter Grid.Row="2" Height="6" HorizontalAlignment="Stretch" Margin="0,4" />
 
 		<!-- Cell map: which titles play which cells. -->
-		<DockPanel Grid.Row="3">
+		<DockPanel Grid.Row="3" Visibility="{Binding HasCellMap, Converter={StaticResource Visible}}">
 			<StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
 				<TextBlock Text="Cells" FontWeight="SemiBold" Margin="0,0,16,0" />
 				<Rectangle Width="10" Height="10" Fill="#3B82F6" VerticalAlignment="Center" />
@@ -109,8 +114,8 @@
 					<Button Grid.Column="2" Content="Browse…" Command="{Binding BrowseCommand}" Margin="6,0,0,0" />
 					<TextBlock Grid.Column="3" Text="File names" VerticalAlignment="Center" Margin="20,0,8,0" />
 					<TextBox Grid.Column="4" Text="{Binding FileName, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center"
-							 ToolTip="Files are named &quot;&lt;this&gt; - title NN.mkv&quot;" />
-					<TextBlock Grid.Column="5" Text=" - title NN.mkv" VerticalAlignment="Center" Opacity="0.7" />
+							 ToolTip="Files are named &quot;&lt;this&gt; - title NN.mkv&quot; (Blu-ray: &quot;- playlist NNNNN.mkv&quot;)" />
+					<TextBlock Grid.Column="5" Text="{Binding FileNameSuffix}" VerticalAlignment="Center" Opacity="0.7" />
 				</Grid>
 				<DockPanel Margin="0,10,0,0" LastChildFill="True">
 					<Button DockPanel.Dock="Left" Content="Select all" Command="{Binding SelectAllCommand}" />

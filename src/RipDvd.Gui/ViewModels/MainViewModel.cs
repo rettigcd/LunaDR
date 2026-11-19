@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using RipDvd.Gui;
 using System.Windows.Input;
+using RipDvd.Core.Bluray;
 using RipDvd.Core.Ripping;
 
 namespace RipDvd.Gui.ViewModels;
@@ -35,6 +36,9 @@ public sealed class MainViewModel : ViewModelBase {
 	private int? _selectedTitleNumber;
 	private string _hoverInfo = "";
 	private string? _videoTs;
+
+	/// <summary>The scanned disc is a Blu-ray: <see cref="_videoTs"/> is then its root folder and the title numbers are playlist numbers.</summary>
+	private bool _bluray;
 	private CancellationTokenSource? _cancel;
 	// Phase 3: progress of the current title and of all titles, shown in the progress panel.
 	private bool _showProgress;
@@ -202,10 +206,17 @@ public sealed class MainViewModel : ViewModelBase {
 	}
 	public string Status { get => _status; private set => Set(ref _status, value); }
 	public string DiscName { get => _discName; private set => Set(ref _discName, value); }
+	/// <summary>DVDs have a cell map; Blu-rays (and no disc) don't, and the cell area is hidden.</summary>
+	public bool HasCellMap => _cellMap is not null;
+
+	/// <summary>Shown after the file name box: how the files will be named.</summary>
+	public string FileNameSuffix => _bluray ? " - playlist NNNNN.mkv" : " - title NN.mkv";
+
 	public CellMap? CellMap {
 		get => _cellMap;
 		private set {
 			if (!Set(ref _cellMap, value)) return;
+			Raise(nameof(HasCellMap));
 			SelectedCells = [];
 			Raise(nameof(SelectedCellsText));
 		}
@@ -274,6 +285,8 @@ public sealed class MainViewModel : ViewModelBase {
 		DiscName = "";
 		FileName = "";
 		_videoTs = null;
+		_bluray = false;
+		Raise(nameof(FileNameSuffix));
 		SelectedTitle = null;
 		Status = status;
 	}
@@ -284,6 +297,10 @@ public sealed class MainViewModel : ViewModelBase {
 		IsScanning = true;
 		ClearDisc($"Scanning {drive.Letter} …");
 		try {
+			if (BdScanner.ResolveRoot(drive.Letter) is { } bdRoot) {
+				await ScanBlurayAsync(drive, bdRoot);
+				return;
+			}
 			string videoTs = DiscScanner.ResolveVideoTs(drive.Letter);
 			var disc = await Task.Run(() => DiscScanner.Scan(videoTs));
 			if (SelectedDrive != drive) return;   // the user switched drives meanwhile
@@ -310,6 +327,34 @@ public sealed class MainViewModel : ViewModelBase {
 		}
 	}
 
+	/// <summary>
+	/// Blu-ray (BR6): the playlists fill the title list (numbered by playlist; there is no cell map).
+	/// Checked at first: long enough and not a repeat of an earlier playlist.
+	/// </summary>
+	private async Task ScanBlurayAsync(DriveItem drive, string root) {
+		var disc = await Task.Run(() => BdScanner.Scan(root));
+		if (SelectedDrive != drive) return;
+		_videoTs = root;
+		_bluray = true;
+		Raise(nameof(FileNameSuffix));
+		DiscName = OutputNaming.DiscName(disc.VolumeName);
+		FileName = DiscName;
+		foreach (var t in disc.Titles.OrderByDescending(t => t.DurationNs)) {
+			var summary = new TitleSummary(t.Playlist, 0, t.Chapters, t.Clips.Count, t.DurationNs, t.SizeBytes, t.Video, t.Audio, t.Subtitles, false) {
+				DuplicateOf = t.DuplicateOf,
+			};
+			var row = new TitleRow(summary, MinimumLength, unit: "playlist");
+			row.IsChecked = !row.IsShort && !row.IsDuplicateOrCompilation;
+			Titles.Add(row);
+		}
+		int shortCount = Titles.Count(t => t.IsShort);
+		int repeats = Titles.Count(t => t.IsDuplicateOrCompilation);
+		Status = $"Blu-ray: {Titles.Count} playlists (the Title column is the playlist number)" +
+				 (shortCount > 0 ? $"; {shortCount} shorter than {MinimumLength.TotalSeconds:0} s (dimmed)" : "") +
+				 (repeats > 0 ? $"; {repeats} repeat an earlier playlist" : "") +
+				 (Directory.Exists(Path.Combine(root, "AACS")) && KeyDb.Find() is null ? "; AACS-encrypted and no key file found (KEYDB.cfg)" : "") + ".";
+	}
+
 	/// <summary>Test mode: check exactly these titles and use this output folder without saving it in the settings.</summary>
 	public void PrepareTestRip(IReadOnlyCollection<int> titles, string folder) {
 		foreach (var t in Titles) t.IsChecked = titles.Contains(t.Number);
@@ -334,7 +379,9 @@ public sealed class MainViewModel : ViewModelBase {
 
 		if (CheckOutputFolder() is not { } folder) return;
 		string name = OutputName();
-		var items = chosen.Select(t => new RipJobItem(t.Number, Path.Combine(folder, OutputNaming.FileName(name, t.Number)), t.Title.SizeBytes / 2048)).ToList();
+		var items = chosen.Select(t => _bluray
+			? RipJobItem.ForPlaylist(t.Number, Path.Combine(folder, BdScanner.FileName(name, t.Number)), t.Title.SizeBytes / 2048)
+			: new RipJobItem(t.Number, Path.Combine(folder, OutputNaming.FileName(name, t.Number)), t.Title.SizeBytes / 2048)).ToList();
 		await RunAsync(items, folder);
 	}
 
