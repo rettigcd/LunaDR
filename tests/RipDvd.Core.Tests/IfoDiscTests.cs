@@ -62,6 +62,24 @@ public class AVeryLongEngagementTests {
 	}
 }
 
+/// <summary>Dead Zone season 4 disc 1: TV episodes with closed captions, short extras with two audio tracks.</summary>
+public class DeadZoneTests {
+	private const string Disc = "DEAD_ZONE_S4_D1";
+	private static string Folder => IfoDisc.Folder(Disc)!;
+
+	[IfoFact(Disc)]
+	public void TitleList_EpisodesAndExtras() {
+		var titles = DiscScanner.Scan(Folder).Titles;
+		Assert.Equal(14, titles.Count);
+		Assert.Equal([1, 2, 3, 4, 6, 7, 8, 9], titles.Where(t => t.DurationNs >= 120_000_000_000).Select(t => t.TitleNumber));
+		var episode = titles.Single(t => t.TitleNumber == 1);
+		Assert.Equal(9, episode.Chapters);
+		Assert.Equal(["AC3 5.1 eng", "AC3 stereo eng"], episode.Audio);
+		Assert.True(episode.ClosedCaptions);
+		Assert.Equal(["AC3 stereo eng", "AC3 stereo eng"], titles.Single(t => t.TitleNumber == 6).Audio);
+	}
+}
+
 /// <summary>Lost in Translation: DTS next to AC3 in the movie, a "play all" title, many short extras.</summary>
 public class LostInTranslationTests {
 	private const string Disc = "LOST_IN_TRANSLATION";

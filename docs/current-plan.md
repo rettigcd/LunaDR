@@ -14,7 +14,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 
 	| Disc | What it tested | Result |
 	|---|---|---|
-	| DEAD_ZONE_S4_D1 (TV) | AC3, CC→text, STC reset in a cell | episode and extra identical to MakeMKV (captions within a few ms) |
+	| DEAD_ZONE_S4_D1 (TV) | AC3, CC→text, STC reset in a cell | episode and extra identical to MakeMKV (captions within a few ms); extra (title 6) re-checked 2026-11-19 in GUI and CLI: still identical |
 	| A_VERY_LONG_ENGAGEMENT_DISC1 (film) | 4 VobSub tracks, pulldown, dual layer, empty tracks | movie identical on every track; trailer (title 5) re-checked 2026-11-19 in GUI and CLI: identical to MakeMKV incl. every frame time |
 	| LOST_IN_TRANSLATION | DTS; fresh disc needing drive authentication | opening identical to owner's MakeMKV rip; re-checked 2026-11-19 (GUI = CLI, title 9 vs MakeMKV 2.0): decodes cleanly, small accepted differences |
 	| Gypsy (2004) vol. 1 | 16-bit LPCM; disc without CSS | opening identical to owner's MakeMKV rip; set aside 2026-11-19: degraded, cell 7 reads back different corrupted data each time |
@@ -118,10 +118,6 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 ## Next steps
 What is left needs the owner's hands or is a small follow-up from the Beauty and the Beast disc.
 
-**G4 – Finish the GUI** (Butterfly Effect and Beauty and the Beast are tested and the README is written)
-1. *Owner:* insert the last test disc, DEAD_ZONE_S4_D1,
-	so each can be scanned in the GUI and a short title ripped and compared with the CLI's output (`mkvcompare`).
-	This also re-checks those discs after the changes of 2026-11-18 evening (angle cells, chapter timing, closing small audio gaps), which should not affect them.
 
 **B1 – Chapter times after angle blocks** (Beauty and the Beast title 16: 10 of 23 chapter starts differ from MakeMKV's by 17–100 ms)
 1. MakeMKV seems to time chapters from the stream (where each cell actually starts on the title timeline), we from the IFO cell playback times.
