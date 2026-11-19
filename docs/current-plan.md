@@ -90,10 +90,9 @@ Owner's phases: (1) scan the disc and show what's on it, including which titles 
 Framework and approach: see Design decisions → UI. All three phases are built (see Status); remaining:
 
 **G4 – Finish** (Butterfly Effect is tested and the README is written; what is left needs the owner's hands)
-1. *Owner:* try ejecting and inserting a disc while the GUI is open (automatic scan on insert can't be tested remotely).
-2. *Owner:* insert the other four test discs one at a time (DEAD_ZONE_S4_D1, A_VERY_LONG_ENGAGEMENT_DISC1, LOST_IN_TRANSLATION, Gypsy vol. 1)
+1. *Owner:* insert the other four test discs one at a time (DEAD_ZONE_S4_D1, A_VERY_LONG_ENGAGEMENT_DISC1, LOST_IN_TRANSLATION, Gypsy vol. 1)
 	so each can be scanned in the GUI and a short title ripped and compared with the CLI's output (`mkvcompare`).
-3. Add the GPL v2 text as `LICENSE` (the download from gnu.org was refused by the network here; any copy of GPL v2 will do).
+2. Add the GPL v2 text as `LICENSE` (the download from gnu.org was refused by the network here; any copy of GPL v2 will do).
 
 ## Future (desirable, not scheduled)
 - **Audio not yet supported:** 20/24-bit LPCM and MPEG audio. Needs a disc with one of them to test (MPEG audio is most likely on PAL or home-made DVDs); the owner has none.
