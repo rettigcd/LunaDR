@@ -35,6 +35,11 @@ This file describes the present state only; the history is in [log.md](log.md).
 	Output identical to the CLI's (Butterfly Effect titles 3 and 6; Beauty and the Beast cells 32,45 = title 5). Test mode `--screenshot file.png [--drive E] [--rip 3,6 | --cells 32,45] [--to folder] [--midshot file.png]`.
 	Screenshot: [gui-phase3-butterfly-effect.png](gui-phase3-butterfly-effect.png).
 - Probe `src/DvdProbe`: `drives`, `files`, `titles [-v]`, `scramble`, `crack` (old), `key`, `duration`, `bench`, `demux`, `mkvinfo [-dumptrack]`, `rip [-cells N] [-bad sectors]`, `cellmap`, `navwalk`, `canceltest`, `mkvcompare`.
+- **Unit tests** `tests/RipDvd.Core.Tests` (xUnit, `dotnet test RipDvd.slnx`, 55 tests, < 1 s, no disc needed): regression tests for every bug in the log that a test could catch
+	(LPCM pointer, palette, duration, caption and pulldown timing, references, clusters, empty tracks, DTS channels, interleaved angles, angle chapters, audio gaps, read errors, sizes),
+	plus cell selection, naming, languages, duplicates/compilations, nav packs and the MKV writer.
+	Tests on real IFO files read git-ignored `reference/ifo/<disc>/` (now: Beauty and the Beast) and are skipped without it.
+	The sector reader takes an `ISectorSource`, so tests serve made-up sectors (`BadSectorSource` simulates a damaged disc).
 - `README.md`: what the project is, build, CLI and GUI usage, layout, license.
 - References: MakeMKV output listings in `reference/makemkv/`; reference rips in git-ignored `reference/rips/`; the owner's Plex library (D:) holds MakeMKV rips of many of the owner's DVDs.
 
@@ -43,6 +48,8 @@ This file describes the present state only; the history is in [log.md](log.md).
 ### Core (ripping library `RipDvd.Core` and the CLI)
 - C# on .NET 10, all managed code (no native C). The drive is the bottleneck (descrambling 430 MB/s vs ≤ 22 MB/s from a drive).
 - Self-contained like MakeMKV: no external tools at run time. ffmpeg is used only as a development check.
+- Testing (owner): xUnit unit tests for the core run before every commit; every bug fix gets a test that fails without it. Rules that used to live inside `TitleRipper.Rip`
+	are small internal classes (`VideoReferences`, `ClusterRule`, `RipTiming`, `AudioContinuity`) so they can be tested. Disc comparisons with MakeMKV stay the end-to-end check.
 - DVD only for now; Blu-ray is a future feature (see Future), to start after the current Next steps.
 - All ripping logic lives in the library; the CLI and the GUI only call it.
 - Output: Matroska, laid out like MakeMKV's files (log 10:22, 12:10); streams copied unchanged except where MakeMKV converts:
@@ -108,28 +115,6 @@ What is left needs the owner's hands or is a small follow-up from the Beauty and
 	so each can be scanned in the GUI and a short title ripped and compared with the CLI's output (`mkvcompare`).
 	This also re-checks those discs after the changes of 2026-11-18 evening (angle cells, chapter timing, closing small audio gaps), which should not affect them.
 2. Add the GPL v2 text as `LICENSE` (the download from gnu.org was refused by the network here; any copy of GPL v2 will do).
-
-**T1 – Test project for the core** (owner's decision; before B1)
-1. `tests/RipDvd.Core.Tests` (xUnit), in the solution; `dotnet test RipDvd.slnx` runs it. Tests need no disc; tests on real IFO files (kept in git-ignored `reference/ifo/<disc>/`) are skipped when the files are missing.
-2. Make the logic that now sits inside `TitleRipper.Rip` testable (small internal classes, `InternalsVisibleTo` the test project): video references, cluster rule, caption timing, audio gap closing, chapter times.
-	`TitleSectorReader` reads through a small sector-source interface so tests can serve made-up sectors (replaces the `SimulateBadSector` hook).
-3. Regression tests for the bugs in the log (each would have caught its bug):
-	- LPCM first-access-unit pointer: skip is pointer − 4 (log 12:34; samples were one byte off).
-	- VobSub palette: BT.601 studio range, Y 128 → 0x82 (first version gave 0x80).
-	- Duration = end of the longest audio/video track, whole ms truncated (video-only end gave 7,999,991 instead of 8,000,000).
-	- Caption timing with pulldown: pair k at GOP start + k frames of 1/29.97 s (timing per picture was 50–67 ms late).
-	- Video timing from field counts with repeat_first_field (no drift; chapter ends exact) and the framer's scan limit after removing a frame.
-	- ReferenceBlocks: P → previous anchor, B → two previous anchors, nothing references back past a key frame (a first version gave leading B pictures a reference into the previous GOP).
-	- Clusters: new cluster at a key frame ≥ 400 ms after the cluster's key frame or at a chapter start; cluster time = earliest block, truncated.
-	- Empty tracks dropped from Tracks (rewritten in place, freed space as Void) and from Tags.
-	- Audio channel count from the stream (IFO says 5 for 5.1 DTS).
-	- Interleaved angle cells: the reader follows ILVU pointers and never returns the other angle's sectors; a jump into another cell is an error (Beauty and the Beast repeats).
-	- Chapter times don't count other angles' cells (chapters ran past the end).
-	- Audio gaps shorter than a frame closed and the shift kept; longer gaps kept (17 ms gap at a seamless join).
-	- Read errors: media errors retried and skipped to the next VOBU with the right counts; other errors still fail.
-	- Size/progress of interleaved titles counts one angle (title 17 showed 5.64 GB).
-4. Tests for the rest of the pure logic: cell selection, output naming, languages, duplicate/compilation detection (Dead Zone and Butterfly Effect shapes), nav pack parsing, EBML write/read round trip, EIA-608 decoding.
-5. Process: CLAUDE.md rule "run `dotnet test` before each commit (it also fails on a broken build); a bug fix comes with a test".
 
 **B1 – Chapter times after angle blocks** (Beauty and the Beast title 16: 10 of 23 chapter starts differ from MakeMKV's by 17–100 ms)
 1. MakeMKV seems to time chapters from the stream (where each cell actually starts on the title timeline), we from the IFO cell playback times.

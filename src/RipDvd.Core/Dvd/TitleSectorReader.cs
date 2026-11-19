@@ -16,11 +16,11 @@ namespace RipDvd.Core.Dvd;
 /// next ILVU (DSI SML_PBI fields, see <see cref="NavPack"/>), and we jump there.
 /// </summary>
 public sealed class TitleSectorReader {
-	private readonly VobReader _reader;
+	private readonly ISectorSource _reader;
 	private readonly IReadOnlyList<Cell> _cells;
 	private readonly CssKey? _key;
 
-	public TitleSectorReader(VobReader reader, IReadOnlyList<Cell> cells, CssKey? key) {
+	public TitleSectorReader(ISectorSource reader, IReadOnlyList<Cell> cells, CssKey? key) {
 		_reader = reader;
 		_cells = PlayedCells(cells);
 		_key = key;
@@ -225,7 +225,7 @@ public sealed class TitleSectorReader {
 	/// Find the title key by scanning the title set's VOBs from the start until a candidate is
 	/// validated. Returns null if the VOBs contain no scrambled sectors (not CSS protected).
 	/// </summary>
-	public static CssKey? FindKey(VobReader reader, int maxSectors = 400_000, CancellationToken cancel = default) {
+	public static CssKey? FindKey(ISectorSource reader, int maxSectors = 400_000, CancellationToken cancel = default) {
 		var finder = new TitleKeyFinder();
 		var buffer = new byte[64 * VobReader.SectorSize];
 		long limit = Math.Min(reader.SectorCount, maxSectors);

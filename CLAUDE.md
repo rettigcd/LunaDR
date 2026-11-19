@@ -35,6 +35,9 @@ running an installed MakeMKV (`makemkvcon`) to compare results, is allowed.
 - **When an open question is answered, remove it from current-plan.md and record the question
 	and its answer in the log.**
 - Commit after each meaningful step so the history is readable.
+- **Tests (owner's rule):** run `dotnet test RipDvd.slnx` before each commit and only commit when it passes (it also fails on a broken build).
+	A bug fix comes with a test that fails without the fix. Unit tests are in `tests/RipDvd.Core.Tests` and need no disc;
+	tests on a real disc's IFO files read git-ignored `reference/ifo/<disc>/` (copy `VIDEO_TS\*.IFO` there) and are skipped when it is missing.
 - Keep current-plan.md's Status short and current: replace outdated lines instead of adding new ones on top.
 	When proposing what to do next, follow the order of Next steps, or say why a step is skipped.
 
@@ -48,4 +51,4 @@ running an installed MakeMKV (`makemkvcon`) to compare results, is allowed.
 	longer than the ~95 used at first), and start each new sentence on a new line.
 - Testing output: compare against MakeMKV's files (probe `mkvinfo`) and decode with ffmpeg, a development check only (never a runtime dependency).
 	The owner allows downloading ffmpeg (e.g. the BtbN Windows build from GitHub) and running `ffmpeg -v error -i <file.mkv> -map 0:v -map 0:a -f null -`.
-- Build: `dotnet build` from the repo root. Run the probe: `dotnet run --project src/DvdProbe -- <command>`.
+- Build: `dotnet build` from the repo root; check its exit code (filtered output once hid a failed GUI build). Tests: `dotnet test RipDvd.slnx`. Run the probe: `dotnet run --project src/DvdProbe -- <command>`.

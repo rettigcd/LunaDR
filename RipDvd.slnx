@@ -5,4 +5,7 @@
 		<Project Path="src/RipDvd.Core/RipDvd.Core.csproj" />
 		<Project Path="src/RipDvd.Gui/RipDvd.Gui.csproj" />
 	</Folder>
+	<Folder Name="/tests/">
+		<Project Path="tests/RipDvd.Core.Tests/RipDvd.Core.Tests.csproj" />
+	</Folder>
 </Solution>

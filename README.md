@@ -21,7 +21,9 @@ Rips from five test discs were compared with MakeMKV's rips of the same titles a
 ## Build
 ```
 dotnet build RipDvd.slnx
+dotnet test RipDvd.slnx
 ```
+The unit tests (`tests/RipDvd.Core.Tests`) need no disc and take about a second.
 
 ## Command line
 ```

@@ -109,7 +109,7 @@ public sealed class TitleRipper {
 	/// Chapters of a title: program n starts at its entry cell, timed from the IFO cell playback times.
 	/// Cells of angles other than the first are not played, so their time is not counted (in an angle block every angle has the same length).
 	/// </summary>
-	private static List<MkvChapter> PgcChapters(Pgc pgc) {
+	internal static List<MkvChapter> PgcChapters(Pgc pgc) {
 		var cellStartNs = new long[pgc.Cells.Count + 1];
 		var elapsed = default(DvdTime);
 		for (int c = 0; c < pgc.Cells.Count; c++) {
@@ -162,8 +162,8 @@ public sealed class TitleRipper {
 		} catch (IOException ex) when (unlockError is not null) {
 			throw new IOException($"{ex.Message} (drive authentication failed: {unlockError})", ex);
 		}
-		vobs.SimulateBadSector = options.SimulateBadSector;
-		var reader = new TitleSectorReader(vobs, _cells.Take(maxCells).ToList(), key);
+		ISectorSource source = options.SimulateBadSector is { } bad ? new BadSectorSource(vobs, bad) : vobs;
+		var reader = new TitleSectorReader(source, _cells.Take(maxCells).ToList(), key);
 		total = reader.TotalSectors;
 		cellSectors = reader.CellSectors;
 
@@ -198,9 +198,8 @@ public sealed class TitleRipper {
 			long elapsedBeforeCell = 0;     // title time at the start of the current cell
 			uint? cellFirstPtm = null, cellLastPtm = null;
 
-
-			long? lastAnchor = null, olderAnchor = null;   // presentation times of the last two I/P pictures, in decode order
-			long? clusterKeyPts = null;                    // key frame that started the current cluster
+			var references = new VideoReferences();
+			var clusters = new ClusterRule(chapters);
 
 			void WriteGop(List<VideoFrame> gop, long audioUntilNs) {
 				if (!headerWritten) {
@@ -215,34 +214,12 @@ public sealed class TitleRipper {
 					mkv.WriteHeader(chapters, null);
 					headerWritten = true;
 				}
-				// Clusters as MakeMKV makes them: a new cluster at a key frame at least 400 ms after the current cluster's key frame,
-				// or where a chapter starts; otherwise the GOP joins the current cluster (short GOPs).
+				// Clusters and references as MakeMKV makes them (rules in VideoRules.cs).
 				// The cluster's timestamp is its earliest block (B pictures shown before the key frame); its cue uses the key frame's time.
 				var keyFrame = gop[0];
-				bool chapterStarts = chapters.Any(c => c.StartNs > (clusterKeyPts ?? long.MinValue) + 1_000_000 && c.StartNs <= keyFrame.Pts + 1_000_000);
-				if (clusterKeyPts is null || keyFrame.Pts - clusterKeyPts >= 400_000_000 || chapterStarts) {
-					mkv.StartCluster(gop.Min(f => f.Pts), cueTimeNs: keyFrame.Pts);
-					clusterKeyPts = keyFrame.Pts;
-				}
-				foreach (var f in gop) {
-					// References, like MakeMKV: a P picture uses the previous anchor (I or P); a B picture the two previous anchors in decode order.
-					// References never reach back past a key frame: the B pictures right after it (shown before it, in an open GOP)
-					// reference only the key frame (checked against MakeMKV: all 6,119 references of a test title identical).
-					IReadOnlyList<long> refs = f.PictureType switch {
-						'P' when lastAnchor is { } a => [a],
-						'B' when olderAnchor is { } o && lastAnchor is { } a => [o, a],
-						'B' when lastAnchor is { } a => [a],
-						_ => [],
-					};
-					mkv.AddVideoFrame(video, f.Pts, f.DurationNs, f.IsKeyFrame, f.Data, refs);
-					if (f.IsKeyFrame) {
-						olderAnchor = null;
-						lastAnchor = f.Pts;
-					} else if (f.PictureType is 'I' or 'P') {
-						olderAnchor = lastAnchor;
-						lastAnchor = f.Pts;
-					}
-				}
+				if (clusters.StartsCluster(keyFrame.Pts)) mkv.StartCluster(gop.Min(f => f.Pts), cueTimeNs: keyFrame.Pts);
+				foreach (var f in gop)
+					mkv.AddVideoFrame(video, f.Pts, f.DurationNs, f.IsKeyFrame, f.Data, references.Next(f.PictureType, f.IsKeyFrame, f.Pts));
 				foreach (var (track, af, queue) in audioQueues) WriteAudio(mkv, track, af, queue, audioUntilNs);
 				WriteSubtitles(audioUntilNs);
 				if (captionDecoder is not null) {
@@ -336,7 +313,7 @@ public sealed class TitleRipper {
 			}
 
 			// Like MakeMKV: the end of whichever audio/video track runs longest (on the film disc the audio ends 9 ms after the video).
-			long durationNs = tracks.Where(t => t.Type != MkvTrackType.Subtitle).Max(t => t.LastEndNs);
+			long durationNs = RipTiming.DurationNs(tracks);
 			mkv.Finish(durationNs);
 			completed = true;
 			Report(RipPhase.Done);
@@ -485,7 +462,7 @@ public sealed class TitleRipper {
 	/// With 3:2 pulldown (film) a GOP shows fewer pictures than frames, so pairs are timed by frame slot, not by picture.
 	/// Timing by picture was 50–67 ms late on a film disc; on video content (no pulldown) both are the same.
 	/// </summary>
-	private static void FeedCaptions(Captions.Eia608Decoder decoder, List<VideoFrame> gop) {
+	internal static void FeedCaptions(Captions.Eia608Decoder decoder, List<VideoFrame> gop) {
 		var pairs = gop.SelectMany(f => f.Captions).ToList();
 		if (pairs.Count == 0) return;
 		long start = gop.Min(f => f.Pts);
@@ -522,7 +499,7 @@ public sealed class TitleRipper {
 	/// MakeMKV plays the next frame right after the previous one and keeps that shift for the rest of the title (checked: its AC3 frame times);
 	/// we do the same, so the audio stays contiguous. Gaps of a frame or longer are real silence and are kept.
 	/// </summary>
-	private sealed class AudioContinuity(AudioFramer framer) {
+	internal sealed class AudioContinuity(AudioFramer framer) {
 		private long _shift;
 		private long? _nextPts;
 

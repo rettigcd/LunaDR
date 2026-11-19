@@ -6,4 +6,9 @@
 		<Nullable>enable</Nullable>
 	</PropertyGroup>
 
+	<ItemGroup>
+		<!-- The unit tests reach the internal helpers (video references, clusters, audio gaps, chapter times). -->
+		<InternalsVisibleTo Include="RipDvd.Core.Tests" />
+	</ItemGroup>
+
 </Project>
