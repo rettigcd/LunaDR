@@ -2,6 +2,7 @@
 // Run "rip-dvd help" for the commands and options; the help text is generated from the tables below,
 // so adding an option to Options automatically documents it.
 
+using RipDvd.Core.Bluray;
 using RipDvd.Core.Ripping;
 
 namespace RipDvd.Cli;
@@ -21,6 +22,8 @@ public static class Program {
 				"Titles shorter than --minlength are only named at the end (use --all to list them in full).",
 				"Compilations (\"play all\" titles made of other titles) and duplicates (same video as another title) are marked.",
 				"--cells adds the cell table: every cell with its number (for 'mkv … cells:') and which titles play it.",
+				"Blu-ray: the titles are the disc's playlists, listed longest first by playlist number (00000 = 0); playlists that play the same",
+				"video as another are marked. It also says whether the disc is AACS-encrypted and which key file would be used.",
 			],
 			["rip-dvd info", "rip-dvd info E:", "rip-dvd info E: --all", "rip-dvd info E: --cells"]),
 		new("mkv", "<disc> <titles|all|cells:LIST> <output folder>",
@@ -34,6 +37,10 @@ public static class Program {
 				"Each cell becomes a chapter; the audio and subtitle tracks are those of a title that plays the first cell.",
 				"By default every audio and subtitle track is kept, closed captions become a text subtitle track, and chapters are written",
 				"(MakeMKV's defaults). Existing files are skipped unless --overwrite is given.",
+				"Blu-ray: <titles> are playlist numbers as listed by 'info' (e.g. 0 or 0,8); files are named \"<Disc name> - playlist NNNNN.mkv\".",
+				"Supported: VC-1, H.264 and MPEG-2 video; AC3, E-AC3, DTS / DTS-HD, TrueHD (written as TrueHD plus its AC3 core) and LPCM audio;",
+				"PGS subtitles. An AACS-encrypted disc needs a key file in libaacs's KEYDB.cfg format, with the disc's entry, next to the program",
+				"or in %APPDATA%\\aacs\\ or %LOCALAPPDATA%\\aacs\\ (this program never downloads keys). UHD (AACS 2) and BD+ discs are not supported.",
 			],
 			[
 				"rip-dvd mkv E: all C:\\Rips",
@@ -63,7 +70,8 @@ public static class Program {
 		new("help", null, ["info", "mkv", "help"], "Show help (also -h)."),
 	];
 
-	private const string DiscHelp = "<disc> is disc:0 (the first optical drive; disc:1 the second, ...), a drive letter like E:, or a folder containing VIDEO_TS.";
+	private const string DiscHelp = "<disc> is disc:0 (the first optical drive; disc:1 the second, ...), a drive letter like E:, or a folder containing " +
+		"VIDEO_TS (DVD) or BDMV (Blu-ray).";
 
 	public static int Main(string[] args) {
 		try {
@@ -95,7 +103,7 @@ public static class Program {
 			return 0;
 		} catch (OptionException ex) {
 			return Fail(ex.Message, ex.Command);
-		} catch (Exception ex) when (ex is IOException or ArgumentException or InvalidDataException or UnauthorizedAccessException or FormatException or NotSupportedException) {
+		} catch (Exception ex) when (ex is IOException or ArgumentException or InvalidDataException or UnauthorizedAccessException or FormatException or NotSupportedException or KeyNotFoundException) {
 			Console.Error.WriteLine($"Error: {ex.Message}");
 			return 2;
 		}
@@ -186,6 +194,7 @@ public static class Program {
 	private static bool LongEnough(TitleSummary t, TimeSpan minLength) => t.DurationNs >= (long)(minLength.TotalSeconds * 1e9);
 
 	private static int Info(string discArg, TimeSpan minLength, bool all, bool cells) {
+		if (BdScanner.ResolveRoot(discArg) is { } bdRoot) return BdInfo(bdRoot, minLength, all);
 		var disc = DiscScanner.Scan(DiscScanner.ResolveVideoTs(discArg));
 		var listed = disc.Titles.Where(t => all || LongEnough(t, minLength)).ToList();
 		Console.WriteLine($"Disc: {OutputNaming.DiscName(disc.VolumeName)}   (volume label \"{disc.VolumeName}\", {disc.VideoTsFolder})");
@@ -218,6 +227,7 @@ public static class Program {
 
 	private static int Mkv(string discArg, string which, string outputFolder, TimeSpan minLength, string? name, RipOptions options,
 		bool overwrite, bool dryRun, bool skipCompilations, bool skipDuplicates) {
+		if (BdScanner.ResolveRoot(discArg) is { } bdRoot) return BdMkv(bdRoot, which, outputFolder, minLength, name, options, overwrite, dryRun, skipDuplicates);
 		string videoTs = DiscScanner.ResolveVideoTs(discArg);
 		var disc = DiscScanner.Scan(videoTs);
 		if (which.StartsWith("cells:", StringComparison.OrdinalIgnoreCase))
@@ -264,6 +274,84 @@ public static class Program {
 			return 0;
 		}
 		return RunJob(videoTs, items, options, skippedExisting);
+	}
+
+	/// <summary>'info' for a Blu-ray: its playlists (the titles), numbered by the playlist files.</summary>
+	private static int BdInfo(string root, TimeSpan minLength, bool all) {
+		var disc = BdScanner.Scan(root);
+		bool Long(BdTitle t) => t.DurationNs >= (long)(minLength.TotalSeconds * 1e9);
+		var listed = disc.Titles.Where(t => all || Long(t)).OrderByDescending(t => t.DurationNs).ToList();
+		Console.WriteLine($"Disc: {OutputNaming.DiscName(disc.VolumeName)}   (Blu-ray, volume label \"{disc.VolumeName}\", {disc.Root})");
+		Console.WriteLine(all
+			? $"{disc.Titles.Count} playlists (titles):"
+			: $"{disc.Titles.Count} playlists (titles), {listed.Count} at least {minLength.TotalSeconds:0} s long:");
+		Console.WriteLine("Rip a playlist by its number, e.g. 'rip-dvd mkv <disc> 0 <folder>' for playlist 00000.");
+		Console.WriteLine();
+		foreach (var t in listed) {
+			Console.WriteLine($"  playlist {t.Playlist:00000}  {Format(t.DurationNs)}  {t.Chapters,2} chapters  {t.SizeBytes / 1e9,5:F2} GB  {t.Video}" +
+							  (t.Angles > 1 ? $"  ({t.Angles} angles; angle 1 is ripped)" : ""));
+			Console.WriteLine($"            audio: {(t.Audio.Count == 0 ? "none" : string.Join(", ", t.Audio))}");
+			if (t.Subtitles.Count > 0) Console.WriteLine($"            subtitles: {string.Join(", ", t.Subtitles)}");
+			if (t.DuplicateOf is { } d) Console.WriteLine($"            same video as playlist {d:00000}");
+		}
+		var skipped = disc.Titles.Except(listed).OrderBy(t => t.Playlist).ToList();
+		if (skipped.Count > 0)
+			Console.WriteLine($"\nShorter than {minLength.TotalSeconds:0} s (not in 'all'; can still be ripped by number; --all lists them): " +
+							  $"playlists {string.Join(", ", skipped.Select(t => $"{t.Playlist} ({Format(t.DurationNs)})"))}");
+		if (Directory.Exists(Path.Combine(root, "AACS"))) {
+			string? keyFile = KeyDb.Find();
+			Console.WriteLine($"\nAACS-encrypted. Key file: {keyFile ?? "none found (needed to rip; see 'rip-dvd help mkv')"}");
+		}
+		return 0;
+	}
+
+	/// <summary>'mkv' for a Blu-ray: playlists by number (or 'all'), each to "&lt;Disc name&gt; - playlist NNNNN.mkv".</summary>
+	private static int BdMkv(string root, string which, string outputFolder, TimeSpan minLength, string? name, RipOptions options,
+		bool overwrite, bool dryRun, bool skipDuplicates) {
+		var disc = BdScanner.Scan(root);
+		List<BdTitle> selected;
+		if (which == "all") {
+			selected = disc.Titles.Where(t => t.DurationNs >= (long)(minLength.TotalSeconds * 1e9)).OrderBy(t => t.Playlist).ToList();
+			foreach (var t in selected.Where(t => skipDuplicates && t.DuplicateOf is not null).ToList()) {
+				Console.WriteLine($"Playlist {t.Playlist:00000} ({Format(t.DurationNs)}) skipped: same video as playlist {t.DuplicateOf:00000}");
+				selected.Remove(t);
+			}
+		} else if (which.StartsWith("cells:", StringComparison.OrdinalIgnoreCase)) {
+			Console.Error.WriteLine("cells: is for DVDs; a Blu-ray is ripped by playlist number (see 'rip-dvd info').");
+			return 1;
+		} else {
+			var numbers = which.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(int.Parse).ToList();
+			var unknown = numbers.Where(n => disc.Titles.All(t => t.Playlist != n)).ToList();
+			if (unknown.Count > 0) {
+				Console.Error.WriteLine($"No playlist {string.Join(", ", unknown)} on this disc (see 'rip-dvd info').");
+				return 1;
+			}
+			selected = numbers.Select(n => disc.Titles.First(t => t.Playlist == n)).ToList();
+		}
+
+		string discName = OutputNaming.Sanitize(name ?? OutputNaming.DiscName(disc.VolumeName));
+		int skippedExisting = 0;
+		var items = new List<RipJobItem>();
+		foreach (var t in selected) {
+			string path = Path.Combine(outputFolder, BdScanner.FileName(discName, t.Playlist));
+			if (dryRun) {
+				Console.WriteLine($"Playlist {t.Playlist:00000} ({Format(t.DurationNs)}) -> {path}");
+				if (File.Exists(path)) Console.WriteLine(overwrite ? "  (exists; would be replaced)" : "  (exists; would be skipped)");
+				foreach (var line in new BdTitleRipper(root, t.Playlist).Describe(options)) Console.WriteLine($"  {line}");
+				continue;
+			}
+			if (File.Exists(path) && !overwrite) {
+				Console.WriteLine($"Playlist {t.Playlist:00000} skipped: {path} already exists (use --overwrite to replace it)");
+				skippedExisting++;
+				continue;
+			}
+			items.Add(RipJobItem.ForPlaylist(t.Playlist, path, t.SizeBytes / 2048));
+		}
+		if (dryRun) {
+			Console.WriteLine("\nDry run: nothing was written. Tracks that turn out to carry no data are dropped during a real rip.");
+			return 0;
+		}
+		return RunJob(root, items, options, skippedExisting);
 	}
 
 	/// <summary>mkv with cells:LIST: the chosen cells, joined in the order given, into one file.</summary>

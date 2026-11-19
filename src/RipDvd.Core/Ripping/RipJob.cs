@@ -8,8 +8,13 @@ public sealed record RipJobItem(int TitleNumber, string OutputPath, long Sectors
 	/// <summary>Cell numbers as in the cell map (see <see cref="CellSelection"/>), in playback order; null for a title.</summary>
 	public IReadOnlyList<int>? Cells { get; init; }
 
+	/// <summary>Set for a Blu-ray item: the playlist to rip (then the job's folder is the disc root, not VIDEO_TS).</summary>
+	public int? Playlist { get; init; }
+
 	/// <summary>"Title 6" or "Cells 23-27", for messages.</summary>
-	public string Name => Cells is { } c ? $"Cells {CellSelection.Format(c)}" : $"Title {TitleNumber}";
+	public string Name => Playlist is { } p ? $"Playlist {p:00000}" : Cells is { } c ? $"Cells {CellSelection.Format(c)}" : $"Title {TitleNumber}";
+
+	public static RipJobItem ForPlaylist(int playlist, string outputPath, long sectors) => new(0, outputPath, sectors) { Playlist = playlist };
 
 	public static RipJobItem ForCells(IReadOnlyList<int> cells, string outputPath, long sectors) => new(0, outputPath, sectors) { Cells = cells };
 }
@@ -81,13 +86,18 @@ public sealed class RipJob(string videoTsFolder, IReadOnlyList<RipJobItem> items
 			}
 
 			try {
-				var ripper = item.Cells is { } cells ? TitleRipper.ForCells(videoTsFolder, cells) : new TitleRipper(videoTsFolder, item.TitleNumber);
-				var result = ripper.Rip(item.OutputPath, OnProgress, options: options, cancel: cancel);
+				RipResult result;
+				if (item.Playlist is { } playlist) {
+					result = new Bluray.BdTitleRipper(videoTsFolder, playlist).Rip(item.OutputPath, OnProgress, options: options, cancel: cancel);
+				} else {
+					var ripper = item.Cells is { } cells ? TitleRipper.ForCells(videoTsFolder, cells) : new TitleRipper(videoTsFolder, item.TitleNumber);
+					result = ripper.Rip(item.OutputPath, OnProgress, options: options, cancel: cancel);
+				}
 				results.Add(new RipJobItemResult(item, result, null));
 				itemFinished?.Invoke(results[^1]);
 			} catch (OperationCanceledException) {
 				throw;
-			} catch (Exception ex) when (ex is IOException or InvalidDataException or NotSupportedException or UnauthorizedAccessException or ArgumentException) {
+			} catch (Exception ex) when (ex is IOException or InvalidDataException or NotSupportedException or UnauthorizedAccessException or ArgumentException or KeyNotFoundException) {
 				results.Add(new RipJobItemResult(item, null, ex));
 				itemFinished?.Invoke(results[^1]);
 			}
