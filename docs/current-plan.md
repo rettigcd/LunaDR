@@ -19,7 +19,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 	| LOST_IN_TRANSLATION | DTS; fresh disc needing drive authentication | opening identical to owner's MakeMKV rip; re-checked 2026-11-19 (GUI = CLI, title 9 vs MakeMKV 2.0): decodes cleanly, small accepted differences |
 	| Gypsy (2004) vol. 1 | 16-bit LPCM; disc without CSS | opening identical to owner's MakeMKV rip; set aside 2026-11-19: degraded, cell 7 reads back different corrupted data each time |
 	| BUTTERFLY_EFFECT | DTS-ES 6.1 | opening identical to owner's MakeMKV rip |
-	| Beauty and the Beast (Disney) | interleaved multi-angle cells, audio gap at a seamless join | title 16 (angle 1, 1:31): video, 3 audio, 2 VobSub identical to MakeMKV incl. times; differences in B1 and log 22:22 |
+	| Beauty and the Beast (Disney) | interleaved multi-angle cells, audio gap at a seamless join | title 16 (angle 1, 1:31): video, 3 audio, 2 VobSub identical to MakeMKV incl. times; small accepted differences (chapter starts up to ~0.1 s; log 2026-11-18 22:22) |
 
 - **Full-disc test passed** (CLI `mkv E: all` on DEAD_ZONE_S4_D1, 8 titles, 30 min): the 3 titles with MakeMKV rips match on every compared property, including SHA-256 of all video/audio/caption payloads (one title: two caption times 1 ms off); all 8 decode with ffmpeg (log 14:34). Compare tool: probe `mkvcompare`.
 - Speed: drive-bound and at least as fast as MakeMKV (e.g. 6.4 GB movie in 1,583 s vs MakeMKV 1,836 s).
@@ -60,8 +60,9 @@ This file describes the present state only; the history is in [log.md](log.md).
 	zero padding the disc has after a GOP header (Lost in Translation: ~125 bytes per GOP) is kept, MakeMKV removes it;
 	an AC3 track can end a frame or two later than MakeMKV's (Lost in Translation title 9: 4,283 vs 4,281 frames); audio lacing breaks in slightly different places;
 	caption durations 1–4 ms longer; Duration can differ by 1 ms; each cluster is 4–10 bytes smaller (element size encoding). None affects playback.
-	Also accepted (not yet confirmed by the owner): after an angle-block join some video frames are 1 ms earlier than MakeMKV's (sub-ms rounding;
-	possibly the half-tick rounding fixed 2026-11-19 for pulldown pictures, to re-check with B1);
+	Also accepted (covered by the owner's rule above): after an angle-block join some video frames are 1 ms earlier than MakeMKV's (sub-ms rounding;
+	possibly the half-tick rounding fixed 2026-11-19 for pulldown pictures; not re-checked, it needs a 20-minute rip);
+	chapter starts can differ from MakeMKV's by up to ~0.1 s (Beauty and the Beast title 16: 10 of 23; ours come from the IFO cell times, log 2026-11-19);
 	caption decoding can differ where MakeMKV drops lines (Beauty and the Beast: ours has 38 more caption lines, e.g. "Oh, look out!" where MakeMKV has " )").
 - Tracks: video; then each audio stream the title's PGC marks available (AC3, DTS, LPCM 16-bit); then VobSub tracks (16:9 uses each stream's "wide" substream, duplicates merged); then CC text.
 	The first audio and first subtitle track are default (CC is default only if there's no VobSub). Tracks that end up empty are dropped. No Language element when the disc gives none.
@@ -116,15 +117,11 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 | GUI | WPF, Windows only (owner: the GUI will be Windows-only) | none for the CLI; the GUI would need porting (e.g. Avalonia) if ever wanted on Linux |
 
 ## Next steps
-What is left needs the owner's hands or is a small follow-up from the Beauty and the Beast disc.
-
-**B1 – Chapter times after angle blocks** (Beauty and the Beast title 16: 10 of 23 chapter starts differ from MakeMKV's by 17–100 ms)
-1. MakeMKV seems to time chapters from the stream (where each cell actually starts on the title timeline), we from the IFO cell playback times.
-	Check that idea, and if it holds, write the chapters from the stream timeline (they are written in the header before the clusters, so this needs reserved space or a rewrite at the end).
-
-**G7.4 – Damaged discs: real test** *Owner:* a scratched or dirty DVD, if one turns up (G7 itself is built and tested with simulated bad sectors).
+None: the DVD work planned so far is done. The next project is the owner's choice from Future (e.g. Blu-ray).
 
 ## Future (desirable, not scheduled)
+- **Damaged discs: real test** (was G7.4; the owner has no damaged disc): rip a scratched or dirty DVD if one turns up.
+	G7 (retry, skip to the next VOBU, warnings) is built and tested with simulated bad sectors; Gypsy vol. 1 showed a drive returning corrupted data without an error, which no reader can detect.
 - **Blu-ray probing and ripping** (owner; after the current Next steps). The owner has a Blu-ray drive that never worked with MakeMKV, and no example Blu-ray rips.
 	1. Probe: identify the drive (model, firmware, reported Blu-ray/AACS features) and read the disc structure (`BDMV`: `.mpls` playlists, `.clpi` clip info, `.m2ts` streams); find out why MakeMKV fails with this drive.
 	2. Rip: playlists as titles; demux the MPEG transport stream; copy H.264/VC-1/MPEG-2 video, AC3/DTS/TrueHD/DTS-HD/LPCM audio and PGS subtitles into MKV.

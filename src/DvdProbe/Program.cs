@@ -175,6 +175,47 @@ public static class Commands {
 		return 0;
 	}
 
+	[ProbeCommand("chapters", "A title's cells in play order: angle block, flags, IFO time and start on the title timeline (first angle only), '*' = chapter start; -stream adds the start measured from nav packs. Args: <drive> <title> [-stream]")]
+	public static int Chapters(string[] args) {
+		string videoTs = IfoProbe.ResolveVideoTs(args[0]);
+		var vmg = RipDvd.Core.Ifo.VmgIfo.Parse(File.ReadAllBytes(Path.Combine(videoTs, "VIDEO_TS.IFO")));
+		var t = vmg.Titles[int.Parse(args[1]) - 1];
+		var vts = RipDvd.Core.Ifo.VtsIfo.Parse(File.ReadAllBytes(Path.Combine(videoTs, $"VTS_{t.TitleSetNumber:00}_0.IFO")), t.TitleSetNumber);
+		var pgc = vts.Pgcs[vts.Chapters[t.TitleSetTitleNumber - 1][0].PgcNumber - 1];
+		// -stream: also the start from the stream, as the ripper's timeline has it (each played cell lasts from its first VOBU's start time to its last VOBU's end time,
+		// read from two nav packs per cell).
+		RipDvd.Core.Dvd.VobReader? reader = null;
+		if (args.Contains("-stream")) {
+			RipDvd.Core.Dvd.DriveUnlocker.TryUnlock(videoTs);
+			reader = RipDvd.Core.Dvd.VobReader.ForTitleSet(videoTs, t.TitleSetNumber);
+		}
+		var buf = new byte[RipDvd.Core.Dvd.VobReader.SectorSize];
+		var start = default(RipDvd.Core.Ifo.DvdTime);
+		long streamNs = 0;
+		int chapter = 0;
+		foreach (var cell in pgc.Cells) {
+			bool entry = pgc.ProgramEntryCells.Contains(cell.Number);
+			if (entry) chapter++;
+			bool played = cell.BlockType != 1 || cell.BlockMode == 1;
+			string block = cell.BlockType == 1 ? $"angle{cell.BlockMode}" : "";
+			string flags = (cell.SeamlessPlay ? "S" : "-") + (cell.Interleaved ? "I" : "-") + (cell.StcDiscontinuity ? "D" : "-");
+			string stream = reader is null ? "" : $"  stream {streamNs / 1e6,10:F1} ms";
+			Console.WriteLine($"{(entry ? $"*{chapter,2}" : "   ")} cell {cell.Number,3} vob {cell.VobId,3}/{cell.CellId,-2} {block,-6} {flags}  " +
+							  $"ifo {cell.PlaybackTime.ToTimeSpan().TotalMilliseconds,9:F1} ms  start {start.ToNanoseconds() / 1e6,10:F1} ms{stream}{(played ? "" : "  (other angle)")}");
+			if (!played) continue;
+			start += cell.PlaybackTime;
+			if (reader is not null) {
+				reader.Read(cell.FirstSector, 1, buf);
+				uint first = RipDvd.Core.Dvd.NavPack.Parse(buf).StartPtm;
+				reader.Read(cell.LastVobuStartSector, 1, buf);
+				uint last = RipDvd.Core.Dvd.NavPack.Parse(buf).EndPtm;
+				streamNs += (long)(last - first) * 100_000 / 9;
+			}
+		}
+		reader?.Dispose();
+		return 0;
+	}
+
 	[ProbeCommand("cellmap", "Table of titles vs cells per title set ('*' = chapter start). Args: <drive> [title set]")]
 	public static int CellMap(string[] args) {
 		CellMapProbe.Print(IfoProbe.ResolveVideoTs(args.Length > 0 ? args[0] : "E:"), args.Length > 1 ? int.Parse(args[1]) : null);

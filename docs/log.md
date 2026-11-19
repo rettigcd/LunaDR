@@ -514,3 +514,11 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 ## 2026-11-19 06:32
 - **G4.1 done, Dead Zone S4 D1** (the last test disc): scan in 7 s; IFO files copied to `reference/ifo/DEAD_ZONE_S4_D1/` (git-ignored); test `DeadZoneTests` (14 titles, 8 of at least 120 s, episode chapters/audio/CC, two audio tracks on the extras). Extra title 6 (2:19) ripped by the GUI (test mode) and the CLI: identical files, and identical in every compared property (incl. every frame time) to MakeMKV's `B2_t04.mkv`; ffmpeg decodes it with no errors. Kept short at the owner's request (no long scans).
 	G4.1 is complete: A Very Long Engagement, Lost in Translation and Dead Zone re-checked; Gypsy set aside (degraded disc). G4 removed from Next steps.
+
+## 2026-11-19 06:38
+- **Owner decision:** G7.4 (real damaged-disc test) moved to Future: the owner has no damaged disc.
+- **B1 (chapter times, Beauty and the Beast title 16), checked with the disc in the drive:** new probe `chapters <drive> <title> [-stream]` lists the title's cells (angle block, flags, IFO time, start on the title timeline) and with `-stream` the start measured from two nav packs per cell (first VOBU start, last VOBU end; 20 s for the title).
+	Against MakeMKV's chapters: from the IFO times 13 of 23 within 1 ms, the others +-17 to 100 ms; from the stream 16 within 1 ms, the others off by +83 (4), -34 (2) or +17 (1) ms. The differences are whole video fields (16.7 ms), so MakeMKV seems to use the first picture of each chapter, but neither timeline reproduces it. The errors do not add up, so no chapter is off by more than about 0.1 s.
+	**Decision:** under the owner's rule ("we don't have to match makemkv exactly as long as the video plays"), chapter starts within ~0.1 s are accepted; no ripper change (the stream timeline would mean rewriting the header at the end for a partial gain). B1 removed from Next steps; the difference is listed in the plan's accepted differences.
+	Not re-checked: whether the half-tick fix also removed the 1 ms earlier frames after the angle join (needs the 20-minute rip; skipped, the owner is short on time).
+- **Next steps is now empty:** the DVD work planned so far is done; the next project is the owner's choice from Future.
