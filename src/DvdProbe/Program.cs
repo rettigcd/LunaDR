@@ -200,7 +200,7 @@ public static class Commands {
 	[ProbeCommand("mkvcompare", "Compare two MKV files track by track (frames, bytes, SHA-256 of payloads, times, chapters). Args: <a.mkv> <b.mkv>")]
 	public static int MkvCompareCommand(string[] args) => MkvCompare.Run(args[0], args[1]);
 
-	[ProbeCommand("checkpacks", "Find sectors that don't start with an MPEG-2 pack header (00 00 01 BA) and show their first bytes. Args: <drive> <vts> <from> <to> [max]")]
+	[ProbeCommand("checkpacks", "Find sectors that don't start with an MPEG-2 pack header (00 00 01 BA, MPEG-2 marker bits) and show their first bytes. Args: <drive> <vts> <from> <to> [max]")]
 	public static int CheckPacks(string[] args) {
 		string videoTs = IfoProbe.ResolveVideoTs(args[0]);
 		int vts = int.Parse(args[1]);
@@ -216,7 +216,7 @@ public static class Commands {
 			reader.Read(s, n, buffer);
 			for (int i = 0; i < n && found < max; i++) {
 				var sector = buffer.AsSpan(i * RipDvd.Core.Dvd.VobReader.SectorSize, RipDvd.Core.Dvd.VobReader.SectorSize);
-				if (sector[0] == 0 && sector[1] == 0 && sector[2] == 1 && sector[3] == 0xBA) continue;
+				if (sector[0] == 0 && sector[1] == 0 && sector[2] == 1 && sector[3] == 0xBA && (sector[4] & 0xC0) == 0x40) continue;
 				bool allZero = !sector.ContainsAnyExcept((byte)0);
 				Console.WriteLine($"  sector {s + i}: {(allZero ? "all zero" : Convert.ToHexString(sector[..24]))}");
 				found++;
