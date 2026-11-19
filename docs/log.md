@@ -522,3 +522,9 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	**Decision:** under the owner's rule ("we don't have to match makemkv exactly as long as the video plays"), chapter starts within ~0.1 s are accepted; no ripper change (the stream timeline would mean rewriting the header at the end for a partial gain). B1 removed from Next steps; the difference is listed in the plan's accepted differences.
 	Not re-checked: whether the half-tick fix also removed the 1 ms earlier frames after the angle join (needs the 20-minute rip; skipped, the owner is short on time).
 - **Next steps is now empty:** the DVD work planned so far is done; the next project is the owner's choice from Future.
+
+## 2026-11-19 06:41
+- **Owner decision:** Blu-ray moves from Future into Next steps, with a full plan (BR1-BR6): probe the drive and disc (incl. why MakeMKV fails with this drive), parse playlists/clip info into a title list, AACS decryption with a per-disc key from a `KEYDB.cfg` file the owner supplies, transport-stream demuxing, MKV output for H.264 / DTS-HD / TrueHD / AC3 / PGS first, then CLI and GUI.
+	**Decisions (in the plan):** read the files through Windows' UDF file system (as MakeMKV and libbluray do); one title per playlist (as MakeMKV); the program never downloads keys; UHD, BD+, 3D and menus out of scope for now. No MakeMKV reference rips exist, so the bar is a file that plays (ffmpeg) with duration, chapters and tracks matching the playlist.
+	Main risk: discs with AACS bus encryption need the drive's authentication even with the key; BR1 shows whether that applies.
+- Status line: 63 unit tests (was 55).

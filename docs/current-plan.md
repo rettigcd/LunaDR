@@ -35,7 +35,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 	Output identical to the CLI's (Butterfly Effect titles 3 and 6; Beauty and the Beast cells 32,45 = title 5). Test mode `--screenshot file.png [--drive E] [--rip 3,6 | --cells 32,45] [--to folder] [--midshot file.png]`.
 	Screenshot: [gui-phase3-butterfly-effect.png](gui-phase3-butterfly-effect.png).
 - Probe `src/DvdProbe`: `drives`, `files`, `titles [-v]`, `scramble`, `crack` (old), `key`, `duration`, `bench`, `demux`, `mkvinfo [-dumptrack]`, `rip [-cells N] [-bad sectors]`, `cellmap`, `navwalk`, `copyright`, `canceltest`, `mkvcompare`.
-- **Unit tests** `tests/RipDvd.Core.Tests` (xUnit, `dotnet test RipDvd.slnx`, 55 tests, < 1 s, no disc needed): regression tests for every bug in the log that a test could catch
+- **Unit tests** `tests/RipDvd.Core.Tests` (xUnit, `dotnet test RipDvd.slnx`, 63 tests, < 1 s, no disc needed): regression tests for every bug in the log that a test could catch
 	(LPCM pointer, palette, duration, caption and pulldown timing, references, clusters, empty tracks, DTS channels, interleaved angles, angle chapters, audio gaps, read errors, sizes),
 	plus cell selection, naming, languages, duplicates/compilations, nav packs and the MKV writer.
 	Tests on real IFO files read git-ignored `reference/ifo/<disc>/` (now: Beauty and the Beast) and are skipped without it.
@@ -50,7 +50,8 @@ This file describes the present state only; the history is in [log.md](log.md).
 - Self-contained like MakeMKV: no external tools at run time. ffmpeg is used only as a development check.
 - Testing (owner): xUnit unit tests for the core run before every commit; every bug fix gets a test that fails without it. Rules that used to live inside `TitleRipper.Rip`
 	are small internal classes (`VideoReferences`, `ClusterRule`, `RipTiming`, `AudioContinuity`) so they can be tested. Disc comparisons with MakeMKV stay the end-to-end check.
-- DVD only for now; Blu-ray is a future feature (see Future), to start after the current Next steps.
+- Blu-ray is the current project (Next steps BR1–BR6): read the disc's files through Windows' UDF file system, one title per playlist,
+	AACS decryption with a per-disc key from a `KEYDB.cfg` key file the owner supplies. UHD, BD+, 3D and menus are out of scope for now.
 - All ripping logic lives in the library; the CLI and the GUI only call it.
 - Output: Matroska, laid out like MakeMKV's files (log 10:22, 12:10); streams copied unchanged except where MakeMKV converts:
 	LPCM → little-endian `A_PCM/INT/LIT` in 1/30 s blocks; closed captions → `S_TEXT/UTF8`, and the CC data is removed from the video.
@@ -117,17 +118,59 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 | GUI | WPF, Windows only (owner: the GUI will be Windows-only) | none for the CLI; the GUI would need porting (e.g. Avalonia) if ever wanted on Linux |
 
 ## Next steps
-None: the DVD work planned so far is done. The next project is the owner's choice from Future (e.g. Blu-ray).
+**Blu-ray probing and ripping** (owner, 2026-11-19). The owner has a Blu-ray drive that never worked with MakeMKV, and no example Blu-ray rips.
+Steps marked *Owner* need the owner's hands; the rest can be done once a disc is in the drive (BR3 and BR5 also without one).
+Approach (as MakeMKV, libbluray and libaacs do): read the disc's files through Windows' own UDF file system; the titles are the playlists; decrypt with a per-disc key from a key file.
+
+**BR1 – Probe the drive and the disc** (probe commands only; no ripping code yet)
+1. *Owner:* insert a Blu-ray movie the owner owns (ideally also a home-burned BD-R later: unencrypted, the easiest first rip). Tell which discs are available for testing.
+2. Probe `bddrive`: drive model and firmware (IOCTL_STORAGE_QUERY_PROPERTY), and the drive's feature list from SCSI GET CONFIGURATION
+	(IOCTL_SCSI_PASS_THROUGH_DIRECT): BD-ROM read, AACS feature (version, bus encryption capable, binding nonce), current media type.
+3. Probe `bdfiles`: list `BDMV` (index.bdmv, MovieObject.bdmv, PLAYLIST/*.mpls, CLIPINF/*.clpi, STREAM/*.m2ts) and `AACS` (Unit_Key_RO.inf, MKB_RO.inf, Content000.cer);
+	read the first `.m2ts` packets and report whether they are encrypted (copy-permission bits in each 192-byte packet's 4-byte header).
+4. Run `makemkvcon64 -r info disc:0` and record exactly how MakeMKV fails with this drive (message, log). Write the findings to the log;
+	they decide whether a drive-specific problem (e.g. no AACS authentication, bus encryption) affects us too.
+
+**BR2 – Disc structure and the title list** (probe `bdtitles`, then `RipDvd.Core/Bluray/`)
+1. Parsers (pure C#, unit-tested on copies of a disc's small metadata files in git-ignored `reference/bdmv/<disc>/`, like the IFO tests):
+	`.mpls` playlists: PlayItems (clip name, in/out time in 45 kHz ticks, connection condition), the STN table (streams: PID, codec, language), PlayListMarks (chapters);
+	`.clpi` clip info: stream PIDs and codec attributes, the clip's packet count (size), the EP map (key-frame positions, needed only for seeking and progress).
+2. Title list like MakeMKV's: one title per playlist, duration, chapters, size, video/audio/subtitle tracks with languages; drop playlists shorter than the minimum (120 s)
+	and duplicates (same clips and in/out times); compare with `makemkvcon info` if it can at least read the structure.
+3. Many newer discs carry hundreds of decoy playlists ("playlist obfuscation"); note it if the test disc has them, handle it later (the right playlist is the one index.bdmv's first-play/top-menu objects lead to).
+
+**BR3 – AACS decryption with a key file** (`RipDvd.Core/Bluray/Aacs`)
+1. Key file: libaacs's `KEYDB.cfg` text format; looked up next to the program, then in `%APPDATA%\aacs\` (as libaacs). The owner supplies the file; the program never downloads keys.
+	Owner's note: https://fvonline-db.bplaced.net/ contains keys we can use (the owner gets the file from there).
+	Disc ID = SHA-1 of `AACS/Unit_Key_RO.inf`; the file gives the disc's Volume Unique Key (VUK).
+2. Unit keys = the encrypted keys in Unit_Key_RO.inf decrypted with the VUK (AES-128 ECB). Each 6,144-byte aligned unit (32 packets) of an `.m2ts` is AES-128 CBC encrypted
+	except its first 16 bytes, with a key derived from the unit key and those 16 bytes (AES-G); decrypt only units whose packets are marked encrypted.
+3. Unit tests with data we encrypt ourselves (known keys), like the CSS tests. Clear message when the key file or the disc's entry is missing; unencrypted discs need no key.
+4. Risk: discs with bus encryption need the drive's AACS authentication (a host certificate) even with the VUK; BR1 shows whether the test disc and drive use it. If they do, record it as an open question before going further.
+
+**BR4 – Transport-stream demuxing** (`RipDvd.Core/Bluray/M2tsReader`, probe `bddemux`)
+1. `.m2ts` = 192-byte packets (4-byte arrival-time header + 188-byte MPEG-TS packet). Assemble PES packets per PID (PIDs from the playlist's STN table), with their PTS/DTS.
+2. A playlist plays clips in order: map each clip's in/out times to the title timeline (seamless connections: condition 5/6), as the DVD ripper maps cells.
+3. Progress and read errors: reuse the retry/skip ideas of the DVD reader (skip to the next aligned unit).
+
+**BR5 – MKV output for the common codecs** (most Blu-ray movies: H.264 video, DTS-HD MA / TrueHD / AC3 audio, PGS subtitles)
+1. H.264 → `V_MPEG4/ISO/AVC`: access units from the PES stream, start codes converted to 4-byte lengths, CodecPrivate (avcC) from SPS/PPS, key frames = IDR (or recovery-point I) pictures, B-frame timing from PTS.
+2. Audio: AC3 and DTS reuse the DVD framers; DTS-HD keeps core + extension in each frame as MakeMKV does (`A_DTS`); TrueHD → `A_TRUEHD` (its embedded AC3 frames as MakeMKV handles them);
+	E-AC3 → `A_EAC3`; Blu-ray LPCM (4-byte header, big-endian) → `A_PCM/INT/LIT`.
+3. PGS subtitles → `S_HDMV/PGS` (one display set per block).
+4. Then VC-1 (`V_MS/VFW/FOURCC` WVC1) and MPEG-2 (reuse), when a test disc has them.
+5. Rip a playlist end to end; check with ffmpeg (decode every stream with no errors) and against the playlist: duration, chapter marks, track list. No MakeMKV rips exist to compare with (owner), so the bar is a file that plays.
+
+**BR6 – CLI and GUI**
+1. `rip-dvd info` / `mkv` recognize a Blu-ray (a `BDMV` folder) and list/rip playlists by number, with the same options (audio/subtitle languages, chapters, min length, naming).
+2. GUI: the scan shows the playlists as titles; a clip map in place of the cell map; ripping and progress as for DVDs.
+3. Rename? The tool would no longer be DVD-only (`rip-dvd`); ask the owner when this step comes (open question then, not now).
+
+**Out of scope for now:** UHD Blu-ray (AACS 2.0, HEVC), BD+ (needs a virtual machine for the disc's program), 3D (MVC), BD-J menus.
 
 ## Future (desirable, not scheduled)
 - **Damaged discs: real test** (was G7.4; the owner has no damaged disc): rip a scratched or dirty DVD if one turns up.
 	G7 (retry, skip to the next VOBU, warnings) is built and tested with simulated bad sectors; Gypsy vol. 1 showed a drive returning corrupted data without an error, which no reader can detect.
-- **Blu-ray probing and ripping** (owner; after the current Next steps). The owner has a Blu-ray drive that never worked with MakeMKV, and no example Blu-ray rips.
-	1. Probe: identify the drive (model, firmware, reported Blu-ray/AACS features) and read the disc structure (`BDMV`: `.mpls` playlists, `.clpi` clip info, `.m2ts` streams); find out why MakeMKV fails with this drive.
-	2. Rip: playlists as titles; demux the MPEG transport stream; copy H.264/VC-1/MPEG-2 video, AC3/DTS/TrueHD/DTS-HD/LPCM audio and PGS subtitles into MKV.
-	3. AACS decryption (AES) using a per-disc key from a key file the owner supplies (the libaacs `KEYDB.cfg` approach); unencrypted discs (e.g. home-burned BD-R) work without one. BD+ discs need more.
-		Owner's note: https://fvonline-db.bplaced.net/ contains keys we can use.
-	4. Testing without reference rips: ffmpeg decoding, and durations/chapters/tracks checked against the disc's playlists.
 - **Audio not yet supported:** 20/24-bit LPCM and MPEG audio. Needs a disc with one of them to test (MPEG audio is most likely on PAL or home-made DVDs); the owner has none.
 - **Linux drive authentication** (`ICssDrive` via `ioctl` DVD_AUTH on /dev/sr0). Needs a Linux machine with a DVD drive to test; the owner has none.
 - GUI track options (audio/subtitle languages, captions, chapters), as the CLI has; not in the first GUI version.
