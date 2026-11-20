@@ -110,6 +110,8 @@ This file describes the present state only; the history is in [log.md](log.md).
 - Title list shows **all** titles, short ones included; duplicates and compilations are marked; the user checks/unchecks each title (owner).
 	Initially checked: titles ≥ 120 s that are neither duplicates nor compilations (proposed default; the owner may change it).
 	No track options in the first version: all tracks are kept, as with the CLI default. Exception: the Blu-ray "AC3 copy of TrueHD" checkbox.
+- Two tabs (owner: one table at a time, smaller window): "Titles" (default: the title list, Select all/None) and "Cell map" (the map, its legend, hover details,
+	Rip selected cells/Clear; hidden when there is no map). The status line and the ripping area (folder, names, options, Start, progress) stay below, for both.
 - Cell map: every cell drawn the same narrow width (owner); a cell's length and details are shown on hover.
 	Blu-ray (owner asked for the same table): `BdSegmentMap` cuts each clip wherever a playlist's play item starts or ends or a chapter starts;
 	the pieces ("segments") are the map's cells, grouped by clip; rows are playlists, longest first like the title list.

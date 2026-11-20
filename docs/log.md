@@ -610,3 +610,9 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 ## 2026-11-19 19:20
 - **GUI one notch smaller** (owner: font and window too big). Text 14 → 12 (the Fluent theme's `ControlContentThemeFontSize` resource in App.xaml, as its control styles read it, plus the window's FontSize),
 	disc name 20 → 18, map labels 11/10 → 10/9, starting window 1280×900 → 1120×780; the Audio and Subtitles columns' maximum widths 360/200 → 290/170 so the Note column fits.
+
+## 2026-11-19 19:40
+- **GUI: title list and cell map on two tabs** (owner: work with one table at a time, smaller window). Tab "Titles" (default) holds the title list with Select all/None;
+	tab "Cell map" holds the map with its legend, hover line and Rip selected cells/Clear, and is hidden when there is no map (the view goes back to Titles then).
+	The splitter is gone; the status line and the whole ripping area stay below the tabs. Starting window 1120×780 → 1120×640.
+	Test mode: `--tab cells` shows the map tab (`--cells` does so by itself). Screenshots of both tabs with The Goonies checked.

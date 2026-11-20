@@ -22,9 +22,11 @@ public partial class MainWindow : Window {
 	private readonly string? _screenshotPath;
 	private readonly (int[] Titles, string Folder)? _testRip;
 	private readonly (int[] Cells, string Folder)? _testCells;
+	private readonly string? _testTab;
 
 	public MainWindow(string? screenshotPath = null, string? startDrive = null, (int[] Titles, string Folder)? testRip = null,
-		(int[] Cells, string Folder)? testCells = null) {
+		(int[] Cells, string Folder)? testCells = null, string? tab = null) {
+		_testTab = tab;
 		_testRip = testRip;
 		_testCells = testCells;
 		InitializeComponent();
@@ -77,6 +79,7 @@ public partial class MainWindow : Window {
 		}
 		await Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
 		if (_vm.Titles.Count > 0) _vm.SelectedTitleNumber = _vm.Titles[0].Number;   // show the selection highlighting
+		if ((_testTab == "cells" || _testCells is not null) && _vm.HasCellMap) _vm.SelectedTab = 1;
 		if (_testRip is { } rip) {
 			// Test mode: rip the given titles as if Start had been clicked; existing files are replaced.
 			_vm.AskAboutExistingFiles = _ => ExistingFilesChoice.Overwrite;

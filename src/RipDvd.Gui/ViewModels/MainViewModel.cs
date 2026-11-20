@@ -232,11 +232,16 @@ public sealed class MainViewModel : ViewModelBase {
 	/// <summary>Shown after the file name box: how the files will be named.</summary>
 	public string FileNameSuffix => _bluray ? " - playlist NNNNN.mkv" : " - title NN.mkv";
 
+	/// <summary>The tab shown: 0 = title list, 1 = cell map (back to the title list when there is no map).</summary>
+	public int SelectedTab { get => _selectedTab; set => Set(ref _selectedTab, value); }
+	private int _selectedTab;
+
 	public CellMap? CellMap {
 		get => _cellMap;
 		private set {
 			if (!Set(ref _cellMap, value)) return;
 			Raise(nameof(HasCellMap));
+			if (value is null) SelectedTab = 0;
 			SelectedCells = [];
 			Raise(nameof(SelectedCellsText));
 		}

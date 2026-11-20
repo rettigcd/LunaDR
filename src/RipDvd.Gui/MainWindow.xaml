@@ -3,7 +3,7 @@
 		xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 		xmlns:c="clr-namespace:RipDvd.Gui.Controls"
 		xmlns:g="clr-namespace:RipDvd.Gui"
-		Title="LunaDR" Width="1120" Height="780" FontSize="12" MinWidth="800" MinHeight="560">
+		Title="LunaDR" Width="1120" Height="640" FontSize="12" MinWidth="800" MinHeight="480">
 	<Window.Resources>
 		<g:NotConverter x:Key="Not" />
 		<BooleanToVisibilityConverter x:Key="Visible" />
@@ -16,9 +16,7 @@
 	<Grid Margin="12">
 		<Grid.RowDefinitions>
 			<RowDefinition Height="Auto" />  <!-- drive picker, scan, disc name -->
-			<RowDefinition Height="*" />     <!-- title list -->
-			<RowDefinition Height="Auto" />  <!-- splitter -->
-			<RowDefinition Height="*" />     <!-- cell map -->
+			<RowDefinition Height="*" />     <!-- tabs: title list, cell map -->
 			<RowDefinition Height="Auto" />  <!-- status line -->
 			<RowDefinition Height="Auto" />  <!-- phase 2: output folder, file name, start -->
 		</Grid.RowDefinitions>
@@ -32,82 +30,92 @@
 					   TextTrimming="CharacterEllipsis" />
 		</DockPanel>
 
-		<!-- All titles; short ones dimmed; duplicates and compilations explained in the Note column. -->
-		<DataGrid Grid.Row="1" ItemsSource="{Binding Titles}" SelectedItem="{Binding SelectedTitle}"
-				  AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column" SelectionMode="Single"
-				  CanUserReorderColumns="False" GridLinesVisibility="Horizontal">
-			<!-- Compact rows: the Fluent theme's minimum heights (row and checkbox) leave empty space under the text. -->
-			<DataGrid.CellStyle>
-				<Style TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
-					<Setter Property="MinHeight" Value="0" />
-					<Setter Property="VerticalContentAlignment" Value="Center" />
-				</Style>
-			</DataGrid.CellStyle>
-			<DataGrid.RowStyle>
-				<Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
-					<Setter Property="MinHeight" Value="0" />
-					<Style.Triggers>
-						<DataTrigger Binding="{Binding IsShort}" Value="True">
-							<Setter Property="Opacity" Value="0.5" />
-						</DataTrigger>
-					</Style.Triggers>
-				</Style>
-			</DataGrid.RowStyle>
-			<DataGrid.Columns>
-				<!-- Phase 2: check the titles to rip. A template column, so the checkbox works with one click although the grid is read-only. -->
-				<DataGridTemplateColumn Header="Rip">
-					<DataGridTemplateColumn.CellTemplate>
-						<DataTemplate>
-							<CheckBox IsChecked="{Binding IsChecked, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center"
-									  MinHeight="0" MinWidth="0" Padding="0" VerticalAlignment="Center"
-									  IsEnabled="{Binding DataContext.IsRipping, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource Not}}" />
-						</DataTemplate>
-					</DataGridTemplateColumn.CellTemplate>
-				</DataGridTemplateColumn>
-				<DataGridTextColumn Header="Title" Binding="{Binding Number}" />
-				<DataGridTextColumn Header="Length" Binding="{Binding Length}" />
-				<DataGridTextColumn Header="Chapters" Binding="{Binding Chapters}" />
-				<DataGridTextColumn Header="Size" Binding="{Binding Size}" />
-				<DataGridTextColumn Header="Video" Binding="{Binding Video}" />
-				<DataGridTextColumn Header="Audio" Binding="{Binding Audio}" MaxWidth="290" ElementStyle="{StaticResource Trimmed}" />
-				<DataGridTextColumn Header="Subtitles" Binding="{Binding Subtitles}" MaxWidth="170" ElementStyle="{StaticResource Trimmed}" />
-				<DataGridTextColumn Header="CC" Binding="{Binding Captions}" />
-				<DataGridTextColumn Header="Note" Binding="{Binding Note}" Width="*" />
-			</DataGrid.Columns>
-		</DataGrid>
+		<!-- One table at a time (owner): the title list, or the cell map (on a Blu-ray: playlists vs clip segments). The ripping area below serves both. -->
+		<TabControl Grid.Row="1" SelectedIndex="{Binding SelectedTab}">
+			<TabItem Header="Titles">
+				<DockPanel Margin="0,8,0,0">
+					<StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
+						<Button Content="Select all" Command="{Binding SelectAllCommand}" />
+						<Button Content="None" Command="{Binding SelectNoneCommand}" Margin="6,0,0,0" />
+					</StackPanel>
+					<!-- All titles; short ones dimmed; duplicates and compilations explained in the Note column. -->
+					<DataGrid ItemsSource="{Binding Titles}" SelectedItem="{Binding SelectedTitle}"
+							  AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column" SelectionMode="Single"
+							  CanUserReorderColumns="False" GridLinesVisibility="Horizontal">
+						<!-- Compact rows: the Fluent theme's minimum heights (row and checkbox) leave empty space under the text. -->
+						<DataGrid.CellStyle>
+							<Style TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
+								<Setter Property="MinHeight" Value="0" />
+								<Setter Property="VerticalContentAlignment" Value="Center" />
+							</Style>
+						</DataGrid.CellStyle>
+						<DataGrid.RowStyle>
+							<Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+								<Setter Property="MinHeight" Value="0" />
+								<Style.Triggers>
+									<DataTrigger Binding="{Binding IsShort}" Value="True">
+										<Setter Property="Opacity" Value="0.5" />
+									</DataTrigger>
+								</Style.Triggers>
+							</Style>
+						</DataGrid.RowStyle>
+						<DataGrid.Columns>
+							<!-- Phase 2: check the titles to rip. A template column, so the checkbox works with one click although the grid is read-only. -->
+							<DataGridTemplateColumn Header="Rip">
+								<DataGridTemplateColumn.CellTemplate>
+									<DataTemplate>
+										<CheckBox IsChecked="{Binding IsChecked, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center"
+												  MinHeight="0" MinWidth="0" Padding="0" VerticalAlignment="Center"
+												  IsEnabled="{Binding DataContext.IsRipping, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource Not}}" />
+									</DataTemplate>
+								</DataGridTemplateColumn.CellTemplate>
+							</DataGridTemplateColumn>
+							<DataGridTextColumn Header="Title" Binding="{Binding Number}" />
+							<DataGridTextColumn Header="Length" Binding="{Binding Length}" />
+							<DataGridTextColumn Header="Chapters" Binding="{Binding Chapters}" />
+							<DataGridTextColumn Header="Size" Binding="{Binding Size}" />
+							<DataGridTextColumn Header="Video" Binding="{Binding Video}" />
+							<DataGridTextColumn Header="Audio" Binding="{Binding Audio}" MaxWidth="290" ElementStyle="{StaticResource Trimmed}" />
+							<DataGridTextColumn Header="Subtitles" Binding="{Binding Subtitles}" MaxWidth="170" ElementStyle="{StaticResource Trimmed}" />
+							<DataGridTextColumn Header="CC" Binding="{Binding Captions}" />
+							<DataGridTextColumn Header="Note" Binding="{Binding Note}" Width="*" />
+						</DataGrid.Columns>
+					</DataGrid>
+				</DockPanel>
+			</TabItem>
 
-		<GridSplitter Grid.Row="2" Height="6" HorizontalAlignment="Stretch" Margin="0,4" />
+			<!-- Cell map: which titles play which cells. Hidden when there is no map (no disc scanned). -->
+			<TabItem Header="Cell map" Visibility="{Binding HasCellMap, Converter={StaticResource Visible}}">
+				<DockPanel Margin="0,8,0,0">
+					<StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
+						<Rectangle Width="10" Height="10" Fill="#3B82F6" VerticalAlignment="Center" />
+						<TextBlock Text=" played by one title" Margin="0,0,14,0" />
+						<Rectangle Width="10" Height="10" Fill="#F59E0B" VerticalAlignment="Center" />
+						<TextBlock Text=" shared by several titles" Margin="0,0,14,0" />
+						<Rectangle Width="3" Height="10" Fill="#C0101010" VerticalAlignment="Center" />
+						<TextBlock Text=" chapter start" Margin="0,0,14,0" />
+						<TextBlock Text="Click a row to select its title; titles sharing its cells are highlighted." Opacity="0.7" />
+					</StackPanel>
+					<!-- G5: cells selected in the map, ripped on their own into one file. -->
+					<DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0" LastChildFill="True">
+						<Button DockPanel.Dock="Right" Content="Clear" Command="{Binding ClearCellsCommand}" Margin="6,0,0,0" />
+						<Button DockPanel.Dock="Right" Content="Rip selected cells" Command="{Binding RipCellsCommand}" />
+						<TextBlock Text="{Binding SelectedCellsText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+					</DockPanel>
+					<TextBlock DockPanel.Dock="Bottom" Text="{Binding HoverInfo}" Margin="0,6,0,0" TextWrapping="Wrap" MinHeight="18" Opacity="0.85" />
+					<ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+						<c:CellMapView Map="{Binding CellMap}" SelectedTitle="{Binding SelectedTitleNumber}" SelectedCells="{Binding SelectedCells}"
+									   RipCells="{Binding RipCells}" RipPosition="{Binding RipPosition}" RipCellFraction="{Binding RipCellFraction}" RipTitle="{Binding RipTitle}"
+									   HoverText="{Binding HoverInfo, Mode=OneWayToSource}" HorizontalAlignment="Left" VerticalAlignment="Top" />
+					</ScrollViewer>
+				</DockPanel>
+			</TabItem>
+		</TabControl>
 
-		<!-- Cell map: which titles play which cells. -->
-		<DockPanel Grid.Row="3" Visibility="{Binding HasCellMap, Converter={StaticResource Visible}}">
-			<StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
-				<TextBlock Text="Cells" FontWeight="SemiBold" Margin="0,0,16,0" />
-				<Rectangle Width="10" Height="10" Fill="#3B82F6" VerticalAlignment="Center" />
-				<TextBlock Text=" played by one title" Margin="0,0,14,0" />
-				<Rectangle Width="10" Height="10" Fill="#F59E0B" VerticalAlignment="Center" />
-				<TextBlock Text=" shared by several titles" Margin="0,0,14,0" />
-				<Rectangle Width="3" Height="10" Fill="#C0101010" VerticalAlignment="Center" />
-				<TextBlock Text=" chapter start" Margin="0,0,14,0" />
-				<TextBlock Text="Click a row to select its title; titles sharing its cells are highlighted." Opacity="0.7" />
-			</StackPanel>
-			<!-- G5: cells selected in the map, ripped on their own into one file. -->
-			<DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0" LastChildFill="True">
-				<Button DockPanel.Dock="Right" Content="Clear" Command="{Binding ClearCellsCommand}" Margin="6,0,0,0" />
-				<Button DockPanel.Dock="Right" Content="Rip selected cells" Command="{Binding RipCellsCommand}" />
-				<TextBlock Text="{Binding SelectedCellsText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-			</DockPanel>
-			<TextBlock DockPanel.Dock="Bottom" Text="{Binding HoverInfo}" Margin="0,6,0,0" TextWrapping="Wrap" MinHeight="18" Opacity="0.85" />
-			<ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-				<c:CellMapView Map="{Binding CellMap}" SelectedTitle="{Binding SelectedTitleNumber}" SelectedCells="{Binding SelectedCells}"
-							   RipCells="{Binding RipCells}" RipPosition="{Binding RipPosition}" RipCellFraction="{Binding RipCellFraction}" RipTitle="{Binding RipTitle}"
-							   HoverText="{Binding HoverInfo, Mode=OneWayToSource}" HorizontalAlignment="Left" VerticalAlignment="Top" />
-			</ScrollViewer>
-		</DockPanel>
-
-		<TextBlock Grid.Row="4" Text="{Binding Status}" Margin="0,8,0,0" Opacity="0.8" />
+		<TextBlock Grid.Row="2" Text="{Binding Status}" Margin="0,8,0,0" Opacity="0.8" />
 
 		<!-- Phase 2: where and under what name to save, then Start. -->
-		<Border Grid.Row="5" Margin="0,10,0,0" Padding="0,10,0,0" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}">
+		<Border Grid.Row="3" Margin="0,10,0,0" Padding="0,10,0,0" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}">
 			<StackPanel>
 				<Grid>
 					<Grid.ColumnDefinitions>
@@ -127,8 +135,6 @@
 					<TextBlock Grid.Column="5" Text="{Binding FileNameSuffix}" VerticalAlignment="Center" Opacity="0.7" />
 				</Grid>
 				<DockPanel Margin="0,10,0,0" LastChildFill="True">
-					<Button DockPanel.Dock="Left" Content="Select all" Command="{Binding SelectAllCommand}" />
-					<Button DockPanel.Dock="Left" Content="None" Command="{Binding SelectNoneCommand}" Margin="6,0,0,0" />
 					<Button DockPanel.Dock="Right" Content="Cancel" Command="{Binding CancelCommand}" Margin="6,0,0,0" MinWidth="90" />
 					<Button DockPanel.Dock="Right" Content="Start" Command="{Binding StartCommand}" MinWidth="110"
 							Style="{DynamicResource AccentButtonStyle}" />
