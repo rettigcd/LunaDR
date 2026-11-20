@@ -606,3 +606,7 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	The Goonies: the movie's two versions are two clips (00113 for playlists 0/26/31, 00112 for 8/16/30), each cut into 37-38 chapter segments; extras are small clips of their own.
 	Tests: a synthetic map (partial clip use, chapter cuts, an unplayed gap left out) and The Goonies (duplicates share segments, 37 chapter starts, total length = playlist length).
 	Screenshot: docs/gui-bluray-segments.png.
+
+## 2026-11-19 19:20
+- **GUI one notch smaller** (owner: font and window too big). Text 14 → 12 (the Fluent theme's `ControlContentThemeFontSize` resource in App.xaml, as its control styles read it, plus the window's FontSize),
+	disc name 20 → 18, map labels 11/10 → 10/9, starting window 1280×900 → 1120×780; the Audio and Subtitles columns' maximum widths 360/200 → 290/170 so the Note column fits.

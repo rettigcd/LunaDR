@@ -3,7 +3,7 @@
 		xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 		xmlns:c="clr-namespace:RipDvd.Gui.Controls"
 		xmlns:g="clr-namespace:RipDvd.Gui"
-		Title="LunaDR" Width="1280" Height="900" MinWidth="800" MinHeight="560">
+		Title="LunaDR" Width="1120" Height="780" FontSize="12" MinWidth="800" MinHeight="560">
 	<Window.Resources>
 		<g:NotConverter x:Key="Not" />
 		<BooleanToVisibilityConverter x:Key="Visible" />
@@ -28,7 +28,7 @@
 			<TextBlock Text="Drive" VerticalAlignment="Center" Margin="0,0,8,0" />
 			<ComboBox Width="240" ItemsSource="{Binding Drives}" SelectedItem="{Binding SelectedDrive}" DisplayMemberPath="Display" />
 			<Button Content="Scan" Command="{Binding ScanCommand}" Margin="8,0,0,0" MinWidth="80" />
-			<TextBlock Text="{Binding DiscName}" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" Margin="20,0,0,0"
+			<TextBlock Text="{Binding DiscName}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" Margin="20,0,0,0"
 					   TextTrimming="CharacterEllipsis" />
 		</DockPanel>
 
@@ -69,8 +69,8 @@
 				<DataGridTextColumn Header="Chapters" Binding="{Binding Chapters}" />
 				<DataGridTextColumn Header="Size" Binding="{Binding Size}" />
 				<DataGridTextColumn Header="Video" Binding="{Binding Video}" />
-				<DataGridTextColumn Header="Audio" Binding="{Binding Audio}" MaxWidth="360" ElementStyle="{StaticResource Trimmed}" />
-				<DataGridTextColumn Header="Subtitles" Binding="{Binding Subtitles}" MaxWidth="200" ElementStyle="{StaticResource Trimmed}" />
+				<DataGridTextColumn Header="Audio" Binding="{Binding Audio}" MaxWidth="290" ElementStyle="{StaticResource Trimmed}" />
+				<DataGridTextColumn Header="Subtitles" Binding="{Binding Subtitles}" MaxWidth="170" ElementStyle="{StaticResource Trimmed}" />
 				<DataGridTextColumn Header="CC" Binding="{Binding Captions}" />
 				<DataGridTextColumn Header="Note" Binding="{Binding Note}" Width="*" />
 			</DataGrid.Columns>

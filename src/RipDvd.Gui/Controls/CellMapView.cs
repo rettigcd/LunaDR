@@ -139,7 +139,7 @@ public sealed class CellMapView : FrameworkElement {
 		for (int s = 0; s < _setStarts.Count; s++) {
 			var (group, x) = _setStarts[s];
 			double room = (s + 1 < _setStarts.Count ? _setStarts[s + 1].X : _width) - x;
-			if (TextWidth(group, 10, dpi) <= room - 2) DrawText(dc, group, x, 1, 10, dpi, 0.7);
+			if (TextWidth(group, 9, dpi) <= room - 2) DrawText(dc, group, x, 1, 9, dpi, 0.7);
 		}
 
 		var selected = map.Titles.FirstOrDefault(t => t.TitleNumber == SelectedTitle);
@@ -154,7 +154,7 @@ public sealed class CellMapView : FrameworkElement {
 			else if (isRelated) dc.DrawRectangle(RelatedRowBrush, null, new Rect(0, y, _width, RowHeight));
 			if (row == _hoverRow) dc.DrawRectangle(HoverBrush, null, new Rect(0, y, _width, RowHeight));
 
-			DrawText(dc, $"t{title.TitleNumber}", 2, y + 1, 11, dpi, isSelected || isRelated ? 1.0 : 0.85, bold: isSelected);
+			DrawText(dc, $"t{title.TitleNumber}", 2, y + 1, 10, dpi, isSelected || isRelated ? 1.0 : 0.85, bold: isSelected);
 
 			for (int pos = 0; pos < title.Cells.Count; pos++) {
 				int c = title.Cells[pos];
