@@ -118,3 +118,43 @@ public class RipRulesTests {
 		Assert.Contains("HI", caption.Text);
 	}
 }
+
+/// <summary>The "time left" speed: the last minute, not the average of the whole rip (a Blu-ray rip's time left counted down about 5x too fast).</summary>
+public class SpeedMeterTests {
+	// A drive that reads 5 MB/s for the first two minutes (spinning up, inner tracks), then 17 MB/s.
+	private static long SectorsAt(int seconds) => (long)((seconds <= 120 ? 5.0 * seconds : 600 + 17.0 * (seconds - 120)) * 1e6 / 2048);
+
+	[Fact]
+	public void TimeLeft_FallsAtClockSpeed_AfterASlowStart() {
+		long total = 45_000_000_000 / 2048;
+		var meter = new SpeedMeter();
+		var left = new Dictionary<int, double>();          // seconds left by the meter, at 330 s and 390 s
+		var averageLeft = new Dictionary<int, double>();   // the same with the average speed of the whole rip (the old way)
+		for (int s = 1; s <= 390; s++) {
+			var time = TimeSpan.FromSeconds(s);
+			long read = SectorsAt(s);
+			meter.Add(time, read);
+			if (s is 330 or 390) {
+				left[s] = (total - read) / meter.SectorsPerSecond(time, read);
+				averageLeft[s] = (total - read) / (read / (double)s);
+			}
+		}
+		Assert.InRange(left[330] - left[390], 58, 62);   // 60 s of the clock
+		Assert.True(averageLeft[330] - averageLeft[390] > 180, "the old estimate should fall at least 3x too fast");
+	}
+
+	[Fact]
+	public void Speed_IsZeroUntilThreeSecondsOfReading() {
+		var meter = new SpeedMeter();
+		meter.Add(TimeSpan.FromSeconds(1), 1_000);
+		Assert.Equal(0, meter.SectorsPerSecond(TimeSpan.FromSeconds(2.9), 3_000));
+		Assert.True(meter.SectorsPerSecond(TimeSpan.FromSeconds(3), 3_000) > 0);
+	}
+
+	[Fact]
+	public void Speed_ForgetsWhatIsMoreThanAMinuteOld() {
+		var meter = new SpeedMeter();
+		for (int s = 0; s <= 300; s++) meter.Add(TimeSpan.FromSeconds(s), s <= 100 ? s * 100 : 10_000 + (s - 100) * 1_000L);
+		Assert.Equal(1_000, meter.SectorsPerSecond(TimeSpan.FromSeconds(300), 10_000 + 200 * 1_000L), 1);
+	}
+}

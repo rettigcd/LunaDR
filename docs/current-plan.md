@@ -36,7 +36,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 	Screenshot: [gui-phase3-butterfly-effect.png](gui-phase3-butterfly-effect.png).
 	For a Blu-ray the map shows playlists against clip segments ([gui-bluray-segments.png](gui-bluray-segments.png)); "Rip selected cells" is DVD-only for now.
 - Probe `src/DvdProbe`: `drives`, `files`, `titles [-v]`, `scramble`, `crack` (old), `key`, `duration`, `bench`, `demux`, `mkvinfo [-dumptrack]`, `rip [-cells N] [-bad sectors]`, `cellmap`, `navwalk`, `copyright`, `canceltest`, `mkvcompare`.
-- **Unit tests** `tests/RipDvd.Core.Tests` (xUnit, `dotnet test RipDvd.slnx`, 87 tests, < 1 s, no disc needed): regression tests for every bug in the log that a test could catch
+- **Unit tests** `tests/RipDvd.Core.Tests` (xUnit, `dotnet test RipDvd.slnx`, 90 tests, < 1 s, no disc needed): regression tests for every bug in the log that a test could catch
 	(LPCM pointer, palette, duration, caption and pulldown timing, references, clusters, empty tracks, DTS channels, interleaved angles, angle chapters, audio gaps, read errors, sizes),
 	plus cell selection, naming, languages, duplicates/compilations, nav packs and the MKV writer.
 	Tests on real IFO files read git-ignored `reference/ifo/<disc>/` (now: Beauty and the Beast) and are skipped without it.

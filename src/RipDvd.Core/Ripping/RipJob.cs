@@ -37,13 +37,11 @@ public sealed record RipJobItemResult(RipJobItem Item, RipResult? Result, Except
 ///
 /// Remaining time = sectors still to read ÷ the measured read speed.
 /// The speed counts only the time spent reading (the Ripping phase), not drive unlocking and key finding,
-/// and is measured over the whole job so far, so it settles after the first seconds.
+/// and is the speed over the last minute of reading (see <see cref="SpeedMeter"/>; the average of the whole job made the time left
+/// fall several times faster than the clock while the drive was speeding up).
 /// A title that fails is recorded and the job continues with the next one; cancelling stops the job.
 /// </summary>
 public sealed class RipJob(string videoTsFolder, IReadOnlyList<RipJobItem> items, RipOptions? options = null) {
-	/// <summary>Minimum reading time before a speed (and so a remaining time) is reported.</summary>
-	private static readonly TimeSpan MinimumMeasureTime = TimeSpan.FromSeconds(3);
-
 	public IReadOnlyList<RipJobItem> Items { get; } = items;
 
 	/// <summary>
@@ -58,6 +56,7 @@ public sealed class RipJob(string videoTsFolder, IReadOnlyList<RipJobItem> items
 		long finishedSectors = 0;                  // sectors of the titles already done (or failed)
 		long sectorsReadBefore = 0;                // sectors read while ripping earlier titles
 		TimeSpan readingTimeBefore = TimeSpan.Zero;  // time spent reading earlier titles
+		var meter = new SpeedMeter();
 
 		for (int index = 0; index < Items.Count; index++) {
 			cancel.ThrowIfCancellationRequested();
@@ -70,7 +69,8 @@ public sealed class RipJob(string videoTsFolder, IReadOnlyList<RipJobItem> items
 				if (p.Phase == RipPhase.Ripping && readingStartedAt is null) readingStartedAt = p.Elapsed;
 				TimeSpan reading = readingTimeBefore + (readingStartedAt is { } s ? p.Elapsed - s : TimeSpan.Zero);
 				long read = sectorsReadBefore + p.SectorsDone;
-				double sectorsPerSecond = reading >= MinimumMeasureTime && read > 0 ? read / reading.TotalSeconds : 0;
+				if (p.Phase == RipPhase.Ripping) meter.Add(reading, read);
+				double sectorsPerSecond = meter.SectorsPerSecond(reading, read);
 
 				long titleTotal = p.SectorsTotal > 0 ? p.SectorsTotal : item.Sectors;
 				// The total is an estimate for interleaved (multi-angle) titles, so the fraction is capped.

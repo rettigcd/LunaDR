@@ -616,3 +616,13 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	tab "Cell map" holds the map with its legend, hover line and Rip selected cells/Clear, and is hidden when there is no map (the view goes back to Titles then).
 	The splitter is gone; the status line and the whole ripping area stay below the tabs. Starting window 1120×780 → 1120×640.
 	Test mode: `--tab cells` shows the map tab (`--cells` does so by itself). Screenshots of both tabs with The Goonies checked.
+
+## 2026-11-19 21:44
+- **Bug: the time left counted down about 5x too fast** (owner, watching a Blu-ray rip). Measured in the running GUI on Lord of the Rings: Return of the King (playlist 00100, 38 GB):
+	the time left fell 32 s per 11 s of clock (43:01 → 42:29), the shown speed was 13.1 → 13.4 MB/s.
+	Cause: the time left was the data still to read ÷ the average speed of the whole job. The drive reads slowly at first and faster later, so the average keeps rising,
+	and a rising divisor shrinks the estimate a second time (here about 2 s per second on top of the 1 s for the data read). Not specific to Blu-rays; DVDs had it too.
+	Fix: new `SpeedMeter` (`Ripping/SpeedMeter.cs`): the speed is measured over the last 60 s of reading (the whole of it while less has passed; nothing for the first 3 s).
+	Tests `SpeedMeterTests`: after a slow start (5 MB/s for 2 min, then 17 MB/s) the meter's estimate falls exactly 60 s per 60 s, the old average fell 240 s per 60 s;
+	zero before 3 s; samples older than a minute are forgotten.
+	Not fixed, and not a bug: if the drive really speeds up steadily, a time left based on the current speed still falls a little faster than the clock.
