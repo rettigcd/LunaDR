@@ -626,3 +626,6 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	Tests `SpeedMeterTests`: after a slow start (5 MB/s for 2 min, then 17 MB/s) the meter's estimate falls exactly 60 s per 60 s, the old average fell 240 s per 60 s;
 	zero before 3 s; samples older than a minute are forgotten.
 	Not fixed, and not a bug: if the drive really speeds up steadily, a time left based on the current speed still falls a little faster than the clock.
+
+## 2026-11-20 02:05
+	The owner pasted a list of MakeMKV advanced features and asked which LunaDR lacks. Written up as [makemkv-feature-gap.md](makemkv-feature-gap.md) (done / partial / missing / out of scope per feature, with a proposed order) for later reference and future features.
