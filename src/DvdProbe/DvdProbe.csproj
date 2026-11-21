@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<ItemGroup>
-		<ProjectReference Include="..\RipDvd.Core\RipDvd.Core.csproj" />
+		<ProjectReference Include="..\LunaDR.Core\LunaDR.Core.csproj" />
 	</ItemGroup>
 
 	<PropertyGroup>

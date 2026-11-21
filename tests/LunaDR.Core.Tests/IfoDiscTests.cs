@@ -1,0 +1,156 @@
+using LunaDR.Core.Ripping;
+
+namespace LunaDR.Core.Tests;
+
+/// <summary>
+/// A test on a real disc's IFO files, copied to reference/ifo/&lt;disc&gt;/ (git-ignored: they come from commercial discs).
+/// Skipped when that folder is missing, e.g. on another computer. To add a disc: copy its VIDEO_TS\*.IFO files there.
+/// </summary>
+public sealed class IfoFactAttribute : FactAttribute {
+	public IfoFactAttribute(string disc) {
+		if (IfoDisc.Folder(disc) is null) Skip = $"reference/ifo/{disc} not found (copy the disc's VIDEO_TS\\*.IFO files there to run this test)";
+	}
+}
+
+internal static class IfoDisc {
+	/// <summary>reference/ifo/&lt;disc&gt; in the repository (found by walking up from the test binaries to LunaDR.slnx), or null.</summary>
+	public static string? Folder(string disc) {
+		for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent) {
+			if (!File.Exists(Path.Combine(dir.FullName, "LunaDR.slnx"))) continue;
+			string folder = Path.Combine(dir.FullName, "reference", "ifo", disc);
+			return File.Exists(Path.Combine(folder, "VIDEO_TS.IFO")) ? folder : null;
+		}
+		return null;
+	}
+}
+
+/// <summary>Gypsy (2004) vol. 1: one title with 16-bit LPCM stereo audio and no language, no volume label, no CSS (log 12:34).</summary>
+public class GypsyTests {
+	private const string Disc = "GYPSY_VOL1";
+	private static string Folder => IfoDisc.Folder(Disc)!;
+
+	[IfoFact(Disc)]
+	public void OneTitle_WithLpcmAudio() {
+		var title = Assert.Single(DiscScanner.Scan(Folder).Titles);
+		Assert.Equal(11, title.Chapters);
+		Assert.Equal(["LPCM stereo und"], title.Audio);
+		var description = new TitleRipper(Folder, 1).Describe();
+		// MakeMKV converts LPCM to little-endian PCM and writes no Language when the disc gives none.
+		Assert.Contains(description, l => l.StartsWith("audio") && l.Contains("A_PCM/INT/LIT") && l.Contains("(no language)"));
+		Assert.Contains("chapters  11", description);
+	}
+}
+
+/// <summary>A Very Long Engagement disc 1: film with 3:2 pulldown, four subtitle tracks, dual layer; the movie was ripped identical to MakeMKV's.</summary>
+public class AVeryLongEngagementTests {
+	private const string Disc = "A_VERY_LONG_ENGAGEMENT_DISC1";
+	private static string Folder => IfoDisc.Folder(Disc)!;
+
+	[IfoFact(Disc)]
+	public void TitleList_MatchesMakeMkv() {
+		// MakeMKV (reference/makemkv/A_VERY_LONG_ENGAGEMENT_DISC1-info.txt) lists 7 titles; the movie and the trailer are at least 120 s long.
+		var titles = DiscScanner.Scan(Folder).Titles;
+		Assert.Equal(7, titles.Count);
+		var movie = titles.Single(t => t.TitleNumber == 1);
+		Assert.Equal(39, movie.Chapters);
+		Assert.Equal(["AC3 5.1 fre", "AC3 stereo fre"], movie.Audio);
+		Assert.Equal(["eng", "fre", "spa", "eng"], movie.Subtitles);
+		Assert.True(movie.ClosedCaptions);
+		// The IFO time matches the ripped file (8,000 s, both ours and MakeMKV's), although MakeMKV's title list shows 2:12:54.
+		Assert.Equal(8000, movie.DurationNs / 1e9, 1.0);
+		Assert.Equal([1, 5], titles.Where(t => t.DurationNs >= 120_000_000_000).Select(t => t.TitleNumber));
+	}
+}
+
+/// <summary>Dead Zone season 4 disc 1: TV episodes with closed captions, short extras with two audio tracks.</summary>
+public class DeadZoneTests {
+	private const string Disc = "DEAD_ZONE_S4_D1";
+	private static string Folder => IfoDisc.Folder(Disc)!;
+
+	[IfoFact(Disc)]
+	public void TitleList_EpisodesAndExtras() {
+		var titles = DiscScanner.Scan(Folder).Titles;
+		Assert.Equal(14, titles.Count);
+		Assert.Equal([1, 2, 3, 4, 6, 7, 8, 9], titles.Where(t => t.DurationNs >= 120_000_000_000).Select(t => t.TitleNumber));
+		var episode = titles.Single(t => t.TitleNumber == 1);
+		Assert.Equal(9, episode.Chapters);
+		Assert.Equal(["AC3 5.1 eng", "AC3 stereo eng"], episode.Audio);
+		Assert.True(episode.ClosedCaptions);
+		Assert.Equal(["AC3 stereo eng", "AC3 stereo eng"], titles.Single(t => t.TitleNumber == 6).Audio);
+	}
+}
+
+/// <summary>Lost in Translation: DTS next to AC3 in the movie, a "play all" title, many short extras.</summary>
+public class LostInTranslationTests {
+	private const string Disc = "LOST_IN_TRANSLATION";
+	private static string Folder => IfoDisc.Folder(Disc)!;
+
+	[IfoFact(Disc)]
+	public void TitleList_MovieAndPlayAll() {
+		var titles = DiscScanner.Scan(Folder).Titles;
+		Assert.Equal(23, titles.Count);
+		var movie = titles.Single(t => t.TitleNumber == 16);
+		Assert.Equal(25, movie.Chapters);
+		// The IFO gives the DTS stream 5 channels; the rip takes the count from the stream (6, like MakeMKV).
+		Assert.Equal(["AC3 5.1 eng", "DTS 5ch eng", "AC3 5.1 fre"], movie.Audio);
+		Assert.Equal(["eng", "spa", "fre"], movie.Subtitles);
+		Assert.Equal([5, 6, 7, 8, 9], titles.Single(t => t.TitleNumber == 4).CompilationOf);
+		// The same ten titles as MakeMKV 2.0's list with --minlength=100 (MakeMKV's minimum is 120 s by default; ours too).
+		Assert.Equal([4, 7, 9, 10, 11, 12, 16, 20, 21, 22], titles.Where(t => t.DurationNs >= 120_000_000_000).Select(t => t.TitleNumber));
+	}
+}
+
+/// <summary>Beauty and the Beast (Disney): titles 16-18 have two interleaved angles (log 2026-11-18 22:22).</summary>
+public class BeautyAndTheBeastTests {
+	private const string Disc = "BEAUTY_AND_THE_BEAST";
+	private static string Folder => IfoDisc.Folder(Disc)!;
+
+	[IfoFact(Disc)]
+	public void Title16_SizeCountsOneAngle() {
+		// Listed as 4.83 GB (title 17: 5.64 GB) while both angles were counted; MakeMKV says 3.69 GB of disc data for angle 1.
+		var title16 = DiscScanner.Scan(Folder).Titles.Single(t => t.TitleNumber == 16);
+		Assert.InRange(title16.SizeBytes, 3.5e9, 3.9e9);
+	}
+
+	[IfoFact(Disc)]
+	public void Title16_ChaptersEndWithTheTitle() {
+		// Chapters ran to 1:59 in the 1:31 title while the second angle's cells were counted.
+		var description = new TitleRipper(Folder, 16).Describe();
+		Assert.Contains("chapters  23", description);
+		var title16 = DiscScanner.Scan(Folder).Titles.Single(t => t.TitleNumber == 16);
+		Assert.InRange(title16.DurationNs, 5_400_000_000_000, 5_480_000_000_000);   // 1:31
+
+		var vmg = Ifo.VmgIfo.Parse(File.ReadAllBytes(Path.Combine(Folder, "VIDEO_TS.IFO")));
+		var entry = vmg.Titles[16 - 1];
+		var vts = Ifo.VtsIfo.Parse(File.ReadAllBytes(Path.Combine(Folder, $"VTS_{entry.TitleSetNumber:00}_0.IFO")), entry.TitleSetNumber);
+		var pgc = vts.Pgcs[vts.Chapters[entry.TitleSetTitleNumber - 1][0].PgcNumber - 1];
+		var chapters = TitleRipper.PgcChapters(pgc);
+		Assert.Equal(title16.DurationNs, chapters[^1].EndNs);
+		// MakeMKV's chapter 2 starts at 167.167 s (B1: later chapters differ from MakeMKV's by up to 0.1 s).
+		Assert.Equal(167_167, chapters[1].StartNs / 1_000_000);
+	}
+
+	[IfoFact(Disc)]
+	public void Title16_Tracks() {
+		// As MakeMKV: video, 3 AC3 (eng 5.1, fre 5.1, eng stereo), 2 VobSub, closed captions.
+		var description = new TitleRipper(Folder, 16).Describe();
+		Assert.Equal(3, description.Count(l => l.StartsWith("audio") && l.Contains("A_AC3")));
+		Assert.Equal(2, description.Count(l => l.Contains("S_VOBSUB")));
+		Assert.Single(description, l => l.Contains("S_TEXT/UTF8"));
+	}
+
+	[IfoFact(Disc)]
+	public void CellMap_AndDuplicates() {
+		var disc = DiscScanner.Scan(Folder);
+		Assert.Equal(158, disc.CellMap.Cells.Count);
+		Assert.Equal(17, disc.Titles.Single(t => t.TitleNumber == 18).DuplicateOf);
+	}
+
+	[IfoFact(Disc)]
+	public void Cells32And45_AreTitle5() {
+		// G5 test (log 22:22): ripping cells 32,45 gave a file identical to title 5.
+		var map = CellMap.Load(Folder);
+		Assert.Equal([31, 44], map.Titles.Single(t => t.TitleNumber == 5).Cells);   // 0-based
+		Assert.Equal(TitleRipper.ForCells(Folder, [32, 45]).Describe(), new TitleRipper(Folder, 5).Describe());
+	}
+}

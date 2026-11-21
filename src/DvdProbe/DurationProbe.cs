@@ -1,5 +1,5 @@
-using RipDvd.Core.Dvd;
-using RipDvd.Core.Ifo;
+using LunaDR.Core.Dvd;
+using LunaDR.Core.Ifo;
 
 namespace DvdProbe;
 

@@ -21,16 +21,16 @@ Rips from five test discs were compared with MakeMKV's rips of the same titles a
 
 ## Build
 ```
-dotnet build RipDvd.slnx
-dotnet test RipDvd.slnx
+dotnet build LunaDR.slnx
+dotnet test LunaDR.slnx
 ```
-The unit tests (`tests/RipDvd.Core.Tests`) need no disc and take about a second.
+The unit tests (`tests/LunaDR.Core.Tests`) need no disc and take about a second.
 
 ## Command line
 ```
-dotnet run --project src/RipDvd.Cli -- <command> [arguments] [options]
+dotnet run --project src/LunaDR.Cli -- <command> [arguments] [options]
 ```
-or run `src/RipDvd.Cli/bin/Debug/net10.0/lunadr.exe` directly.
+or run `src/LunaDR.Cli/bin/Debug/net10.0/lunadr.exe` directly.
 
 | Command | What it does |
 |---|---|
@@ -59,9 +59,9 @@ lunadr mkv E: 0 C:\Rips          (playlist 00000 -> C:\Rips\<Disc name> - playli
 
 ## Windows app
 ```
-dotnet run --project src/RipDvd.Gui
+dotnet run --project src/LunaDR.Gui
 ```
-or run `src/RipDvd.Gui/bin/Debug/net10.0-windows/lunadr-gui.exe`.
+or run `src/LunaDR.Gui/bin/Debug/net10.0-windows/lunadr-gui.exe`.
 
 1. Insert a disc (or pick the drive and click **Scan**). The title list shows every title; short titles are dimmed,
 	and the Note column says when a title repeats another one or is a compilation of other titles.
@@ -78,14 +78,14 @@ The folder and the sound setting are remembered in `%APPDATA%\LunaDR\gui-setting
 ## Project layout
 | Folder | Contents |
 |---|---|
-| `src/RipDvd.Core` | The ripping library: IFO parsing, CSS, reading the disc, MPEG demuxing, the Matroska writer, scanning and ripping; `Bluray/` for Blu-rays (playlists, AACS, transport streams). |
-| `src/RipDvd.Cli` | The command-line app. |
-| `src/RipDvd.Gui` | The Windows app (WPF). |
+| `src/LunaDR.Core` | The ripping library: IFO parsing, CSS, reading the disc, MPEG demuxing, the Matroska writer, scanning and ripping; `Bluray/` for Blu-rays (playlists, AACS, transport streams). |
+| `src/LunaDR.Cli` | The command-line app. |
+| `src/LunaDR.Gui` | The Windows app (WPF). |
 | `src/DvdProbe` | A developer tool for investigating discs and comparing MKV files. |
 | `docs` | [current-plan.md](docs/current-plan.md) (status, design decisions, next steps) and [log.md](docs/log.md) (history). |
 
 ## License
 GPL version 2 or later (full text in [LICENSE](LICENSE)), because the CSS code is ported from [libdvdcss](https://www.videolan.org/developers/libdvdcss.html).
-The ported files are `src/RipDvd.Core/Css/Css.cs`, `CssTables.cs` and `CssAuthentication.cs`; each begins with a LICENSE NOTE.
+The ported files are `src/LunaDR.Core/Css/Css.cs`, `CssTables.cs` and `CssAuthentication.cs`; each begins with a LICENSE NOTE.
 
 Whether ripping a particular disc is legal where you live is for you to determine.

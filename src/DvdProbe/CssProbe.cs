@@ -1,6 +1,6 @@
 using System.Diagnostics;
-using RipDvd.Core.Css;
-using RipDvd.Core.Dvd;
+using LunaDR.Core.Css;
+using LunaDR.Core.Dvd;
 
 namespace DvdProbe;
 
@@ -11,7 +11,7 @@ internal static class CssProbe {
 	/// sector, and tally the candidate keys. A right key shows up many times; a wrong guess
 	/// (when the plaintext guess was wrong) gives scattered one-off keys.
 	/// </summary>
-	[Obsolete("Old: replaced by RipDvd.Core.Css.TitleKeyFinder / TitleSectorReader.FindKey.")]
+	[Obsolete("Old: replaced by LunaDR.Core.Css.TitleKeyFinder / TitleSectorReader.FindKey.")]
 	public static CssKey? CrackTitleSet(string videoTs, int vts, int maxSectors, int votesNeeded, bool print) {
 		using var reader = VobReader.ForTitleSet(videoTs, vts);
 		var votes = new Dictionary<CssKey, int>();

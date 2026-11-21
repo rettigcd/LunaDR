@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using RipDvd.Core.Dvd;
-using RipDvd.Core.Ifo;
-using RipDvd.Core.Mpeg;
+using LunaDR.Core.Dvd;
+using LunaDR.Core.Ifo;
+using LunaDR.Core.Mpeg;
 
 namespace DvdProbe;
 

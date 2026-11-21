@@ -5,7 +5,7 @@
 			"label": "build",
 			"type": "process",
 			"command": "dotnet",
-			"args": ["build", "${workspaceFolder}/RipDvd.slnx", "/property:GenerateFullPaths=true", "/consoleloggerparameters:NoSummary"],
+			"args": ["build", "${workspaceFolder}/LunaDR.slnx", "/property:GenerateFullPaths=true", "/consoleloggerparameters:NoSummary"],
 			"group": { "kind": "build", "isDefault": true },
 			"problemMatcher": "$msCompile"
 		},
@@ -13,7 +13,7 @@
 			"label": "test",
 			"type": "process",
 			"command": "dotnet",
-			"args": ["test", "${workspaceFolder}/RipDvd.slnx"],
+			"args": ["test", "${workspaceFolder}/LunaDR.slnx"],
 			"group": { "kind": "test", "isDefault": true },
 			"problemMatcher": "$msCompile"
 		}

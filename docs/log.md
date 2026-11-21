@@ -629,3 +629,8 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 
 ## 2026-11-20 02:05
 	The owner pasted a list of MakeMKV advanced features and asked which LunaDR lacks. Written up as [makemkv-feature-gap.md](makemkv-feature-gap.md) (done / partial / missing / out of scope per feature, with a proposed order) for later reference and future features.
+
+## 2026-11-21 16:46
+	Owner asked to finish the rename. Done: `RipDvd.slnx` -> `LunaDR.slnx`; projects and folders `RipDvd.Core/Cli/Gui/Core.Tests` -> `LunaDR.*`; namespaces, `InternalsVisibleTo`, project references, VS Code tasks/launch, README and CLAUDE.md updated (old entries in this log keep the old names).
+	The settings folder was already `%APPDATA%\LunaDR` (no `rip-dvd` folder was left on this machine), so the code that fell back to `%APPDATA%ip-dvd` was removed; GUI settings are read only from `%APPDATA%\LunaDR`.
+	Only the repo folder is still named `rip-dvd` (the owner renames it). Build 0 warnings, 90 tests pass, format check clean.

@@ -7,7 +7,7 @@
 			"type": "coreclr",
 			"request": "launch",
 			"preLaunchTask": "build",
-			"program": "${workspaceFolder}/src/RipDvd.Gui/bin/Debug/net10.0-windows/lunadr-gui.exe",
+			"program": "${workspaceFolder}/src/LunaDR.Gui/bin/Debug/net10.0-windows/lunadr-gui.exe",
 			"cwd": "${workspaceFolder}",
 			"console": "internalConsole",
 			"stopAtEntry": false
@@ -17,7 +17,7 @@
 			"type": "coreclr",
 			"request": "launch",
 			"preLaunchTask": "build",
-			"program": "${workspaceFolder}/src/RipDvd.Cli/bin/Debug/net10.0/lunadr.exe",
+			"program": "${workspaceFolder}/src/LunaDR.Cli/bin/Debug/net10.0/lunadr.exe",
 			// Change the arguments to run another command, e.g. ["mkv", "E:", "0", "C:\\Rips", "--dry-run"].
 			"args": ["info", "E:"],
 			"cwd": "${workspaceFolder}",

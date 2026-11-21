@@ -95,7 +95,7 @@ public static class Commands {
 	public static int Bench(string[] args) {
 		string videoTs = IfoProbe.ResolveVideoTs(args[0]);
 		int vts = int.Parse(args[1]);
-		using var reader = RipDvd.Core.Dvd.VobReader.ForTitleSet(videoTs, vts);
+		using var reader = LunaDR.Core.Dvd.VobReader.ForTitleSet(videoTs, vts);
 		// Collect 2000 scrambled sectors into memory first, so only CPU work is timed.
 		var sectors = new List<byte[]>();
 		var buf = new byte[2048 * 64];
@@ -103,14 +103,14 @@ public static class Commands {
 			int n = (int)Math.Min(64, reader.SectorCount - s);
 			reader.Read(s, n, buf);
 			for (int k = 0; k < n && sectors.Count < 2000; k++)
-				if (RipDvd.Core.Css.Css.IsScrambled(buf.AsSpan(k * 2048, 2048))) sectors.Add(buf.AsSpan(k * 2048, 2048).ToArray());
+				if (LunaDR.Core.Css.Css.IsScrambled(buf.AsSpan(k * 2048, 2048))) sectors.Add(buf.AsSpan(k * 2048, 2048).ToArray());
 		}
-		var key = RipDvd.Core.Dvd.TitleSectorReader.FindKey(reader)!.Value;
+		var key = LunaDR.Core.Dvd.TitleSectorReader.FindKey(reader)!.Value;
 
 		var sw = System.Diagnostics.Stopwatch.StartNew();
 		int rounds = 0;
 		while (sw.ElapsedMilliseconds < 2000) {
-			foreach (var s in sectors) { var copy = (byte[])s.Clone(); RipDvd.Core.Css.Css.Unscramble(key, copy); }
+			foreach (var s in sectors) { var copy = (byte[])s.Clone(); LunaDR.Core.Css.Css.Unscramble(key, copy); }
 			rounds++;
 		}
 		double mb = rounds * sectors.Count * 2048 / 1e6;
@@ -118,7 +118,7 @@ public static class Commands {
 
 		sw.Restart();
 		int attacks = 0, hits = 0;
-		foreach (var s in sectors) { attacks++; if (RipDvd.Core.Css.Css.AttackPattern(s) is not null) hits++; if (sw.ElapsedMilliseconds > 3000) break; }
+		foreach (var s in sectors) { attacks++; if (LunaDR.Core.Css.Css.AttackPattern(s) is not null) hits++; if (sw.ElapsedMilliseconds > 3000) break; }
 		Console.WriteLine($"Key attack: {attacks} sectors in {sw.ElapsedMilliseconds} ms ({hits} gave a key)");
 		return 0;
 	}
@@ -133,25 +133,25 @@ public static class Commands {
 		return 0;
 	}
 
-	[ProbeCommand("rip", "Rip a title to MKV with RipDvd.Core TitleRipper. Args: <drive> <title> <output.mkv> [-cells N] [-bad 1000-1010,5000] (simulated unreadable sectors)")]
+	[ProbeCommand("rip", "Rip a title to MKV with LunaDR.Core TitleRipper. Args: <drive> <title> <output.mkv> [-cells N] [-bad 1000-1010,5000] (simulated unreadable sectors)")]
 	public static int Rip(string[] args) {
 		string videoTs = IfoProbe.ResolveVideoTs(args[0]);
-		var ripper = new RipDvd.Core.Ripping.TitleRipper(videoTs, int.Parse(args[1]));
+		var ripper = new LunaDR.Core.Ripping.TitleRipper(videoTs, int.Parse(args[1]));
 		int lastPercent = -1;
 		int ci = Array.IndexOf(args, "-cells");
 		int maxCells = ci >= 0 ? int.Parse(args[ci + 1]) : int.MaxValue;
 		int bi = Array.IndexOf(args, "-bad");
-		var options = new RipDvd.Core.Ripping.RipOptions();
+		var options = new LunaDR.Core.Ripping.RipOptions();
 		if (bi >= 0) {
 			var bad = new List<(long From, long To)>();
 			foreach (var part in args[bi + 1].Split(',')) {
 				var ends = part.Split('-');
 				bad.Add((long.Parse(ends[0]), long.Parse(ends[^1])));
 			}
-			options = new RipDvd.Core.Ripping.RipOptions { SimulateBadSector = s => bad.Any(r => s >= r.From && s <= r.To) };
+			options = new LunaDR.Core.Ripping.RipOptions { SimulateBadSector = s => bad.Any(r => s >= r.From && s <= r.To) };
 		}
 		var result = ripper.Rip(args[2], maxCells: maxCells, options: options, progress: p => {
-			if (p.Phase != RipDvd.Core.Ripping.RipPhase.Ripping) return;
+			if (p.Phase != LunaDR.Core.Ripping.RipPhase.Ripping) return;
 			int pct = (int)(p.Fraction * 100);
 			if (pct / 10 != lastPercent / 10) { Console.Write($"{pct}% "); lastPercent = pct; }
 		});
@@ -178,19 +178,19 @@ public static class Commands {
 	[ProbeCommand("chapters", "A title's cells in play order: angle block, flags, IFO time and start on the title timeline (first angle only), '*' = chapter start; -stream adds the start measured from nav packs. Args: <drive> <title> [-stream]")]
 	public static int Chapters(string[] args) {
 		string videoTs = IfoProbe.ResolveVideoTs(args[0]);
-		var vmg = RipDvd.Core.Ifo.VmgIfo.Parse(File.ReadAllBytes(Path.Combine(videoTs, "VIDEO_TS.IFO")));
+		var vmg = LunaDR.Core.Ifo.VmgIfo.Parse(File.ReadAllBytes(Path.Combine(videoTs, "VIDEO_TS.IFO")));
 		var t = vmg.Titles[int.Parse(args[1]) - 1];
-		var vts = RipDvd.Core.Ifo.VtsIfo.Parse(File.ReadAllBytes(Path.Combine(videoTs, $"VTS_{t.TitleSetNumber:00}_0.IFO")), t.TitleSetNumber);
+		var vts = LunaDR.Core.Ifo.VtsIfo.Parse(File.ReadAllBytes(Path.Combine(videoTs, $"VTS_{t.TitleSetNumber:00}_0.IFO")), t.TitleSetNumber);
 		var pgc = vts.Pgcs[vts.Chapters[t.TitleSetTitleNumber - 1][0].PgcNumber - 1];
 		// -stream: also the start from the stream, as the ripper's timeline has it (each played cell lasts from its first VOBU's start time to its last VOBU's end time,
 		// read from two nav packs per cell).
-		RipDvd.Core.Dvd.VobReader? reader = null;
+		LunaDR.Core.Dvd.VobReader? reader = null;
 		if (args.Contains("-stream")) {
-			RipDvd.Core.Dvd.DriveUnlocker.TryUnlock(videoTs);
-			reader = RipDvd.Core.Dvd.VobReader.ForTitleSet(videoTs, t.TitleSetNumber);
+			LunaDR.Core.Dvd.DriveUnlocker.TryUnlock(videoTs);
+			reader = LunaDR.Core.Dvd.VobReader.ForTitleSet(videoTs, t.TitleSetNumber);
 		}
-		var buf = new byte[RipDvd.Core.Dvd.VobReader.SectorSize];
-		var start = default(RipDvd.Core.Ifo.DvdTime);
+		var buf = new byte[LunaDR.Core.Dvd.VobReader.SectorSize];
+		var start = default(LunaDR.Core.Ifo.DvdTime);
 		long streamNs = 0;
 		int chapter = 0;
 		foreach (var cell in pgc.Cells) {
@@ -206,9 +206,9 @@ public static class Commands {
 			start += cell.PlaybackTime;
 			if (reader is not null) {
 				reader.Read(cell.FirstSector, 1, buf);
-				uint first = RipDvd.Core.Dvd.NavPack.Parse(buf).StartPtm;
+				uint first = LunaDR.Core.Dvd.NavPack.Parse(buf).StartPtm;
 				reader.Read(cell.LastVobuStartSector, 1, buf);
-				uint last = RipDvd.Core.Dvd.NavPack.Parse(buf).EndPtm;
+				uint last = LunaDR.Core.Dvd.NavPack.Parse(buf).EndPtm;
 				streamNs += (long)(last - first) * 100_000 / 9;
 			}
 		}
@@ -232,21 +232,21 @@ public static class Commands {
 
 	[ProbeCommand("bdtitles", "Blu-ray playlists (titles): length, chapters, size, video, clips; -v adds audio/subtitles, play items with PIDs, chapter times. Args: <drive or folder> [-v]")]
 	public static int BdTitles(string[] args) {
-		string root = RipDvd.Core.Bluray.BdScanner.ResolveRoot(args.Length > 0 ? args[0] : "E:") ?? throw new IOException("No Blu-ray structure (BDMV/index.bdmv) found.");
+		string root = LunaDR.Core.Bluray.BdScanner.ResolveRoot(args.Length > 0 ? args[0] : "E:") ?? throw new IOException("No Blu-ray structure (BDMV/index.bdmv) found.");
 		BlurayTitlesProbe.Print(root, args.Contains("-v"));
 		return 0;
 	}
 
 	[ProbeCommand("bdkey", "Check the AACS key file against a Blu-ray (no keys printed): disc ID, entry, VUK vs unit keys, decrypting sample units of a clip. Args: <drive or folder> [clip]")]
 	public static int BdKey(string[] args) {
-		string root = RipDvd.Core.Bluray.BdScanner.ResolveRoot(args.Length > 0 ? args[0] : "E:") ?? throw new IOException("No Blu-ray structure (BDMV/index.bdmv) found.");
+		string root = LunaDR.Core.Bluray.BdScanner.ResolveRoot(args.Length > 0 ? args[0] : "E:") ?? throw new IOException("No Blu-ray structure (BDMV/index.bdmv) found.");
 		BlurayKeyProbe.Check(root, args.Length > 1 ? args[1] : null);
 		return 0;
 	}
 
 	[ProbeCommand("bdrip", "Rip a Blu-ray playlist to MKV with BdTitleRipper. Args: <drive or folder> <playlist> <output.mkv> [-mb N: only the first N MB of each clip]")]
 	public static int BdRip(string[] args) {
-		string root = RipDvd.Core.Bluray.BdScanner.ResolveRoot(args[0]) ?? throw new IOException("No Blu-ray structure (BDMV/index.bdmv) found.");
+		string root = LunaDR.Core.Bluray.BdScanner.ResolveRoot(args[0]) ?? throw new IOException("No Blu-ray structure (BDMV/index.bdmv) found.");
 		int mi = Array.IndexOf(args, "-mb");
 		BlurayRipProbe.Rip(root, int.Parse(args[1]), args[2], mi >= 0 ? long.Parse(args[mi + 1]) : 0);
 		return 0;
@@ -254,7 +254,7 @@ public static class Commands {
 
 	[ProbeCommand("bdpes", "List one PID's PES packets in a Blu-ray clip (decrypted): PTS, DTS, newest video PTS on arrival, first bytes. Args: <drive> <clip> <pid hex> [-mb N] [-n max] [-video pid hex]")]
 	public static int BdPes(string[] args) {
-		string root = RipDvd.Core.Bluray.BdScanner.ResolveRoot(args[0]) ?? throw new IOException("No Blu-ray structure (BDMV/index.bdmv) found.");
+		string root = LunaDR.Core.Bluray.BdScanner.ResolveRoot(args[0]) ?? throw new IOException("No Blu-ray structure (BDMV/index.bdmv) found.");
 		long Opt(string name, long fallback, int radix = 10) {
 			int i = Array.IndexOf(args, name);
 			return i < 0 ? fallback : Convert.ToInt64(args[i + 1], radix);
@@ -280,9 +280,9 @@ public static class Commands {
 		string videoTs = IfoProbe.ResolveVideoTs(args[0]);
 		string path = Path.Combine(Path.GetTempPath(), "lunadr-canceltest.mkv");
 		using var cancel = new CancellationTokenSource(TimeSpan.FromSeconds(double.Parse(args[2])));
-		var lastPhase = (RipDvd.Core.Ripping.RipPhase)(-1);
+		var lastPhase = (LunaDR.Core.Ripping.RipPhase)(-1);
 		try {
-			new RipDvd.Core.Ripping.TitleRipper(videoTs, int.Parse(args[1])).Rip(path, cancel: cancel.Token, progress: p => {
+			new LunaDR.Core.Ripping.TitleRipper(videoTs, int.Parse(args[1])).Rip(path, cancel: cancel.Token, progress: p => {
 				if (p.Phase != lastPhase) Console.WriteLine($"  phase {p.Phase} at {p.Elapsed.TotalSeconds:F1} s ({p.SectorsDone:N0}/{p.SectorsTotal:N0} sectors)");
 				lastPhase = p.Phase;
 			});
@@ -302,16 +302,16 @@ public static class Commands {
 		int vts = int.Parse(args[1]);
 		long from = long.Parse(args[2]), to = long.Parse(args[3]);
 		int max = args.Length > 4 ? int.Parse(args[4]) : 20;
-		using var reader = RipDvd.Core.Dvd.VobReader.ForTitleSet(videoTs, vts);
+		using var reader = LunaDR.Core.Dvd.VobReader.ForTitleSet(videoTs, vts);
 		const int chunk = 512;
-		var buffer = new byte[chunk * RipDvd.Core.Dvd.VobReader.SectorSize];
+		var buffer = new byte[chunk * LunaDR.Core.Dvd.VobReader.SectorSize];
 		int found = 0;
 		var sw = System.Diagnostics.Stopwatch.StartNew();
 		for (long s = from; s <= to && found < max; s += chunk) {
 			int n = (int)Math.Min(chunk, to - s + 1);
 			reader.Read(s, n, buffer);
 			for (int i = 0; i < n && found < max; i++) {
-				var sector = buffer.AsSpan(i * RipDvd.Core.Dvd.VobReader.SectorSize, RipDvd.Core.Dvd.VobReader.SectorSize);
+				var sector = buffer.AsSpan(i * LunaDR.Core.Dvd.VobReader.SectorSize, LunaDR.Core.Dvd.VobReader.SectorSize);
 				if (sector[0] == 0 && sector[1] == 0 && sector[2] == 1 && sector[3] == 0xBA && (sector[4] & 0xC0) == 0x40) continue;
 				bool allZero = !sector.ContainsAnyExcept((byte)0);
 				Console.WriteLine($"  sector {s + i}: {(allZero ? "all zero" : Convert.ToHexString(sector[..24]))}");
@@ -325,7 +325,7 @@ public static class Commands {
 	[ProbeCommand("copyright", "Ask the drive whether the disc is copy-protected (copyright descriptor: 0 none, 1 CSS/CPPM, 2 CPRM). Args: <drive>")]
 	public static int Copyright(string[] args) {
 		string videoTs = IfoProbe.ResolveVideoTs(args.Length > 0 ? args[0] : "E:");
-		bool? css = RipDvd.Core.Dvd.DriveUnlocker.IsCssProtected(videoTs);
+		bool? css = LunaDR.Core.Dvd.DriveUnlocker.IsCssProtected(videoTs);
 		Console.WriteLine(css switch { true => "CSS-protected", false => "not protected", null => "unknown (the drive could not be asked)" });
 		return 0;
 	}
@@ -336,17 +336,17 @@ public static class Commands {
 		int vts = int.Parse(args[1]);
 		long s = long.Parse(args[2]);
 		int count = args.Length > 3 ? int.Parse(args[3]) : 40;
-		RipDvd.Core.Dvd.DriveUnlocker.TryUnlock(videoTs);
-		using var reader = RipDvd.Core.Dvd.VobReader.ForTitleSet(videoTs, vts);
-		var buffer = new byte[RipDvd.Core.Dvd.VobReader.SectorSize];
+		LunaDR.Core.Dvd.DriveUnlocker.TryUnlock(videoTs);
+		using var reader = LunaDR.Core.Dvd.VobReader.ForTitleSet(videoTs, vts);
+		var buffer = new byte[LunaDR.Core.Dvd.VobReader.SectorSize];
 		Console.WriteLine("  sector    lbn  vobu_ea  vob/cell  category  ilvu_ea  nxt_ilvu_sa");
 		for (int i = 0; i < count; i++) {
 			reader.Read(s, 1, buffer);
-			if (!RipDvd.Core.Dvd.NavPack.IsNavPack(buffer)) {
+			if (!LunaDR.Core.Dvd.NavPack.IsNavPack(buffer)) {
 				Console.WriteLine($"  {s,7}  not a nav pack");
 				return 1;
 			}
-			var nav = RipDvd.Core.Dvd.NavPack.Parse(buffer);
+			var nav = LunaDR.Core.Dvd.NavPack.Parse(buffer);
 			Console.WriteLine($"  {s,7} {nav.Lbn,6} {nav.VobuEndAddress,8}  {nav.VobId,3}/{nav.CellId,-3}   {nav.IlvuCategory:X4}  {nav.IlvuEndAddress,7}  {nav.NextIlvuStart,11}");
 			s += nav.VobuEndAddress + 1;
 		}
@@ -361,15 +361,15 @@ public static class Commands {
 			titleSets = Enumerable.Range(1, 99).TakeWhile(n => File.Exists(Path.Combine(videoTs, $"VTS_{n:00}_1.VOB"))).ToList();
 		foreach (int vts in titleSets) {
 			var sw = System.Diagnostics.Stopwatch.StartNew();
-			using var reader = RipDvd.Core.Dvd.VobReader.ForTitleSet(videoTs, vts);
-			var key = RipDvd.Core.Dvd.TitleSectorReader.FindKey(reader);
+			using var reader = LunaDR.Core.Dvd.VobReader.ForTitleSet(videoTs, vts);
+			var key = LunaDR.Core.Dvd.TitleSectorReader.FindKey(reader);
 			Console.WriteLine($"VTS {vts:00}: {key?.ToString() ?? "no key"} in {sw.ElapsedMilliseconds} ms");
 			if (key is not null) CssProbe.Verify(videoTs, vts, key.Value, samples: 50);
 		}
 		return 0;
 	}
 
-	[Obsolete("Old: replaced by the 'key' command, which uses RipDvd.Core TitleKeyFinder (validates the first candidate instead of waiting for 5 votes).")]
+	[Obsolete("Old: replaced by the 'key' command, which uses LunaDR.Core TitleKeyFinder (validates the first candidate instead of waiting for 5 votes).")]
 	[ProbeCommand("crack", "Recover CSS title keys by voting (5 agreeing sectors) and verify them. Args: <drive> [vts numbers...]")]
 	public static int Crack(string[] args) {
 		string videoTs = IfoProbe.ResolveVideoTs(args.Length > 0 ? args[0] : "E:");

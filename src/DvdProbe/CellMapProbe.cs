@@ -1,5 +1,5 @@
-using RipDvd.Core.Ifo;
-using RipDvd.Core.Ripping;
+using LunaDR.Core.Ifo;
+using LunaDR.Core.Ripping;
 
 namespace DvdProbe;
 
@@ -7,7 +7,7 @@ namespace DvdProbe;
 /// Probe: one titles-vs-cells table for the whole disc, to see which titles play which cells (duplicates, "play all" titles, shared scenes).
 /// Rows are every cell of every title set (title set, VOB id / cell id, in disc order); columns are every title.
 /// An entry is the cell's position in that title's playlist; '*' marks a position where a chapter starts; '.' means not used.
-/// The data comes from RipDvd.Core's <see cref="CellMap"/>, which the GUI uses too.
+/// The data comes from LunaDR.Core's <see cref="CellMap"/>, which the GUI uses too.
 /// </summary>
 internal static class CellMapProbe {
 	public static void Print(string videoTs, int? onlyTitleSet) {

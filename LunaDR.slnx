@@ -1,0 +1,11 @@
+<Solution>
+	<Folder Name="/src/">
+		<Project Path="src/DvdProbe/DvdProbe.csproj" />
+		<Project Path="src/LunaDR.Cli/LunaDR.Cli.csproj" />
+		<Project Path="src/LunaDR.Core/LunaDR.Core.csproj" />
+		<Project Path="src/LunaDR.Gui/LunaDR.Gui.csproj" />
+	</Folder>
+	<Folder Name="/tests/">
+		<Project Path="tests/LunaDR.Core.Tests/LunaDR.Core.Tests.csproj" />
+	</Folder>
+</Solution>

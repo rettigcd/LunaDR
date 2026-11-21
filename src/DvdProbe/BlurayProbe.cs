@@ -1,5 +1,5 @@
 using System.Runtime.Versioning;
-using RipDvd.Core.Bluray;
+using LunaDR.Core.Bluray;
 
 namespace DvdProbe;
 

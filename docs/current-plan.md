@@ -4,7 +4,7 @@ Process rules for this file are in [CLAUDE.md](../CLAUDE.md).
 This file describes the present state only; the history is in [log.md](log.md).
 
 ## Status
-- **Ripping works end to end on Windows.** CLI `src/RipDvd.Cli` (executable `lunadr`), modeled on makemkvcon; `lunadr help` / `help <command>` / `-h` explain everything:
+- **Ripping works end to end on Windows.** CLI `src/LunaDR.Cli` (executable `lunadr`), modeled on makemkvcon; `lunadr help` / `help <command>` / `-h` explain everything:
 	`info [disc] [--all] [--minlength=N] [--cells]` lists titles by the disc's own title numbers (length, chapters, size, audio, subtitles, CC); `--cells` adds the numbered cell table;
 	`mkv <disc> <titles|all> <folder>` writes `<Disc name> - title NN.mkv`, titles like `1` or `1,3,6` (`all` = titles ≥ 120 s);
 	`mkv <disc> cells:LIST <folder>` rips chosen cells (e.g. `cells:23-27,30`, one title set) joined into `<Disc name> - cells LIST.mkv`, one chapter per cell.
@@ -23,12 +23,12 @@ This file describes the present state only; the history is in [log.md](log.md).
 
 - **Full-disc test passed** (CLI `mkv E: all` on DEAD_ZONE_S4_D1, 8 titles, 30 min): the 3 titles with MakeMKV rips match on every compared property, including SHA-256 of all video/audio/caption payloads (one title: two caption times 1 ms off); all 8 decode with ffmpeg (log 14:34). Compare tool: probe `mkvcompare`.
 - Speed: drive-bound and at least as fast as MakeMKV (e.g. 6.4 GB movie in 1,583 s vs MakeMKV 1,836 s).
-- Library `src/RipDvd.Core`:
+- Library `src/LunaDR.Core`:
 	`Ifo/` (IFO parsing), `Css/` (descrambling, title-key recovery, drive authentication), `Dvd/` (VOB reading with read-ahead, nav packs, Windows drive commands),
 	`Mpeg/` (PES parsing; MPEG-2 video, AC3, DTS, LPCM framers; subpicture assembler), `Captions/` (EIA-608 decoder),
 	`Matroska/` (EBML reader/writer, MKV writer), `Ripping/` (disc scanner, cell map with duplicate/compilation detection, title ripper with progress phases, cell progress and cancellation, batch runner `RipJob` with remaining-time estimates, cell selection, options, naming, VobSub header, languages).
 	Interleaved (multi-angle) cells are read unit by unit following the nav packs; read errors are retried 3 times and then skipped to the next readable VOBU, with a warning.
-- **GUI** `src/RipDvd.Gui` (`lunadr-gui.exe`, WPF): all three phases built: drive picker, automatic scan on disc insert, title list (all titles, short ones dimmed, duplicate/compilation notes), compact cell map with selection highlighting and hover details;
+- **GUI** `src/LunaDR.Gui` (`lunadr-gui.exe`, WPF): all three phases built: drive picker, automatic scan on disc insert, title list (all titles, short ones dimmed, duplicate/compilation notes), compact cell map with selection highlighting and hover details;
 	a checkbox per title, output folder and file name (remembered in %APPDATA%\LunaDR\gui-settings.json), Start/Cancel (Cancel asks first);
 	progress bars with % / time left / MB/s for the title and for all titles, a list of finished files (or per-title errors), Open folder, and "Play a sound when done" (remembered).
 	Cells can be selected in the cell map (click, Ctrl+click, Shift+click) and ripped into one file ("Rip selected cells"); during a rip the cell map shows progress (green strip above the cells, green blocks on the ripped title's row).
@@ -36,7 +36,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 	Screenshot: [gui-phase3-butterfly-effect.png](gui-phase3-butterfly-effect.png).
 	For a Blu-ray the map shows playlists against clip segments ([gui-bluray-segments.png](gui-bluray-segments.png)); "Rip selected cells" is DVD-only for now.
 - Probe `src/DvdProbe`: `drives`, `files`, `titles [-v]`, `scramble`, `crack` (old), `key`, `duration`, `bench`, `demux`, `mkvinfo [-dumptrack]`, `rip [-cells N] [-bad sectors]`, `cellmap`, `navwalk`, `copyright`, `canceltest`, `mkvcompare`.
-- **Unit tests** `tests/RipDvd.Core.Tests` (xUnit, `dotnet test RipDvd.slnx`, 90 tests, < 1 s, no disc needed): regression tests for every bug in the log that a test could catch
+- **Unit tests** `tests/LunaDR.Core.Tests` (xUnit, `dotnet test LunaDR.slnx`, 90 tests, < 1 s, no disc needed): regression tests for every bug in the log that a test could catch
 	(LPCM pointer, palette, duration, caption and pulldown timing, references, clusters, empty tracks, DTS channels, interleaved angles, angle chapters, audio gaps, read errors, sizes),
 	plus cell selection, naming, languages, duplicates/compilations, nav packs and the MKV writer.
 	Tests on real IFO files read git-ignored `reference/ifo/<disc>/` (now: Beauty and the Beast) and are skipped without it.
@@ -47,15 +47,15 @@ This file describes the present state only; the history is in [log.md](log.md).
 ## Design decisions
 
 - **Name: LunaDR** (owner, 2026-11-19). Programs `lunadr` (CLI) and `lunadr-gui` (GUI; a different name so both fit in one folder on case-insensitive Windows);
-	window titles and the MKV "writing application" say LunaDR; GUI settings in `%APPDATA%\LunaDR` (the old `rip-dvd` settings are read until then).
-	The repo, solution, projects and namespaces keep their `rip-dvd` / `RipDvd.*` names for now (renaming them touches every file and is not visible to users).
+	window titles and the MKV "writing application" say LunaDR; GUI settings in `%APPDATA%\LunaDR`.
+	Solution `LunaDR.slnx`, projects and namespaces `LunaDR.Core`, `LunaDR.Cli`, `LunaDR.Gui`, `LunaDR.Core.Tests` (renamed 2026-11-21). Only the repo folder is still `rip-dvd`.
 
-### Core (ripping library `RipDvd.Core` and the CLI)
+### Core (ripping library `LunaDR.Core` and the CLI)
 - C# on .NET 10, all managed code (no native C). The drive is the bottleneck (descrambling 430 MB/s vs ≤ 22 MB/s from a drive).
 - Self-contained like MakeMKV: no external tools at run time. ffmpeg is used only as a development check.
 - Testing (owner): xUnit unit tests for the core run before every commit; every bug fix gets a test that fails without it. Rules that used to live inside `TitleRipper.Rip`
 	are small internal classes (`VideoReferences`, `ClusterRule`, `RipTiming`, `AudioContinuity`) so they can be tested. Disc comparisons with MakeMKV stay the end-to-end check.
-- Blu-ray (code in `RipDvd.Core/Bluray`): read the disc's files through Windows' UDF file system; one title per playlist, numbered by its file (00000 = 0);
+- Blu-ray (code in `LunaDR.Core/Bluray`): read the disc's files through Windows' UDF file system; one title per playlist, numbered by its file (00000 = 0);
 	files named `<Disc name> - playlist NNNNN.mkv`; AACS decryption with a per-disc key from a `KEYDB.cfg` key file the owner supplies (next to the program,
 	`%APPDATA%\aacs` or `%LOCALAPPDATA%\aacs`), never downloaded. Tracks: video, the first play item's audio (TrueHD as two tracks, TrueHD and its AC3 core;
 	the core is an option, on by default (owner): `RipOptions.TrueHdCore`, CLI `--truehd-core=on|off`, GUI checkbox "AC3 copy of TrueHD" shown for Blu-rays, remembered),
@@ -96,12 +96,12 @@ This file describes the present state only; the history is in [log.md](log.md).
 	First ask the disc's copyright descriptor whether it uses CSS at all (as libdvdcss does); if not, skip the handshake and the key search (which read up to 800 MB first).
 	When it can't be asked (a VIDEO_TS folder on a hard disk), the key search runs as before.
 - CSS code is ported from libdvdcss rather than linked: readable, no native DLL. libdvdcss could be an optional fallback if a disc defeats the port.
-- License: GPL v2 or later because of the libdvdcss port; the full text is in `LICENSE` at the repo root. GPL-derived files: `src/RipDvd.Core/Css/Css.cs`, `Css/CssTables.cs`, `Css/CssAuthentication.cs`; each starts with a "LICENSE NOTE" block listing all of them.
+- License: GPL v2 or later because of the libdvdcss port; the full text is in `LICENSE` at the repo root. GPL-derived files: `src/LunaDR.Core/Css/Css.cs`, `Css/CssTables.cs`, `Css/CssAuthentication.cs`; each starts with a "LICENSE NOTE" block listing all of them.
 	Any further GPL-derived file gets the same note and goes on this list.
 - Overlapping titles (`DiscScanner`, from cell lists; cells under 2 s ignored): a **duplicate** plays the same cells as an earlier title; a **compilation** ("play all") consists only of cells of 2+ other titles and isn't inside any single one. `info` marks both; `mkv … all --no-compilations / --no-duplicates` skips them (default keeps them, like MakeMKV). Probe `cellmap` shows the titles-vs-cells table.
 - Reading the disc: through the file system (`<drive>\VIDEO_TS\*.VOB`), after drive authentication.
 
-### UI (Windows GUI `RipDvd.Gui`)
+### UI (Windows GUI `LunaDR.Gui`)
 - Windows only (owner). The command-line app came first; the GUI is built on the same library.
 - WPF on .NET 10 with the built-in Fluent (Windows 11) theme, `ThemeMode="System"` (owner: WPF is fine; WinUI 3 was considered but its table control is still experimental and it needs extra runtime/packaging).
 - Plain MVVM: view models with `INotifyPropertyChanged`, no third-party packages, so all code is readable C# and XAML.
@@ -121,7 +121,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 - Completion sound: the Windows default notification sound, for now (owner).
 
 ## Platform (Windows 11 now, Linux possible later)
-Target is Windows 11. Keep Linux possible by putting OS-specific code behind small interfaces in `RipDvd.Core`, with one implementation per OS.
+Target is Windows 11. Keep Linux possible by putting OS-specific code behind small interfaces in `LunaDR.Core`, with one implementation per OS.
 
 | Area | Status | Linux impact |
 |---|---|---|
@@ -133,7 +133,7 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 
 ## Next steps
 **Blu-ray** (owner, 2026-11-19). BR1-BR6 are done (log 2026-11-19): probes `bddrive`, `bdfiles`, `bdtitles`, `bdkey`, `bdpes`, `bdrip`;
-`RipDvd.Core/Bluray` (playlists, clip info, AACS with a key file, transport-stream demuxing, `BdTitleRipper`); the CLI's `info`/`mkv` and the GUI handle Blu-rays.
+`LunaDR.Core/Bluray` (playlists, clip info, AACS with a key file, transport-stream demuxing, `BdTitleRipper`); the CLI's `info`/`mkv` and the GUI handle Blu-rays.
 Test disc: The Goonies (AACS 1, no bus encryption; VC-1, AC3, TrueHD, PGS). The drive (HL-DT-ST BP50NB40) works; MakeMKV failed only because its Blu-ray support is shareware.
 No MakeMKV rips to compare with, so the bar is the owner's: the file plays (ffmpeg decodes it), with the playlist's length, chapters and tracks.
 BR7 is done too: the whole movie (playlist 00000) decodes cleanly and the owner played it.
