@@ -1,6 +1,6 @@
 # LunaDR
 
-(Formerly rip-dvd.) Rips movies and TV episodes from a DVD or a Blu-ray into MKV files, much like [MakeMKV](https://www.makemkv.com/) does.
+Rips movies and TV episodes from a DVD or a Blu-ray into MKV files, much like [MakeMKV](https://www.makemkv.com/) does.
 Everything is C# on .NET 10, with no external tools or native libraries needed at run time.
 
 - **Command line** (`lunadr`): lists a disc's titles and rips the ones you name.

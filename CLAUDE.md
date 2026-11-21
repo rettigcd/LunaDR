@@ -1,4 +1,4 @@
-# LunaDR (repo folder rip-dvd): working instructions
+# LunaDR: working instructions
 
 This file holds the standing instructions for anyone (human or AI agent) working on this repo,
 on any computer. Read it first.

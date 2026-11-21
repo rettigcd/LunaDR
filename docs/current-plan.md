@@ -47,7 +47,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 
 - **Name: LunaDR** (owner, 2026-11-19). Programs `lunadr` (CLI) and `lunadr-gui` (GUI; a different name so both fit in one folder on case-insensitive Windows);
 	window titles and the MKV "writing application" say LunaDR; GUI settings in `%APPDATA%\LunaDR`.
-	Solution `LunaDR.slnx`, projects and namespaces `LunaDR.Core`, `LunaDR.Cli`, `LunaDR.Gui`, `LunaDR.Core.Tests` (renamed 2026-11-21). Only the repo folder is still `rip-dvd`.
+	Solution `LunaDR.slnx`, projects and namespaces `LunaDR.Core`, `LunaDR.Cli`, `LunaDR.Gui`, `LunaDR.Core.Tests` (renamed 2026-11-21). The GitHub repo is `rettigcd/LunaDR` (private).
 
 ### Core (ripping library `LunaDR.Core` and the CLI)
 - C# on .NET 10, all managed code (no native C). The drive is the bottleneck (descrambling 430 MB/s vs ≤ 22 MB/s from a drive).

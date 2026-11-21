@@ -643,3 +643,6 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 
 ## 2026-11-21 17:02
 	The owner deleted the two GUI screenshots (`docs/gui-phase3-butterfly-effect.png`, `docs/gui-bluray-segments.png`; both out of date). Removed the README picture and the plan links to them.
+
+## 2026-11-21 17:08
+	Owner: the README still said rip-dvd. Removed "(Formerly rip-dvd.)" from the README and the old repo-folder remarks from CLAUDE.md and the plan. The default branch on GitHub (main) still has the old README until blu-ray is merged into it. Pushed to https://github.com/rettigcd/LunaDR (private) on 2026-11-21.
