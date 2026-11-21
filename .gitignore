@@ -481,7 +481,8 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 
-# Large reference rips made with MakeMKV (not committed)
+# MakeMKV listings and large reference rips made with MakeMKV (from the owner's discs: not committed)
+reference/makemkv/
 reference/rips/
 # IFO files copied from the owner's discs for the unit tests (from commercial discs: not committed; tests skip when missing)
 tests/data/ifo/

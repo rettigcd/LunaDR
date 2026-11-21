@@ -42,7 +42,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 	Tests on real IFO files read git-ignored `tests/data/ifo/<disc>/` (now: Beauty and the Beast) and are skipped without it.
 	The sector reader takes an `ISectorSource`, so tests serve made-up sectors (`BadSectorSource` simulates a damaged disc).
 - `README.md`: what the project is, build, CLI and GUI usage, layout, license.
-- References: MakeMKV output listings in `reference/makemkv/`; reference rips in git-ignored `reference/rips/`; the owner's Plex library (D:) holds MakeMKV rips of many of the owner's DVDs.
+- References: MakeMKV output listings in git-ignored `reference/makemkv/`; reference rips in git-ignored `reference/rips/`; the owner's Plex library (D:) holds MakeMKV rips of many of the owner's DVDs.
 
 ## Design decisions
 
@@ -151,6 +151,7 @@ BR7 is done too: the whole movie (playlist 00000) decodes cleanly and the owner 
 **Out of scope for now:** UHD Blu-ray (AACS 2.0, HEVC), BD+ (needs a virtual machine for the disc's program), 3D (MVC), BD-J menus, bus encryption.
 
 ## Future (desirable, not scheduled)
+- **MakeMKV features we lack:** the full list, with status per feature and a suggested order, is in [makemkv-feature-gap.md](makemkv-feature-gap.md).
 - **Damaged discs: real test** (was G7.4; the owner has no damaged disc): rip a scratched or dirty DVD if one turns up.
 	G7 (retry, skip to the next VOBU, warnings) is built and tested with simulated bad sectors; Gypsy vol. 1 showed a drive returning corrupted data without an error, which no reader can detect.
 - **Audio not yet supported:** 20/24-bit LPCM and MPEG audio. Needs a disc with one of them to test (MPEG audio is most likely on PAL or home-made DVDs); the owner has none.

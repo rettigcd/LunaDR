@@ -637,3 +637,6 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 
 ## 2026-11-21 16:54
 	Owner asked to move the files the tests use under tests/. `reference/ifo/` and `reference/bdmv/` (git-ignored, optional: their tests skip when missing) are now `tests/data/ifo/` and `tests/data/bdmv/`; the test code, .gitignore, CLAUDE.md and the plan point there. Nothing else under reference/ is read by tests. 90 tests pass.
+
+## 2026-11-21 16:59
+	Tidy-up at the owner's request: removed from git `reference/cellmaps/` (unused), `docs/gui-phase1-butterfly-effect.png` and `docs/gui-bluray-goonies.png` (superseded screenshots); untracked `reference/makemkv/` (kept on disk, now git-ignored: it lists the owner's discs and contains a local path); linked makemkv-feature-gap.md from the plan. Fixed a stray carriage return in this log that made git treat it as binary (f7412a4).

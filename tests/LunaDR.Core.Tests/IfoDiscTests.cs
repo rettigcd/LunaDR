@@ -48,7 +48,7 @@ public class AVeryLongEngagementTests {
 
 	[IfoFact(Disc)]
 	public void TitleList_MatchesMakeMkv() {
-		// MakeMKV (reference/makemkv/A_VERY_LONG_ENGAGEMENT_DISC1-info.txt) lists 7 titles; the movie and the trailer are at least 120 s long.
+		// MakeMKV's info listing of this disc has 7 titles; the movie and the trailer are at least 120 s long.
 		var titles = DiscScanner.Scan(Folder).Titles;
 		Assert.Equal(7, titles.Count);
 		var movie = titles.Single(t => t.TitleNumber == 1);
