@@ -11,8 +11,6 @@ The output is laid out like MakeMKV's: the video and audio are copied unchanged;
 closed captions become a text subtitle track; chapters are kept.
 Rips from five test discs were compared with MakeMKV's rips of the same titles and matched: identical video and audio data, caption times within a few milliseconds.
 
-![The Windows app after ripping two titles](docs/gui-phase3-butterfly-effect.png)
-
 ## Requirements
 - Windows 11 (the command line is written to be portable; see [docs/current-plan.md](docs/current-plan.md), "Platform").
 - The [.NET 10 SDK](https://dotnet.microsoft.com/download).

@@ -33,8 +33,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 	progress bars with % / time left / MB/s for the title and for all titles, a list of finished files (or per-title errors), Open folder, and "Play a sound when done" (remembered).
 	Cells can be selected in the cell map (click, Ctrl+click, Shift+click) and ripped into one file ("Rip selected cells"); during a rip the cell map shows progress (green strip above the cells, green blocks on the ripped title's row).
 	Output identical to the CLI's (Butterfly Effect titles 3 and 6; Beauty and the Beast cells 32,45 = title 5). Test mode `--screenshot file.png [--drive E] [--rip 3,6 | --cells 32,45] [--to folder] [--midshot file.png]`.
-	Screenshot: [gui-phase3-butterfly-effect.png](gui-phase3-butterfly-effect.png).
-	For a Blu-ray the map shows playlists against clip segments ([gui-bluray-segments.png](gui-bluray-segments.png)); "Rip selected cells" is DVD-only for now.
+	For a Blu-ray the map shows playlists against clip segments; "Rip selected cells" is DVD-only for now.
 - Probe `src/DvdProbe`: `drives`, `files`, `titles [-v]`, `scramble`, `crack` (old), `key`, `duration`, `bench`, `demux`, `mkvinfo [-dumptrack]`, `rip [-cells N] [-bad sectors]`, `cellmap`, `navwalk`, `copyright`, `canceltest`, `mkvcompare`.
 - **Unit tests** `tests/LunaDR.Core.Tests` (xUnit, `dotnet test LunaDR.slnx`, 90 tests, < 1 s, no disc needed): regression tests for every bug in the log that a test could catch
 	(LPCM pointer, palette, duration, caption and pulldown timing, references, clusters, empty tracks, DTS channels, interleaved angles, angle chapters, audio gaps, read errors, sizes),

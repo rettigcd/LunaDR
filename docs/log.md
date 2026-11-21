@@ -640,3 +640,6 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 
 ## 2026-11-21 16:59
 	Tidy-up at the owner's request: removed from git `reference/cellmaps/` (unused), `docs/gui-phase1-butterfly-effect.png` and `docs/gui-bluray-goonies.png` (superseded screenshots); untracked `reference/makemkv/` (kept on disk, now git-ignored: it lists the owner's discs and contains a local path); linked makemkv-feature-gap.md from the plan. Fixed a stray carriage return in this log that made git treat it as binary (f7412a4).
+
+## 2026-11-21 17:02
+	The owner deleted the two GUI screenshots (`docs/gui-phase3-butterfly-effect.png`, `docs/gui-bluray-segments.png`; both out of date). Removed the README picture and the plan links to them.
