@@ -37,7 +37,7 @@ running an installed MakeMKV (`makemkvcon`) to compare results, is allowed.
 - Commit after each meaningful step so the history is readable.
 - **Tests (owner's rule):** run `dotnet test LunaDR.slnx` before each commit and only commit when it passes (it also fails on a broken build).
 	A bug fix comes with a test that fails without the fix. Unit tests are in `tests/LunaDR.Core.Tests` and need no disc;
-	tests on a real disc's IFO files read git-ignored `reference/ifo/<disc>/` (copy `VIDEO_TS\*.IFO` there) and are skipped when it is missing.
+	tests on a real disc's IFO files read git-ignored `tests/data/ifo/<disc>/` (copy `VIDEO_TS\*.IFO` there) and are skipped when it is missing.
 - Keep current-plan.md's Status short and current: replace outdated lines instead of adding new ones on top.
 	When proposing what to do next, follow the order of Next steps, or say why a step is skipped.
 

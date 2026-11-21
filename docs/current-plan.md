@@ -39,7 +39,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 - **Unit tests** `tests/LunaDR.Core.Tests` (xUnit, `dotnet test LunaDR.slnx`, 90 tests, < 1 s, no disc needed): regression tests for every bug in the log that a test could catch
 	(LPCM pointer, palette, duration, caption and pulldown timing, references, clusters, empty tracks, DTS channels, interleaved angles, angle chapters, audio gaps, read errors, sizes),
 	plus cell selection, naming, languages, duplicates/compilations, nav packs and the MKV writer.
-	Tests on real IFO files read git-ignored `reference/ifo/<disc>/` (now: Beauty and the Beast) and are skipped without it.
+	Tests on real IFO files read git-ignored `tests/data/ifo/<disc>/` (now: Beauty and the Beast) and are skipped without it.
 	The sector reader takes an `ISectorSource`, so tests serve made-up sectors (`BadSectorSource` simulates a damaged disc).
 - `README.md`: what the project is, build, CLI and GUI usage, layout, license.
 - References: MakeMKV output listings in `reference/makemkv/`; reference rips in git-ignored `reference/rips/`; the owner's Plex library (D:) holds MakeMKV rips of many of the owner's DVDs.

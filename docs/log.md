@@ -634,3 +634,6 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	Owner asked to finish the rename. Done: `RipDvd.slnx` -> `LunaDR.slnx`; projects and folders `RipDvd.Core/Cli/Gui/Core.Tests` -> `LunaDR.*`; namespaces, `InternalsVisibleTo`, project references, VS Code tasks/launch, README and CLAUDE.md updated (old entries in this log keep the old names).
 	The settings folder was already `%APPDATA%\LunaDR` (no `rip-dvd` folder was left on this machine), so the code that fell back to `%APPDATA%ip-dvd` was removed; GUI settings are read only from `%APPDATA%\LunaDR`.
 	Only the repo folder is still named `rip-dvd` (the owner renames it). Build 0 warnings, 90 tests pass, format check clean.
+
+## 2026-11-21 16:54
+	Owner asked to move the files the tests use under tests/. `reference/ifo/` and `reference/bdmv/` (git-ignored, optional: their tests skip when missing) are now `tests/data/ifo/` and `tests/data/bdmv/`; the test code, .gitignore, CLAUDE.md and the plan point there. Nothing else under reference/ is read by tests. 90 tests pass.

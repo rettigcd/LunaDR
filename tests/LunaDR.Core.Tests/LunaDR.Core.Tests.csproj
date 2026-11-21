@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-	<!-- Unit tests for LunaDR.Core: no disc needed. Tests on real IFO files read reference/ifo/<disc>/ and are skipped when it is missing. -->
+	<!-- Unit tests for LunaDR.Core: no disc needed. Tests on real IFO files read tests/data/ifo/<disc>/ and are skipped when it is missing. -->
 	<PropertyGroup>
 		<TargetFramework>net10.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>

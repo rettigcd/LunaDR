@@ -4,12 +4,12 @@ using LunaDR.Core.Ripping;
 namespace LunaDR.Core.Tests;
 
 /// <summary>
-/// A test on a real Blu-ray's metadata (BDMV/PLAYLIST, CLIPINF, index.bdmv; AACS/*.inf), copied to reference/bdmv/&lt;disc&gt;/ (git-ignored: commercial discs).
+/// A test on a real Blu-ray's metadata (BDMV/PLAYLIST, CLIPINF, index.bdmv; AACS/*.inf), copied to tests/data/bdmv/&lt;disc&gt;/ (git-ignored: commercial discs).
 /// Skipped when that folder is missing.
 /// </summary>
 public sealed class BdFactAttribute : FactAttribute {
 	public BdFactAttribute(string disc) {
-		if (BdDisc.Folder(disc) is null) Skip = $"reference/bdmv/{disc} not found (copy the disc's BDMV metadata and AACS files there to run this test)";
+		if (BdDisc.Folder(disc) is null) Skip = $"tests/data/bdmv/{disc} not found (copy the disc's BDMV metadata and AACS files there to run this test)";
 	}
 }
 
@@ -17,7 +17,7 @@ internal static class BdDisc {
 	public static string? Folder(string disc) {
 		for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent) {
 			if (!File.Exists(Path.Combine(dir.FullName, "LunaDR.slnx"))) continue;
-			string folder = Path.Combine(dir.FullName, "reference", "bdmv", disc);
+			string folder = Path.Combine(dir.FullName, "tests", "data", "bdmv", disc);
 			return BdScanner.IsBluray(folder) ? folder : null;
 		}
 		return null;

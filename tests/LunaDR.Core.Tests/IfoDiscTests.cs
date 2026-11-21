@@ -3,21 +3,21 @@ using LunaDR.Core.Ripping;
 namespace LunaDR.Core.Tests;
 
 /// <summary>
-/// A test on a real disc's IFO files, copied to reference/ifo/&lt;disc&gt;/ (git-ignored: they come from commercial discs).
+/// A test on a real disc's IFO files, copied to tests/data/ifo/&lt;disc&gt;/ (git-ignored: they come from commercial discs).
 /// Skipped when that folder is missing, e.g. on another computer. To add a disc: copy its VIDEO_TS\*.IFO files there.
 /// </summary>
 public sealed class IfoFactAttribute : FactAttribute {
 	public IfoFactAttribute(string disc) {
-		if (IfoDisc.Folder(disc) is null) Skip = $"reference/ifo/{disc} not found (copy the disc's VIDEO_TS\\*.IFO files there to run this test)";
+		if (IfoDisc.Folder(disc) is null) Skip = $"tests/data/ifo/{disc} not found (copy the disc's VIDEO_TS\\*.IFO files there to run this test)";
 	}
 }
 
 internal static class IfoDisc {
-	/// <summary>reference/ifo/&lt;disc&gt; in the repository (found by walking up from the test binaries to LunaDR.slnx), or null.</summary>
+	/// <summary>tests/data/ifo/&lt;disc&gt; in the repository (found by walking up from the test binaries to LunaDR.slnx), or null.</summary>
 	public static string? Folder(string disc) {
 		for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent) {
 			if (!File.Exists(Path.Combine(dir.FullName, "LunaDR.slnx"))) continue;
-			string folder = Path.Combine(dir.FullName, "reference", "ifo", disc);
+			string folder = Path.Combine(dir.FullName, "tests", "data", "ifo", disc);
 			return File.Exists(Path.Combine(folder, "VIDEO_TS.IFO")) ? folder : null;
 		}
 		return null;

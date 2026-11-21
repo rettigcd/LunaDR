@@ -484,6 +484,6 @@ $RECYCLE.BIN/
 # Large reference rips made with MakeMKV (not committed)
 reference/rips/
 # IFO files copied from the owner's discs for the unit tests (from commercial discs: not committed; tests skip when missing)
-reference/ifo/
-reference/bdmv/
+tests/data/ifo/
+tests/data/bdmv/
 
