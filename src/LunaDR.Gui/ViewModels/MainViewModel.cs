@@ -26,7 +26,7 @@ public sealed class MainViewModel : ViewModelBase {
 	private DriveItem? _selectedDrive;
 	private bool _isScanning;
 	private bool _isRipping;
-	private string _status = "Insert a DVD.";
+	private string _status = "Insert a DVD or Blu-ray.";
 	private string _discName = "";
 	private string _fileName = "";
 	private string _outputFolder;
@@ -211,7 +211,7 @@ public sealed class MainViewModel : ViewModelBase {
 		set {
 			if (!Set(ref _selectedDrive, value)) return;
 			if (value is { HasDisc: true }) _ = ScanAsync();
-			else ClearDisc(value is null ? "No optical drive found." : "Insert a DVD.");
+			else ClearDisc(value is null ? "No optical drive found." : "Insert a DVD or Blu-ray.");
 		}
 	}
 

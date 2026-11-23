@@ -114,10 +114,12 @@ public sealed class AacsDecryptor : IDisposable {
 		string discId = Convert.ToHexString(SHA1.HashData(ukfBytes));
 		keyFile ??= KeyDb.Find() ?? throw new FileNotFoundException(
 			"This Blu-ray is AACS-encrypted and no key file was found. Put a KEYDB.cfg (libaacs format) in one of: " + string.Join(", ", KeyDb.SearchPaths()));
-		var entry = KeyDb.Lookup(keyFile, discId) ?? throw new KeyNotFoundException($"The key file {keyFile} has no entry for this disc (disc ID {discId}).");
+		var entry = KeyDb.Lookup(keyFile, discId) ?? throw new KeyNotFoundException($"The key file {keyFile} has no key for this disc (disc ID {discId}). LunaDR never downloads keys: " +
+			$"to rip this disc, add a line that starts with {discId} to that file (KEYDB.cfg format: the disc ID, the title, then the disc's VUK or unit keys).");
 		if (entry.UnitKeys.Count > 0 && entry.UnitKeys.All(k => k.Length == 16)) return new AacsDecryptor(entry.UnitKeys);
 		if (entry.Vuk is not null) return new AacsDecryptor(UnitKeysFromVuk(entry.Vuk, ukfBytes));
-		throw new KeyNotFoundException($"The key file's entry for this disc (disc ID {discId}) has neither unit keys nor a VUK.");
+		throw new KeyNotFoundException($"The key file's line for this disc (disc ID {discId}, in {keyFile}) has neither a VUK nor unit keys, so the disc can't be decrypted. " +
+		"Replace it with a line that has one.");
 	}
 
 	/// <summary>True if the unit is marked encrypted (copy-permission bits of its first packet).</summary>

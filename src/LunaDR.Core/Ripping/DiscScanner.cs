@@ -49,7 +49,8 @@ public static class DiscScanner {
 			? disc
 			: Path.Combine(disc, "VIDEO_TS");
 		if (!File.Exists(Path.Combine(videoTs, "VIDEO_TS.IFO")))
-			throw new FileNotFoundException($"No DVD-Video found: {Path.Combine(videoTs, "VIDEO_TS.IFO")} does not exist (is a disc inserted?).");
+			throw new FileNotFoundException($"No DVD or Blu-ray found on {disc}: it has neither VIDEO_TS\\VIDEO_TS.IFO (DVD) nor BDMV\\index.bdmv (Blu-ray). " +
+			"Check that a video DVD or Blu-ray is inserted (an audio CD or data disc can't be ripped).");
 		return videoTs;
 	}
 

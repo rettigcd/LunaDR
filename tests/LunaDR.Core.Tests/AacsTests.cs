@@ -97,7 +97,7 @@ public class AacsTests {
 			string keyFile = Path.Combine(root, "KEYDB.cfg");
 			File.WriteAllText(keyFile, "; empty\n");
 			var e = Assert.Throws<KeyNotFoundException>(() => AacsDecryptor.ForDisc(root, keyFile));
-			Assert.Contains("no entry for this disc", e.Message);
+			Assert.Contains("no key for this disc", e.Message);
 			Assert.Null(AacsDecryptor.ForDisc(Path.Combine(root, "AACS"), keyFile));   // no AACS folder: not encrypted
 		} finally {
 			Directory.Delete(root, recursive: true);

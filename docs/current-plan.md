@@ -140,6 +140,16 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 analyze them (true time left = final reading_s − reading_s of a row, against raw_remaining_s), then build a function that corrects the raw estimate.
 Possible extra data if needed: the clip file's disc address, layer changes, output write speed, retries.
 
+**Unsupported discs: say so early and say what to do** (owner, 2026-11-23). Today an unsupported disc is found out late (after Start) or not at all:
+1. A disc check at scan time, with a banner above the title list saying what the disc is. Detect from files we already read: UHD (AACS version, HEVC clips),
+	BD+ (the `BDSVM` folder), 3D (stereoscopic stream files), a missing `KEYDB.cfg`, and a disc ID the key file has no key for (reported at once, not after Start).
+2. Messages that say what to add, e.g. "UHD Blu-ray (AACS 2, HEVC) is not supported. LunaDR handles DVD and standard Blu-ray with a key file you supply."
+	Plain "not supported yet" texts (video codec, 20/24-bit LPCM) get the same treatment, and warn before the rip.
+3. A "Copy disc details" button: disc ID, AACS version, codecs, the first error (for a bug report).
+4. The same checks in `lunadr-cli info`. Also catch every scan error type in the GUI (only some are caught now), and not just show errors in the status line.
+Done already (2026-11-23): the no-disc text is "Insert a DVD or Blu-ray."; a disc with no DVD or Blu-ray structure says what it looked for;
+a key file without the disc's key says "no key", that keys are never downloaded and which line to add.
+
 **Blu-ray** (owner, 2026-11-19). BR1-BR6 are done (log 2026-11-19): probes `bddrive`, `bdfiles`, `bdtitles`, `bdkey`, `bdpes`, `bdrip`;
 `LunaDR.Core/Bluray` (playlists, clip info, AACS with a key file, transport-stream demuxing, `BdTitleRipper`); the CLI's `info`/`mkv` and the GUI handle Blu-rays.
 Test disc: The Goonies (AACS 1, no bus encryption; VC-1, AC3, TrueHD, PGS). The drive (HL-DT-ST BP50NB40) works; MakeMKV failed only because its Blu-ray support is shareware.

@@ -45,7 +45,7 @@
 					<!-- All titles; short ones dimmed; duplicates and compilations explained in the Note column. -->
 					<DataGrid ItemsSource="{Binding Titles}" SelectedItem="{Binding SelectedTitle}"
 							  AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column" SelectionMode="Single"
-							  CanUserReorderColumns="False" GridLinesVisibility="Horizontal">
+							  CanUserReorderColumns="False" GridLinesVisibility="Horizontal" ColumnHeaderHeight="22">
 						<!-- Compact rows: the Fluent theme's minimum heights (row and checkbox) leave empty space under the text. -->
 						<DataGrid.CellStyle>
 							<Style TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
@@ -63,6 +63,14 @@
 								</Style.Triggers>
 							</Style>
 						</DataGrid.RowStyle>
+						<!-- Header cells with less padding above and below the text (the theme's is generous). -->
+						<DataGrid.ColumnHeaderStyle>
+							<Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+								<Setter Property="MinHeight" Value="0" />
+								<Setter Property="Padding" Value="8,2" />
+								<Setter Property="VerticalContentAlignment" Value="Center" />
+							</Style>
+						</DataGrid.ColumnHeaderStyle>
 						<DataGrid.Columns>
 							<!-- Phase 2: check the titles to rip. A template column, so the checkbox works with one click although the grid is read-only. -->
 							<DataGridTemplateColumn Header="Rip">
@@ -70,7 +78,10 @@
 									<DataTemplate>
 										<CheckBox IsChecked="{Binding IsChecked, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center"
 												  MinHeight="0" MinWidth="0" Padding="0" VerticalAlignment="Center"
-												  IsEnabled="{Binding DataContext.IsRipping, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource Not}}" />
+												  IsEnabled="{Binding DataContext.IsRipping, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource Not}}">
+											<!-- 20% smaller than the theme's 20 px box, so the rows can be lower. -->
+											<CheckBox.LayoutTransform><ScaleTransform ScaleX="0.8" ScaleY="0.8" /></CheckBox.LayoutTransform>
+										</CheckBox>
 									</DataTemplate>
 								</DataGridTemplateColumn.CellTemplate>
 							</DataGridTemplateColumn>
