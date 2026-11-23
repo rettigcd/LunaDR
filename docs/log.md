@@ -691,3 +691,9 @@ Owner hit a Blu-ray with no key and could not copy the disc ID out of the messag
 The result rows (where a failed title's error is listed) and the status line under the title table are now read-only TextBoxes instead of TextBlocks, so their text can be selected and copied (Ctrl+C, right-click).
 Result rows use a DockPanel so long errors wrap to the window width.
 Compiled the GUI into a temp folder (the app was running); not yet seen on screen.
+
+## 2026-11-23 12:20
+
+The no-key message said to add "a line that starts with {discId}", but KEYDB.cfg lines start with `0x` and the lookup needs it.
+The message now shows the line form (`0x<ID> = <title> | V | 0x<VUK>`) and says to search a key list for the 40-character ID after the 0x.
+The AACS test now checks the message for the disc ID and the `0x<ID> =` text.

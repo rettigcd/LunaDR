@@ -115,7 +115,8 @@ public sealed class AacsDecryptor : IDisposable {
 		keyFile ??= KeyDb.Find() ?? throw new FileNotFoundException(
 			"This Blu-ray is AACS-encrypted and no key file was found. Put a KEYDB.cfg (libaacs format) in one of: " + string.Join(", ", KeyDb.SearchPaths()));
 		var entry = KeyDb.Lookup(keyFile, discId) ?? throw new KeyNotFoundException($"The key file {keyFile} has no key for this disc (disc ID {discId}). LunaDR never downloads keys: " +
-			$"to rip this disc, add a line that starts with {discId} to that file (KEYDB.cfg format: the disc ID, the title, then the disc's VUK or unit keys).");
+			$"to rip this disc, add a line to that file in this form: 0x{discId} = <title> | V | 0x<the disc's VUK> " +
+			"(KEYDB.cfg format; to search a key list, look for the disc ID, the 40 characters after 0x).");
 		if (entry.UnitKeys.Count > 0 && entry.UnitKeys.All(k => k.Length == 16)) return new AacsDecryptor(entry.UnitKeys);
 		if (entry.Vuk is not null) return new AacsDecryptor(UnitKeysFromVuk(entry.Vuk, ukfBytes));
 		throw new KeyNotFoundException($"The key file's line for this disc (disc ID {discId}, in {keyFile}) has neither a VUK nor unit keys, so the disc can't be decrypted. " +

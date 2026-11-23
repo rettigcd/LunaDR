@@ -98,6 +98,9 @@ public class AacsTests {
 			File.WriteAllText(keyFile, "; empty\n");
 			var e = Assert.Throws<KeyNotFoundException>(() => AacsDecryptor.ForDisc(root, keyFile));
 			Assert.Contains("no key for this disc", e.Message);
+			string discId = Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(new byte[64]));
+			Assert.Contains($"disc ID {discId}", e.Message);
+			Assert.Contains($"0x{discId} =", e.Message);   // the line to add must start with 0x, or the lookup won't find it
 			Assert.Null(AacsDecryptor.ForDisc(Path.Combine(root, "AACS"), keyFile));   // no AACS folder: not encrypted
 		} finally {
 			Directory.Delete(root, recursive: true);
