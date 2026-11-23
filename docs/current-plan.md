@@ -181,6 +181,7 @@ BR7 is done too: the whole movie (playlist 00000) decodes cleanly and the owner 
 	match the ripped titles to episodes (by order and running time), and name the output files with the episode titles.
 
 ## Open questions
+- **Key fallback by title.** When a Blu-ray's disc ID is not in KEYDB.cfg but lines for the same volume label are, try their unit keys and accept one only if sample units decrypt to valid packets. Tested with probe `bdkeyguess` on Apollo 13 (works: 200 of 200 units). Build it into the rip? libaacs and MakeMKV do not do this.
 Deferred by the owner (answer later):
 - **MakeMKV evaluation** ("not now", 2026-11-19). MakeMKV's Blu-ray support asks to start a 30-day evaluation; starting it would give MakeMKV rips to compare with.
 - **Episode naming: data source.** TheTVDB (paid per-user subscription PIN, has DVD order), or free TVmaze/TMDB (aired order), or TheTVDB with a free fallback? See [episode-matching-analysis.md](episode-matching-analysis.md).

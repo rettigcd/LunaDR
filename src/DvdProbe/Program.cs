@@ -244,6 +244,13 @@ public static class Commands {
 		return 0;
 	}
 
+	[ProbeCommand("bdkeyguess", "Experiment: try the unit keys of key-file lines whose title contains <text> on a Blu-ray whose disc ID is not in the file (no keys printed). Args: <drive or folder> <text> [clip]")]
+	public static int BdKeyGuess(string[] args) {
+		string root = LunaDR.Core.Bluray.BdScanner.ResolveRoot(args[0]) ?? throw new IOException("No Blu-ray structure (BDMV/index.bdmv) found.");
+		BlurayKeyGuessProbe.Check(root, args[1], args.Length > 2 ? args[2] : null);
+		return 0;
+	}
+
 	[ProbeCommand("bdrip", "Rip a Blu-ray playlist to MKV with BdTitleRipper. Args: <drive or folder> <playlist> <output.mkv> [-mb N: only the first N MB of each clip]")]
 	public static int BdRip(string[] args) {
 		string root = LunaDR.Core.Bluray.BdScanner.ResolveRoot(args[0]) ?? throw new IOException("No Blu-ray structure (BDMV/index.bdmv) found.");

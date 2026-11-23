@@ -170,6 +170,51 @@ internal static class BlurayKeyProbe {
 	}
 }
 
+internal static class BlurayKeyGuessProbe {
+	/// <summary>
+	/// Experiment: the disc's own ID is not in the key file, but lines for the same title (other disc IDs) may carry the right unit keys.
+	/// Tries each distinct unit-key set of the lines whose title contains <paramref name="titleText"/> on sample units of a clip.
+	/// Prints only counts, never keys.
+	/// </summary>
+	public static void Check(string root, string titleText, string? clip) {
+		string keyFile = KeyDb.Find() ?? throw new FileNotFoundException("No key file found.");
+		var ukf = File.ReadAllBytes(Path.Combine(root, "AACS", "Unit_Key_RO.inf"));
+		Console.WriteLine($"Disc has {AacsDecryptor.EncryptedUnitKeys(ukf).Count} unit keys; disc ID {Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(ukf))}.");
+
+		var sets = new Dictionary<string, (List<byte[]> Keys, int Lines)>();
+		int lines = 0;
+		foreach (var line in File.ReadLines(keyFile)) {
+			if (KeyDb.ParseLine(line) is not { } e || !e.Title.Contains(titleText, StringComparison.OrdinalIgnoreCase)) continue;
+			lines++;
+			if (e.UnitKeys.Count == 0 || e.UnitKeys.Any(k => k.Length != 16)) continue;
+			string signature = string.Join("|", e.UnitKeys.Select(Convert.ToHexString));
+			sets[signature] = sets.TryGetValue(signature, out var s) ? (s.Keys, s.Lines + 1) : (e.UnitKeys.ToList(), 1);
+		}
+		Console.WriteLine($"{lines} key-file lines have \"{titleText}\" in the title; {sets.Count} distinct usable unit-key set(s).");
+
+		string file = clip is not null ? Path.Combine(root, "BDMV", "STREAM", clip + ".m2ts")
+			: Directory.GetFiles(Path.Combine(root, "BDMV", "STREAM"), "*.m2ts").OrderByDescending(f => new FileInfo(f).Length).First();
+		using var fs = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read);
+		long units = fs.Length / AacsDecryptor.UnitSize;
+		var samples = new List<byte[]>();
+		for (long u = 0; u < units && samples.Count < 200; u += Math.Max(1, units / 400)) {
+			var unit = new byte[AacsDecryptor.UnitSize];
+			fs.Position = u * AacsDecryptor.UnitSize;
+			fs.ReadExactly(unit);
+			if (AacsDecryptor.IsEncrypted(unit)) samples.Add(unit);
+		}
+		Console.WriteLine($"{Path.GetFileName(file)}: {samples.Count} encrypted sample units.");
+
+		int n = 0;
+		foreach (var (keys, count) in sets.Values) {
+			n++;
+			using var aacs = new AacsDecryptor(keys);
+			int ok = samples.Count(s => aacs.DecryptUnit(s.ToArray()));
+			Console.WriteLine($"  set {n} ({keys.Count} keys, on {count} line(s)): {ok} of {samples.Count} units decrypted to valid packets.");
+		}
+	}
+}
+
 internal static class BlurayRipProbe {
 	/// <summary>Rips a playlist with BdTitleRipper (optionally only the first MB of each clip) and prints progress and warnings.</summary>
 	public static void Rip(string root, int playlist, string output, long maxMb) {

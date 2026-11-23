@@ -697,3 +697,10 @@ Compiled the GUI into a temp folder (the app was running); not yet seen on scree
 The no-key message said to add "a line that starts with {discId}", but KEYDB.cfg lines start with `0x` and the lookup needs it.
 The message now shows the line form (`0x<ID> = <title> | V | 0x<VUK>`) and says to search a key list for the 40-character ID after the 0x.
 The AACS test now checks the message for the disc ID and the `0x<ID> =` text.
+
+## 2026-11-23 12:45
+
+Experiment: Apollo 13 (APOLLO_13_GLO_G51) has a disc ID that is not in KEYDB.cfg, but the file has 15 parseable lines for the same volume label (other disc IDs).
+New probe `bdkeyguess <drive> <text> [clip]` tries each distinct unit-key set of the lines whose title contains the text on sample units of the biggest clip (counts only, no keys printed).
+Result: all 15 lines carry one identical 7-key set, and it decrypted 200 of 200 sample units to valid packets.
+So a fallback "same title, other disc ID" is workable for this disc; whether to build it into the rip is the owner's decision (added to the plan's open questions).
