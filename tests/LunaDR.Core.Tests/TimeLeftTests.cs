@@ -90,4 +90,32 @@ public class TimeLeftTests {
 			if (Directory.Exists(folder)) Directory.Delete(folder, true);
 		}
 	}
+
+	[Fact]
+	public void ProgressLog_RecordsReadHealth_MaxReadTimeIsPerRow() {
+		string folder = Path.Combine(Path.GetTempPath(), "lunadr-log-test-" + Guid.NewGuid().ToString("N"));
+		try {
+			string? file;
+			using (var log = new RipProgressLog(folder, "Health test", "output x.mkv")) {
+				file = log.Path;
+				long total = 100_000;
+				// Reading time 0 to 6 s, a progress report each second; a slow read (4.2 s) at 2 s and error counts that grow.
+				for (int s = 0; s <= 6; s++) {
+					var health = new ReadHealth(ReadErrors: s >= 3 ? 2 : 0, UnitRetries: s >= 3 ? 6 : 0, UnreadableUnits: s >= 4 ? 1 : 0, UndecryptableUnits: 0,
+						LastReadMs: s == 2 ? 4200 : 30);
+					var p = new RipProgress(RipPhase.Ripping, s * 1_000L, total, TimeSpan.FromSeconds(s), 0, 0, health);
+					log.Sample(p, TimeSpan.FromSeconds(s), total, 1_000, null, null);
+				}
+			}
+			var lines = File.ReadAllLines(file!);
+			Assert.EndsWith("read_errors,unit_retries,unreadable_units,undecryptable_units,max_read_ms", lines.Single(l => l.StartsWith("row,")));
+			var rows = lines.Where(l => !l.StartsWith('#') && !l.StartsWith("row,")).Select(l => l.Split(',')).ToList();
+			Assert.Equal(2, rows.Count);   // reading at 0 s, and at 5 s
+			Assert.Equal(["0", "0", "0", "0", "30"], rows[0][^5..]);
+			// The slow read at 2 s falls between the two rows: it must show on the second one, with the totals at 5 s.
+			Assert.Equal(["2", "6", "1", "0", "4200"], rows[1][^5..]);
+		} finally {
+			if (Directory.Exists(folder)) Directory.Delete(folder, true);
+		}
+	}
 }

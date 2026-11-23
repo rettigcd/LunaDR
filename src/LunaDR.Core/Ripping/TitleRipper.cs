@@ -14,9 +14,17 @@ public enum RipPhase { Unlocking, FindingKey, Ripping, Finishing, Done }
 /// While ripping, <see cref="CellPosition"/> is the cell being read (0-based position in the title's playlist, or in the chosen cells)
 /// and <see cref="CellFraction"/> how far into it; -1 and 0 before the first cell.
 /// </summary>
-public sealed record RipProgress(RipPhase Phase, long SectorsDone, long SectorsTotal, TimeSpan Elapsed, int CellPosition = -1, double CellFraction = 0) {
+public sealed record RipProgress(RipPhase Phase, long SectorsDone, long SectorsTotal, TimeSpan Elapsed, int CellPosition = -1, double CellFraction = 0, ReadHealth? Health = null) {
 	public double Fraction => SectorsTotal == 0 ? 0 : (double)SectorsDone / SectorsTotal;
 }
+
+/// <summary>
+/// How well the disc is being read (Blu-ray rips; goes into the progress log).
+/// All counts are totals so far: reads of a block that failed, 6 KB units read again after a failure, units that still could not be read (left as zeros),
+/// and units that could not be decrypted. <see cref="LastReadMs"/> is how long the latest read took: a drive working through a damaged spot
+/// takes long without any error being reported, so slow reads show up here before (or without) any count.
+/// </summary>
+public sealed record ReadHealth(long ReadErrors, long UnitRetries, long UnreadableUnits, long UndecryptableUnits, double LastReadMs);
 
 /// <summary>Result of ripping one title.</summary>
 public sealed record RipResult(string OutputPath, long DurationNs, long Sectors, TimeSpan Elapsed, IReadOnlyList<string> Warnings);

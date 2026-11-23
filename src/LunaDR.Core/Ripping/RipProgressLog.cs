@@ -18,6 +18,10 @@ namespace LunaDR.Core.Ripping;
 ///   rate_recent_MBps   speed since the previous row; rate_window_MBps the last minute (what the estimate uses); rate_avg_MBps since reading began
 ///   raw_remaining_s    the estimate from the last-minute speed; avg_remaining_s the old estimate from the average speed
 ///   shown_remaining_s  what the window showed after smoothing
+///   read_errors        reads of a block that failed (the drive reported an error; each unit of the block is then read again)
+///   unit_retries       6 KB units read again after such a failure; unreadable_units those that still failed (left as zeros); undecryptable_units those that could not be decrypted
+///   max_read_ms        the longest single read since the previous row: a drive working through a damaged spot is slow without reporting any error
+///   (the four counts are totals so far)
 /// Failing to write the log never stops a rip.
 /// </summary>
 internal sealed class RipProgressLog : IDisposable {
@@ -26,6 +30,7 @@ internal sealed class RipProgressLog : IDisposable {
 	private readonly StreamWriter? _writer;
 	private TimeSpan _lastRowReading = TimeSpan.MinValue;
 	private long _lastRowBytes;
+	private double _maxReadMs;
 	private bool _finished;
 
 	/// <summary>The file written, or null if it could not be created.</summary>
@@ -41,7 +46,8 @@ internal sealed class RipProgressLog : IDisposable {
 			_writer.WriteLine($"# started {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
 			foreach (var line in description.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)) _writer.WriteLine("# " + line);
 			_writer.WriteLine("row,wall_time,elapsed_s,reading_s,item_pos,item_fraction,bytes_read,bytes_total,bytes_remaining," +
-							  "rate_recent_MBps,rate_window_MBps,rate_avg_MBps,raw_remaining_s,avg_remaining_s,shown_remaining_s");
+							  "rate_recent_MBps,rate_window_MBps,rate_avg_MBps,raw_remaining_s,avg_remaining_s,shown_remaining_s," +
+							  "read_errors,unit_retries,unreadable_units,undecryptable_units,max_read_ms");
 		} catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException) {
 			_writer = null;
 		}
@@ -50,6 +56,7 @@ internal sealed class RipProgressLog : IDisposable {
 	/// <summary>Adds a row if <see cref="Interval"/> of reading has passed since the last one (the first reading always gets one).</summary>
 	public void Sample(RipProgress p, TimeSpan reading, long sectorsTotal, double windowSectorsPerSecond, TimeSpan? raw, TimeSpan? shown) {
 		if (_writer is null || _finished || p.Phase != RipPhase.Ripping) return;
+		_maxReadMs = Math.Max(_maxReadMs, p.Health?.LastReadMs ?? 0);   // every read counts, not only the ones that get a row
 		if (_lastRowReading != TimeSpan.MinValue && reading - _lastRowReading < Interval) return;
 		Row("sample", p, reading, sectorsTotal, windowSectorsPerSecond, raw, shown);
 	}
@@ -73,7 +80,10 @@ internal sealed class RipProgressLog : IDisposable {
 		string S(double? v) => v is { } d ? d.ToString("F1", c) : "";
 		_writer!.WriteLine(string.Join(",", row, DateTime.Now.ToString("HH:mm:ss", c), S(p.Elapsed.TotalSeconds), S(reading.TotalSeconds),
 			p.CellPosition.ToString(c), p.CellFraction.ToString("F3", c), bytes.ToString(c), totalBytes.ToString(c), Math.Max(0, totalBytes - bytes).ToString(c),
-			S(recent), S(windowSps * 2048 / 1e6), S(avg), S(raw?.TotalSeconds), S(avgRemaining), S(shown?.TotalSeconds)));
+			S(recent), S(windowSps * 2048 / 1e6), S(avg), S(raw?.TotalSeconds), S(avgRemaining), S(shown?.TotalSeconds),
+			(p.Health?.ReadErrors ?? 0).ToString(c), (p.Health?.UnitRetries ?? 0).ToString(c), (p.Health?.UnreadableUnits ?? 0).ToString(c),
+			(p.Health?.UndecryptableUnits ?? 0).ToString(c), _maxReadMs.ToString("F0", c)));
+		_maxReadMs = 0;
 		_lastRowReading = reading;
 		_lastRowBytes = bytes;
 	}

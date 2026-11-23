@@ -163,7 +163,8 @@ public sealed class BdTitleRipper {
 		long total = TotalBytes / 2048, done = 0;
 		int itemIndex = -1;
 		double itemFraction = 0;
-		void Report(RipPhase phase) => progress?.Invoke(new RipProgress(phase, done, total, DateTime.UtcNow - started, itemIndex, itemFraction));
+		var health = new ReadStats();
+		void Report(RipPhase phase) => progress?.Invoke(new RipProgress(phase, done, total, DateTime.UtcNow - started, itemIndex, itemFraction, health.Snapshot()));
 
 		Report(RipPhase.FindingKey);
 		using var aacs = AacsDecryptor.ForDisc(_root);
@@ -188,7 +189,6 @@ public sealed class BdTitleRipper {
 			var references = new VideoReferences();
 			byte[]? sps = null, pps = null;
 			long? vc1DelayNs = null;
-			long unreadableUnits = 0, undecryptableUnits = 0;
 
 			void WriteGop(List<VFrame> gop, long untilNs) {
 				if (!headerWritten) {
@@ -347,12 +347,14 @@ public sealed class BdTitleRipper {
 				while (position < clipBytes) {
 					cancel.ThrowIfCancellationRequested();
 					int want = (int)Math.Min(buffer.Length, clipBytes - position);
-					int got = ReadAt(fs, position, buffer.AsSpan(0, want), ref unreadableUnits);
+					var readTimer = System.Diagnostics.Stopwatch.StartNew();
+					int got = ReadAt(fs, position, buffer.AsSpan(0, want), health);
+					health.LastReadMs = readTimer.Elapsed.TotalMilliseconds;
 					for (int u = 0; u + AacsDecryptor.UnitSize <= got; u += AacsDecryptor.UnitSize) {
 						var unit = buffer.AsSpan(u, AacsDecryptor.UnitSize);
 						if (unit.IndexOfAnyExcept((byte)0) < 0) continue;   // an unreadable unit (left as zeros)
 						if (aacs is not null && !aacs.DecryptUnit(unit)) {
-							undecryptableUnits++;
+							health.Undecryptable++;
 							continue;
 						}
 						for (int p = 0; p < AacsDecryptor.UnitSize; p += AacsDecryptor.PacketSize) demux.Feed(unit.Slice(p + 4, 188));
@@ -382,11 +384,11 @@ public sealed class BdTitleRipper {
 			if (pending.Count > 0) WriteGop(pending, long.MaxValue);
 			if (!headerWritten) throw new InvalidDataException($"Playlist {Playlist:00000}: no video key frame found; nothing was written.");
 
-			if (unreadableUnits > 0)
-				warnings.Add($"Damaged spot on the disc: {unreadableUnits:N0} unit(s) of 6 KB could not be read and were skipped; the picture and sound may jump there.");
+			if (health.Unreadable > 0)
+				warnings.Add($"Damaged spot on the disc: {health.Unreadable:N0} unit(s) of 6 KB could not be read and were skipped; the picture and sound may jump there.");
 			if (lateSubtitles > 0) warnings.Add($"{lateSubtitles:N0} subtitle display set(s) came too late in the stream to be placed and were left out ({firstLate}).");
-			if (undecryptableUnits > 0)
-				warnings.Add($"{undecryptableUnits:N0} unit(s) of 6 KB could not be decrypted with the disc's key and were left out (wrong key in the key file?).");
+			if (health.Undecryptable > 0)
+				warnings.Add($"{health.Undecryptable:N0} unit(s) of 6 KB could not be decrypted with the disc's key and were left out (wrong key in the key file?).");
 
 			long durationNs = RipTiming.DurationNs(plan.Tracks);
 			mkv.Finish(durationNs);
@@ -406,16 +408,18 @@ public sealed class BdTitleRipper {
 	/// Reads at a position; on a read error retries each 6 KB unit up to 3 times and leaves units that still fail as zeros (counted), so a damaged
 	/// spot costs only those units, as the DVD reader skips to the next VOBU.
 	/// </summary>
-	private static int ReadAt(FileStream fs, long position, Span<byte> buffer, ref long unreadable) {
+	private static int ReadAt(FileStream fs, long position, Span<byte> buffer, ReadStats health) {
 		try {
 			fs.Position = position;
 			return fs.ReadAtLeast(buffer, buffer.Length, throwOnEndOfStream: false);
 		} catch (IOException) {
+			health.ReadErrors++;
 		}
 		for (int u = 0; u < buffer.Length; u += AacsDecryptor.UnitSize) {
 			var unit = buffer.Slice(u, Math.Min(AacsDecryptor.UnitSize, buffer.Length - u));
 			bool ok = false;
 			for (int attempt = 0; attempt < 3 && !ok; attempt++) {
+				health.UnitRetries++;
 				try {
 					fs.Position = position + u;
 					fs.ReadExactly(unit);
@@ -425,9 +429,17 @@ public sealed class BdTitleRipper {
 			}
 			if (!ok) {
 				unit.Clear();
-				unreadable++;
+				health.Unreadable++;
 			}
 		}
 		return buffer.Length;
 	}
+}
+
+/// <summary>Counters for how the disc reads (see <see cref="ReadHealth"/>).</summary>
+internal sealed class ReadStats {
+	public long ReadErrors, UnitRetries, Unreadable, Undecryptable;
+	public double LastReadMs;
+
+	public ReadHealth Snapshot() => new(ReadErrors, UnitRetries, Unreadable, Undecryptable, LastReadMs);
 }

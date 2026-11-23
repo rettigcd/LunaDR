@@ -715,3 +715,12 @@ Reason: probe `bdkeyguess` showed 15 same-title lines with one shared key set th
 Decision: this goes beyond libaacs and MakeMKV, which look up the exact disc ID only; the trial decryption is what makes it safe.
 Three new tests (107 total): right keys under another ID and another title's keys ignored, wrong keys still "no key", own-ID line has no note.
 Checked on the real disc: a 30 MB rip of Apollo 13 playlist 0 worked and gave the warning.
+
+## 2026-11-23 13:40
+
+Owner asked why the read rate dropped to 0.6 MB/s at 59% of the Apollo 13 rip (the log showed a steady 0.4-0.8 MB/s for minutes, no stall), and asked for read-error columns in the progress log.
+`RipProgress` now carries `ReadHealth` (Blu-ray rips): failed block reads, 6 KB unit retries, unreadable units (zeros), undecryptable units and the duration of the latest read.
+The progress CSV gets five more columns at the end: read_errors, unit_retries, unreadable_units, undecryptable_units (totals so far) and max_read_ms (the slowest single read since the previous row).
+Reason for max_read_ms: a drive working through a damaged spot is slow without reporting an error, so the counts alone would show nothing; the read time shows it.
+The old per-rip counters in `BdTitleRipper` became one `ReadStats` object; the end-of-rip warnings are unchanged.
+New test checks the columns and that the slow read lands on the next row. 108 tests pass.
