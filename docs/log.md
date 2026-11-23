@@ -681,3 +681,6 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 
 ## 2026-11-23 10:38
 	Elapsed time and estimated finish time added to the progress display (owner), in the GUI's all-titles line and the CLI status line: `RipJobProgress.Elapsed` (time since the job started), and `TimeLeftText.FinishText` (now + time left as "h:mm tt", e.g. "2:35 PM", always 12-hour with AM / PM as the owner asked; "tomorrow ..." or a day name when not today). A first version used the culture's short time, which gave "23:30" under the invariant culture; the test caught it, so the format is explicit. 104 tests pass; GUI and CLI compiled into a temporary folder (the running program was not touched); not yet seen on screen.
+
+## 2026-11-23 10:40
+	Progress line wording (owner): elapsed time comes first, before the time left, and "done about" is now "Est. Finished". GUI: `All titles (1 of 1): 12% · 0:25:10 elapsed · 3:21:20 left · Est. Finished 2:35 PM`; the CLI status line starts with `elapsed` and ends with `Est. Finished`. 104 tests pass; GUI and CLI compiled into a temporary folder.

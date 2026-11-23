@@ -121,7 +121,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 - Time left (owner): shown in whole seconds (`3:21:20`, `12:05`), never fractions. The estimate is sectors left ÷ the speed of the last minute (`SpeedMeter`),
 	smoothed by `RemainingSmoother` (counts down with the clock, follows new estimates with a 30 s time constant).
 	Every Blu-ray rip also writes a CSV progress log (`%APPDATA%unadrprogress-logs`, a row per 5 s, final row with the total time) to analyze the estimate.
-- Elapsed and finish time (owner): the all-titles progress line also shows the time elapsed since the job started and "done about 2:35 PM" (12-hour with AM / PM always;
+- Elapsed and finish time (owner): the all-titles progress line also shows the time elapsed since the job started (first, before the time left) and "Est. Finished 2:35 PM" (12-hour with AM / PM always;
 	"tomorrow 1:15 AM" or "Wed 1:00 AM" when not today); the CLI status line shows the same. The finish time is now + the smoothed time left.
 - Branding (owner): `assets/` holds the logo with DR (shown in the GUI header) and the disc without DR (icon of both programs and the window).
 	(Colors, owner: always the light Fluent theme; moon-white window, a moon-blue band across the top and a moon-blue title bar on Windows 11, so the window is easy to spot when alt-tabbing.)
