@@ -59,7 +59,7 @@ Status: **Done**, **Partial**, **Missing**, **Out of scope** (decided not to do 
 | Full disc backup, DVD and Blu-ray (copies the file structure, keeps menus) | Missing | LunaDR extracts titles to MKV only |
 | Decrypted backup (decrypt the video files while copying) | Missing | needs the full backup first |
 | Read retries | Partial | DVD: 3 retries, then skip to the next readable VOBU with a warning; Blu-ray: 3 retries per 6 KB unit, units that still fail become zeros (counted). Both tested with simulated bad sectors only. The number of retries is fixed; MakeMKV lets the user configure it |
-| Debug logging (diagnostics for problem discs) | Partial | Blu-ray rips write a progress CSV (`%APPDATA%\LunaDR\progress-logs`), meant for the time-left estimate; there is no log of read errors, drive commands or disc structure |
+| Debug logging (diagnostics for problem discs) | Partial | Blu-ray rips write a progress CSV (`%APPDATA%\LunaDR\progress-logs`), meant for the time-left estimate, with read-error counts and the slowest read per row; there is no log of drive commands or disc structure |
 | Configurable cache sizes, direct I/O | Missing | no setting for it; read sizes are chosen in the code |
 | Damaged-disc recovery | Partial | MakeMKV is not a recovery tool either (badly unreadable sectors still fail it); we skip or zero what can't be read and warn. Never tested on a real damaged disc |
 
