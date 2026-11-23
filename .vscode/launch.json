@@ -3,11 +3,11 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-			"name": "GUI (lunadr-gui)",
+			"name": "GUI (LunaDR)",
 			"type": "coreclr",
 			"request": "launch",
 			"preLaunchTask": "build",
-			"program": "${workspaceFolder}/src/LunaDR.Gui/bin/Debug/net10.0-windows/lunadr-gui.exe",
+			"program": "${workspaceFolder}/src/LunaDR.Gui/bin/Debug/net10.0-windows/LunaDR.exe",
 			"cwd": "${workspaceFolder}",
 			"console": "internalConsole",
 			"stopAtEntry": false

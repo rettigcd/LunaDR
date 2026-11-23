@@ -4,7 +4,7 @@ Rips movies and TV episodes from a DVD or a Blu-ray into MKV files, much like [M
 Everything is C# on .NET 10, with no external tools or native libraries needed at run time.
 
 - **Command line** (`lunadr-cli`): lists a disc's titles and rips the ones you name.
-- **Windows app** (`lunadr-gui`): scans the disc when it is inserted, shows the titles and which parts of the disc they share,
+- **Windows app** (`LunaDR`): scans the disc when it is inserted, shows the titles and which parts of the disc they share,
 	and rips the titles you check, with progress and remaining time.
 
 The output is laid out like MakeMKV's: the video and audio are copied unchanged; DVD subtitles become VobSub tracks;
@@ -59,7 +59,7 @@ lunadr-cli mkv E: 0 C:\Rips          (playlist 00000 -> C:\Rips\<Disc name> - pl
 ```
 dotnet run --project src/LunaDR.Gui
 ```
-or run `src/LunaDR.Gui/bin/Debug/net10.0-windows/lunadr-gui.exe`.
+or run `src/LunaDR.Gui/bin/Debug/net10.0-windows/LunaDR.exe`.
 
 1. Insert a disc (or pick the drive and click **Scan**). The title list shows every title; short titles are dimmed,
 	and the Note column says when a title repeats another one or is a compilation of other titles.

@@ -28,7 +28,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 	`Mpeg/` (PES parsing; MPEG-2 video, AC3, DTS, LPCM framers; subpicture assembler), `Captions/` (EIA-608 decoder),
 	`Matroska/` (EBML reader/writer, MKV writer), `Ripping/` (disc scanner, cell map with duplicate/compilation detection, title ripper with progress phases, cell progress and cancellation, batch runner `RipJob` with remaining-time estimates, cell selection, options, naming, VobSub header, languages).
 	Interleaved (multi-angle) cells are read unit by unit following the nav packs; read errors are retried 3 times and then skipped to the next readable VOBU, with a warning.
-- **GUI** `src/LunaDR.Gui` (`lunadr-gui.exe`, WPF): all three phases built: drive picker, automatic scan on disc insert, title list (all titles, short ones dimmed, duplicate/compilation notes), compact cell map with selection highlighting and hover details;
+- **GUI** `src/LunaDR.Gui` (`LunaDR.exe`, WPF): all three phases built: drive picker, automatic scan on disc insert, title list (all titles, short ones dimmed, duplicate/compilation notes), compact cell map with selection highlighting and hover details;
 	a checkbox per title, output folder and file name (remembered in %APPDATA%\LunaDR\gui-settings.json), Start/Cancel (Cancel asks first);
 	progress bars with % / time left / MB/s for the title and for all titles, a list of finished files (or per-title errors), Open folder, and "Play a sound when done" (remembered).
 	Cells can be selected in the cell map (click, Ctrl+click, Shift+click) and ripped into one file ("Rip selected cells"); during a rip the cell map shows progress (green strip above the cells, green blocks on the ripped title's row).
@@ -45,7 +45,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 
 ## Design decisions
 
-- **Name: LunaDR** (owner, 2026-11-19). Programs `lunadr-cli` (CLI) and `lunadr-gui` (GUI; a different name so both fit in one folder on case-insensitive Windows);
+- **Name: LunaDR** (owner, 2026-11-19). Programs `LunaDR` (the GUI, the main app: no suffix, 2026-11-23) and `lunadr-cli` (the console program);
 	window titles and the MKV "writing application" say LunaDR; GUI settings in `%APPDATA%\LunaDR`.
 	Solution `LunaDR.slnx`, projects and namespaces `LunaDR.Core`, `LunaDR.Cli`, `LunaDR.Gui`, `LunaDR.Core.Tests` (renamed 2026-11-21). The GitHub repo is `rettigcd/LunaDR` (private).
 

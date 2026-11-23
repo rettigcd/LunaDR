@@ -663,3 +663,6 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 
 ## 2026-11-23 09:25
 	The console program is renamed `lunadr` -> `lunadr-cli` (owner: a name that says it is the console app; "-cli" parallels `lunadr-gui` and is the more common suffix). Changed: AssemblyName, the help and error texts, README, plan, VS Code launch, the feature-gap list. Older log entries keep the old name. Build 0 warnings, 103 tests pass, `lunadr-cli help` runs.
+
+## 2026-11-23 09:26
+	The GUI program is renamed `lunadr-gui` -> `LunaDR` (owner: no -gui suffix, so it is the brand app and not a secondary tool); `LunaDR.exe`. The reason for the old different-name rule (both programs in one folder on case-insensitive Windows) is gone since the console program became `lunadr-cli`. Changed: AssemblyName, VS Code launch, README, assets README, plan, the --screenshot comment. Old log entries keep the old name. Build 0 warnings, 103 tests pass, `LunaDR.exe --screenshot` works. Settings stay in %APPDATA%\LunaDR.

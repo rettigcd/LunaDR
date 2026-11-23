@@ -6,7 +6,7 @@
 		<UseWPF>true</UseWPF>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
-		<AssemblyName>lunadr-gui</AssemblyName>
+		<AssemblyName>LunaDR</AssemblyName>
 		<RootNamespace>LunaDR.Gui</RootNamespace>
 		<ApplicationIcon>..\..\assets\lunadr.ico</ApplicationIcon>
 		<!-- WPF0001: the Fluent theme (ThemeMode) is still marked experimental in .NET 10. -->
