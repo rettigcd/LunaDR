@@ -17,7 +17,6 @@
 		<!-- Built into the program: the window icon and the picture in the header (made from the images in assets/; see assets/README.md). -->
 		<Resource Include="..\..\assets\lunadr.ico" Link="Assets\lunadr.ico" />
 		<Resource Include="..\..\assets\lunadr-logo-256.png" Link="Assets\lunadr-logo-256.png" />
-		<Resource Include="..\..\assets\lunadr-watermark-640.png" Link="Assets\lunadr-watermark-640.png" />
 	</ItemGroup>
 
 	<ItemGroup>

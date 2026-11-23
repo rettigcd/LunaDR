@@ -171,9 +171,5 @@
 				</StackPanel>
 			</StackPanel>
 		</Border>
-		<!-- Watermark: the disc without the DR, large and very faint over everything (the controls have opaque backgrounds, so it can't go behind them).
-		     Not clickable, so it never gets in the way. -->
-		<Image Grid.RowSpan="4" Source="Assets/lunadr-watermark-640.png" Stretch="Uniform" Opacity="0.15" IsHitTestVisible="False"
-			   HorizontalAlignment="Center" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality" />
 	</Grid>
 </Window>

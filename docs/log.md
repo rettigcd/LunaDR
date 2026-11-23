@@ -666,3 +666,6 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 
 ## 2026-11-23 09:26
 	The GUI program is renamed `lunadr-gui` -> `LunaDR` (owner: no -gui suffix, so it is the brand app and not a secondary tool); `LunaDR.exe`. The reason for the old different-name rule (both programs in one folder on case-insensitive Windows) is gone since the console program became `lunadr-cli`. Changed: AssemblyName, VS Code launch, README, assets README, plan, the --screenshot comment. Old log entries keep the old name. Build 0 warnings, 103 tests pass, `LunaDR.exe --screenshot` works. Settings stay in %APPDATA%\LunaDR.
+
+## 2026-11-23 09:29
+	The watermark is removed (owner: did not like the look): the Image in MainWindow.xaml, its resource, `assets/lunadr-watermark-640.png`, its part of `make-icon.ps1`, README and plan mentions. The logo in the header and the icons stay. Full rebuild 0 warnings, 103 tests pass, screenshot checked.

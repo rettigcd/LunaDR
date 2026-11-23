@@ -121,7 +121,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 - Time left (owner): shown in whole seconds (`3:21:20`, `12:05`), never fractions. The estimate is sectors left ÷ the speed of the last minute (`SpeedMeter`),
 	smoothed by `RemainingSmoother` (counts down with the clock, follows new estimates with a 30 s time constant).
 	Every Blu-ray rip also writes a CSV progress log (`%APPDATA%unadrprogress-logs`, a row per 5 s, final row with the total time) to analyze the estimate.
-- Branding (owner): `assets/` holds the logo with DR (shown in the GUI header) and the disc without DR (icon of both programs and the window; faint watermark over the GUI).
+- Branding (owner): `assets/` holds the logo with DR (shown in the GUI header) and the disc without DR (icon of both programs and the window).
 
 ## Platform (Windows 11 now, Linux possible later)
 Target is Windows 11. Keep Linux possible by putting OS-specific code behind small interfaces in `LunaDR.Core`, with one implementation per OS.
