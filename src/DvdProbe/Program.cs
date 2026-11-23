@@ -251,6 +251,18 @@ public static class Commands {
 		return 0;
 	}
 
+	[ProbeCommand("bdscan", "Health scan of a Blu-ray clip: times a short read every N MB (default 100) and maps good, slow, bad and unreadable parts. Args: <drive or folder> [clip] [-mb N] [-from GB] [-to GB]")]
+	public static int BdScan(string[] args) {
+		string root = LunaDR.Core.Bluray.BdScanner.ResolveRoot(args[0]) ?? throw new IOException("No Blu-ray structure (BDMV/index.bdmv) found.");
+		double Opt(string name, double fallback) {
+			int i = Array.IndexOf(args, name);
+			return i < 0 ? fallback : double.Parse(args[i + 1], System.Globalization.CultureInfo.InvariantCulture);
+		}
+		string? clip = args.Skip(1).Where((a, i) => !a.StartsWith('-') && !args[i].StartsWith('-')).FirstOrDefault();   // args[i] is the one before a
+		BlurayScanProbe.Scan(root, clip, (long)Opt("-mb", 100), Opt("-from", 0), Opt("-to", double.MaxValue));
+		return 0;
+	}
+
 	[ProbeCommand("bdrip", "Rip a Blu-ray playlist to MKV with BdTitleRipper. Args: <drive or folder> <playlist> <output.mkv> [-mb N: only the first N MB of each clip]")]
 	public static int BdRip(string[] args) {
 		string root = LunaDR.Core.Bluray.BdScanner.ResolveRoot(args[0]) ?? throw new IOException("No Blu-ray structure (BDMV/index.bdmv) found.");

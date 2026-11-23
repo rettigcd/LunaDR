@@ -285,3 +285,64 @@ internal static class BlurayClipProbe {
 		}
 	}
 }
+
+internal static class BlurayScanProbe {
+	private const int UnitsPerRead = 32, ReadsPerSample = 8;   // 8 reads of 192 KB = 1.5 MB per sample point
+
+	/// <summary>
+	/// Health scan: reads a short stretch (1.5 MB) every <paramref name="stepMb"/> MB of a clip and times it, to see which parts of the disc read well
+	/// and which are slow or unreadable. The first read of a stretch includes the drive's seek and is timed apart; the speed is from the other reads.
+	/// </summary>
+	public static void Scan(string root, string? clip, long stepMb, double fromGb = 0, double toGb = double.MaxValue) {
+		string file = clip is not null ? Path.Combine(root, "BDMV", "STREAM", clip + ".m2ts")
+			: Directory.GetFiles(Path.Combine(root, "BDMV", "STREAM"), "*.m2ts").OrderByDescending(f => new FileInfo(f).Length).First();
+		using var fs = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 1);
+		long unit = AacsDecryptor.UnitSize, readBytes = unit * UnitsPerRead, step = Math.Max(1, stepMb) * 1_000_000 / readBytes * readBytes;
+		Console.WriteLine($"{Path.GetFileName(file)}: {fs.Length / 1e9:F2} GB; a {ReadsPerSample * readBytes / 1e6:F1} MB sample every {step / 1e6:F0} MB. Listed while scanning: read errors and speeds under 1.5 MB/s.");
+		var buffer = new byte[readBytes];
+		var samples = new List<(long Offset, double MBps, double SeekMs, bool Error)>();
+		var total = System.Diagnostics.Stopwatch.StartNew();
+		long start = (long)(fromGb * 1e9) / readBytes * readBytes, end = (long)Math.Min(toGb * 1e9, fs.Length);
+		for (long offset = start; offset + readBytes * ReadsPerSample <= end; offset += step) {
+			double seekMs = 0, secs = 0;
+			int reads = 0;
+			bool error = false;
+			for (int i = 0; i < ReadsPerSample && !error; i++) {
+				var t = System.Diagnostics.Stopwatch.StartNew();
+				try {
+					fs.Position = offset + i * readBytes;
+					fs.ReadExactly(buffer);
+				} catch (IOException) {
+					error = true;
+				}
+				if (i == 0) seekMs = t.Elapsed.TotalMilliseconds;
+				else if (!error) { secs += t.Elapsed.TotalSeconds; reads++; }
+			}
+			double mbps = reads > 0 && secs > 0 ? reads * readBytes / secs / 1e6 : 0;
+			samples.Add((offset, mbps, seekMs, error));
+			if (error || mbps < 1.5 || seekMs > 1500) Console.WriteLine($"  {offset / 1e9,6:F2} GB ({(double)offset / fs.Length,4:P0})  {(error ? "READ ERROR" : $"{mbps:F1} MB/s")}  first read {seekMs:F0} ms");
+		}
+		// Short reads after a seek run slower than a streaming rip does (about 3.5 MB/s here on a healthy disc, against 15 to 18 MB/s in a rip),
+		// so the limits are lower than the rip's: on the Apollo 13 disc healthy parts gave 2.2 to 4 MB/s and the damaged part 0.3 to 1.5 MB/s.
+		var marks = samples.Select(s => (s.Offset, Mark: s.Error ? '!' : s.MBps >= 2.5 ? '.' : s.MBps >= 1.5 ? 's' : 'X')).ToList();
+		var sorted = samples.Where(s => !s.Error).Select(s => s.MBps).Order().ToList();
+		Console.WriteLine();
+		Console.WriteLine($"Median sample speed {(sorted.Count > 0 ? sorted[sorted.Count / 2] : 0):F1} MB/s. " +
+						  "Marks: . good (2.5 MB/s or more), s slow (1.5 to 2.5), X bad (under 1.5), ! read error.");
+		Console.WriteLine("Map (each mark is one sample; row = 100 samples):");
+		for (int i = 0; i < marks.Count; i += 100)
+			Console.WriteLine($"  {marks[i].Offset / 1e9,6:F2} GB  {new string(marks.Skip(i).Take(100).Select(m => m.Mark).ToArray())}");
+		Console.WriteLine();
+		foreach (var kind in new[] { ('.', "good"), ('s', "slow"), ('X', "bad"), ('!', "read error") })
+			Console.WriteLine($"  {kind.Item2,-10} {marks.Count(m => m.Mark == kind.Item1),4} of {marks.Count} samples");
+		// Contiguous stretches that are not good.
+		long? from = null, to = null;
+		void Flush() { if (from is { } f) Console.WriteLine($"  not good: {f / 1e9:F2} GB to {(to!.Value + step) / 1e9:F2} GB"); from = null; }
+		foreach (var m in marks) {
+			if (m.Mark == '.') Flush();
+			else { from ??= m.Offset; to = m.Offset; }
+		}
+		Flush();
+		Console.WriteLine($"Scan took {total.Elapsed:m\\:ss}.");
+	}
+}

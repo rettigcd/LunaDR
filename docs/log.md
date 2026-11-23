@@ -736,3 +736,13 @@ Not built: a timer thread to update the line during one stuck read.
 Reads are 196 KB, so at 0.6 MB/s the line still updates about three times a second, and the progress callbacks are not thread-safe.
 A drive's own retries happen inside one read and are not reported by Windows, so they show as slow reading, not as attempt numbers; the attempts shown are LunaDR's own (3 per 6 KB unit after a failed read).
 6 new tests (114 total). The GUI and CLI were compiled into temp folders (the rip was still running); not yet seen on screen.
+
+## 2026-11-23 14:50
+
+Owner asked to skip ahead and check whether later parts of the disc read well, and to do a health scan probe first.
+New probe `bdscan <drive> [clip] [-mb N] [-from GB] [-to GB]`: times a 1.5 MB read every N MB (default 100) of a clip (the biggest by default) and prints a map: `.` good, `s` slow, `X` bad, `!` read error.
+Short reads after a seek are slower than a streaming rip (about 3.5 MB/s on a healthy part here, against 15 to 18 MB/s in the rip), so the limits are 2.5 and 1.5 MB/s, taken from this disc: healthy parts gave 2.2 to 4 MB/s, the damaged part 0.3 to 1.5 MB/s.
+`-from` and `-to` limit the range, to test only a bad part again after cleaning the disc.
+Result on Apollo 13 (before cleaning; clip 00010.m2ts, 39.57 GB, 397 samples, 5:47): no read errors; one stretch from 23.47 GB to about 29.5 GB (59% to 75%, about 1:23 to 1:44 into the movie) reads at 0.3 to 0.7 MB/s, slowly improving to 1 to 2 MB/s at its end; the rest reads normally.
+That matches where the rip slowed (23.4 GB) and why it never recovered: the slow stretch is about 6 GB, not a small spot.
+A first version of the probe used fixed limits copied from rip speeds and called almost every sample slow; fixed before this entry.
