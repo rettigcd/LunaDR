@@ -660,3 +660,6 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 
 ## 2026-11-23 09:23
 	Watermark opacity raised from 7% to 15% (owner: too faint). Checked in a screenshot with a full title table: the disc is clearly visible and the text stays readable (dimmed rows a little less so).
+
+## 2026-11-23 09:25
+	The console program is renamed `lunadr` -> `lunadr-cli` (owner: a name that says it is the console app; "-cli" parallels `lunadr-gui` and is the more common suffix). Changed: AssemblyName, the help and error texts, README, plan, VS Code launch, the feature-gap list. Older log entries keep the old name. Build 0 warnings, 103 tests pass, `lunadr-cli help` runs.

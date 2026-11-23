@@ -5,7 +5,7 @@ namespace LunaDR.Core.Ripping;
 
 /// <summary>
 /// Output file names: "&lt;Disc name&gt; - title NN.mkv", e.g. "Dead Zone S4 D1 - title 01.mkv".
-/// NN is the disc's own title number (as a DVD player and "lunadr info" show it), so a file can be traced back to the disc.
+/// NN is the disc's own title number (as a DVD player and "lunadr-cli info" show it), so a file can be traced back to the disc.
 /// This replaces MakeMKV's "&lt;name&gt;-&lt;comment&gt;_tNN.mkv", whose comment part (C1, B2, ...) and renumbered ids are hard to read (owner's choice).
 /// </summary>
 public static class OutputNaming {

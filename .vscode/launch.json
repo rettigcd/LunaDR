@@ -13,11 +13,11 @@
 			"stopAtEntry": false
 		},
 		{
-			"name": "CLI (lunadr info)",
+			"name": "CLI (lunadr-cli info)",
 			"type": "coreclr",
 			"request": "launch",
 			"preLaunchTask": "build",
-			"program": "${workspaceFolder}/src/LunaDR.Cli/bin/Debug/net10.0/lunadr.exe",
+			"program": "${workspaceFolder}/src/LunaDR.Cli/bin/Debug/net10.0/lunadr-cli.exe",
 			// Change the arguments to run another command, e.g. ["mkv", "E:", "0", "C:\\Rips", "--dry-run"].
 			"args": ["info", "E:"],
 			"cwd": "${workspaceFolder}",

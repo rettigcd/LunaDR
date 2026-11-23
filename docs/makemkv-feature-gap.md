@@ -62,7 +62,7 @@ Status: **Done**, **Partial**, **Missing**, **Out of scope** (decided not to do 
 
 | MakeMKV feature | Status | Notes |
 |---|---|---|
-| Command line (`info`, `mkv`, `disc:N`) | Done | `lunadr` |
+| Command line (`info`, `mkv`, `disc:N`) | Done | `lunadr-cli` |
 | Machine-readable output (`-r`: titles, streams, progress, errors as lines) | Missing | |
 | `backup` command | Missing | see section 4 |
 | Streaming server | Missing | |

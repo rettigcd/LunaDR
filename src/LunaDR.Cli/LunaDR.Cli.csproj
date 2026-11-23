@@ -9,7 +9,7 @@
 		<TargetFramework>net10.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
-		<AssemblyName>lunadr</AssemblyName>
+		<AssemblyName>lunadr-cli</AssemblyName>
 		<RootNamespace>LunaDR.Cli</RootNamespace>
 		<ApplicationIcon>..\..\assets\lunadr.ico</ApplicationIcon>
 	</PropertyGroup>

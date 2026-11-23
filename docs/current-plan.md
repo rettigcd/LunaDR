@@ -4,7 +4,7 @@ Process rules for this file are in [CLAUDE.md](../CLAUDE.md).
 This file describes the present state only; the history is in [log.md](log.md).
 
 ## Status
-- **Ripping works end to end on Windows.** CLI `src/LunaDR.Cli` (executable `lunadr`), modeled on makemkvcon; `lunadr help` / `help <command>` / `-h` explain everything:
+- **Ripping works end to end on Windows.** CLI `src/LunaDR.Cli` (executable `lunadr-cli`), modeled on makemkvcon; `lunadr-cli help` / `help <command>` / `-h` explain everything:
 	`info [disc] [--all] [--minlength=N] [--cells]` lists titles by the disc's own title numbers (length, chapters, size, audio, subtitles, CC); `--cells` adds the numbered cell table;
 	`mkv <disc> <titles|all> <folder>` writes `<Disc name> - title NN.mkv`, titles like `1` or `1,3,6` (`all` = titles ≥ 120 s);
 	`mkv <disc> cells:LIST <folder>` rips chosen cells (e.g. `cells:23-27,30`, one title set) joined into `<Disc name> - cells LIST.mkv`, one chapter per cell.
@@ -45,7 +45,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 
 ## Design decisions
 
-- **Name: LunaDR** (owner, 2026-11-19). Programs `lunadr` (CLI) and `lunadr-gui` (GUI; a different name so both fit in one folder on case-insensitive Windows);
+- **Name: LunaDR** (owner, 2026-11-19). Programs `lunadr-cli` (CLI) and `lunadr-gui` (GUI; a different name so both fit in one folder on case-insensitive Windows);
 	window titles and the MKV "writing application" say LunaDR; GUI settings in `%APPDATA%\LunaDR`.
 	Solution `LunaDR.slnx`, projects and namespaces `LunaDR.Core`, `LunaDR.Cli`, `LunaDR.Gui`, `LunaDR.Core.Tests` (renamed 2026-11-21). The GitHub repo is `rettigcd/LunaDR` (private).
 
