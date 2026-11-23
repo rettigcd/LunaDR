@@ -287,62 +287,79 @@ internal static class BlurayClipProbe {
 }
 
 internal static class BlurayScanProbe {
-	private const int UnitsPerRead = 32, ReadsPerSample = 8;   // 8 reads of 192 KB = 1.5 MB per sample point
-
 	/// <summary>
-	/// Health scan: reads a short stretch (1.5 MB) every <paramref name="stepMb"/> MB of a clip and times it, to see which parts of the disc read well
-	/// and which are slow or unreadable. The first read of a stretch includes the drive's seek and is timed apart; the speed is from the other reads.
+	/// Health scan of a clip with <see cref="DiscHealthScanner"/>: samples every <paramref name="stepMb"/> MB, prints a map and the bad stretches,
+	/// then offers to narrow their edges by halving (<paramref name="refine"/>: true = do it, false = don't, null = ask, with the time it takes).
 	/// </summary>
-	public static void Scan(string root, string? clip, long stepMb, double fromGb = 0, double toGb = double.MaxValue) {
+	public static void Scan(string root, string? clip, long stepMb, double fromGb, double toGb, bool? refine) {
 		string file = clip is not null ? Path.Combine(root, "BDMV", "STREAM", clip + ".m2ts")
 			: Directory.GetFiles(Path.Combine(root, "BDMV", "STREAM"), "*.m2ts").OrderByDescending(f => new FileInfo(f).Length).First();
-		using var fs = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 1);
-		long unit = AacsDecryptor.UnitSize, readBytes = unit * UnitsPerRead, step = Math.Max(1, stepMb) * 1_000_000 / readBytes * readBytes;
-		Console.WriteLine($"{Path.GetFileName(file)}: {fs.Length / 1e9:F2} GB; a {ReadsPerSample * readBytes / 1e6:F1} MB sample every {step / 1e6:F0} MB. Listed while scanning: read errors and speeds under 1.5 MB/s.");
-		var buffer = new byte[readBytes];
-		var samples = new List<(long Offset, double MBps, double SeekMs, bool Error)>();
+		using var scanner = new DiscHealthScanner(file);
+		long step = Math.Max(1, stepMb) * 1_000_000;
+		Console.WriteLine($"{Path.GetFileName(file)}: {scanner.Length / 1e9:F2} GB; a {DiscHealthScanner.SampleBytes / 1e6:F1} MB sample every {step / 1e6:F0} MB. " +
+						  $"Listed while scanning: read errors and speeds under {HealthSample.BadMBps} MB/s.");
 		var total = System.Diagnostics.Stopwatch.StartNew();
-		long start = (long)(fromGb * 1e9) / readBytes * readBytes, end = (long)Math.Min(toGb * 1e9, fs.Length);
-		for (long offset = start; offset + readBytes * ReadsPerSample <= end; offset += step) {
-			double seekMs = 0, secs = 0;
-			int reads = 0;
-			bool error = false;
-			for (int i = 0; i < ReadsPerSample && !error; i++) {
-				var t = System.Diagnostics.Stopwatch.StartNew();
-				try {
-					fs.Position = offset + i * readBytes;
-					fs.ReadExactly(buffer);
-				} catch (IOException) {
-					error = true;
-				}
-				if (i == 0) seekMs = t.Elapsed.TotalMilliseconds;
-				else if (!error) { secs += t.Elapsed.TotalSeconds; reads++; }
-			}
-			double mbps = reads > 0 && secs > 0 ? reads * readBytes / secs / 1e6 : 0;
-			samples.Add((offset, mbps, seekMs, error));
-			if (error || mbps < 1.5 || seekMs > 1500) Console.WriteLine($"  {offset / 1e9,6:F2} GB ({(double)offset / fs.Length,4:P0})  {(error ? "READ ERROR" : $"{mbps:F1} MB/s")}  first read {seekMs:F0} ms");
-		}
-		// Short reads after a seek run slower than a streaming rip does (about 3.5 MB/s here on a healthy disc, against 15 to 18 MB/s in a rip),
-		// so the limits are lower than the rip's: on the Apollo 13 disc healthy parts gave 2.2 to 4 MB/s and the damaged part 0.3 to 1.5 MB/s.
-		var marks = samples.Select(s => (s.Offset, Mark: s.Error ? '!' : s.MBps >= 2.5 ? '.' : s.MBps >= 1.5 ? 's' : 'X')).ToList();
-		var sorted = samples.Where(s => !s.Error).Select(s => s.MBps).Order().ToList();
+		var samples = scanner.ScanCoarse(step, (long)(fromGb * 1e9), (long)Math.Min(toGb * 1e9, long.MaxValue), s => {
+			if (s.IsBad || s.FirstReadMs > 1500)
+				Console.WriteLine($"  {s.Offset / 1e9,6:F2} GB ({(double)s.Offset / scanner.Length,4:P0})  {(s.Error ? "READ ERROR" : $"{s.MBps:F1} MB/s")}  first read {s.FirstReadMs:F0} ms");
+		});
+
+		// Short reads after a seek run slower than a streaming rip does (about 3.5 MB/s here on a healthy disc, against 15 to 18 MB/s in a rip).
+		char Mark(HealthSample s) => s.Error ? '!' : s.MBps >= HealthSample.GoodMBps ? '.' : s.IsBad ? 'X' : 's';
 		Console.WriteLine();
-		Console.WriteLine($"Median sample speed {(sorted.Count > 0 ? sorted[sorted.Count / 2] : 0):F1} MB/s. " +
-						  "Marks: . good (2.5 MB/s or more), s slow (1.5 to 2.5), X bad (under 1.5), ! read error.");
-		Console.WriteLine("Map (each mark is one sample; row = 100 samples):");
-		for (int i = 0; i < marks.Count; i += 100)
-			Console.WriteLine($"  {marks[i].Offset / 1e9,6:F2} GB  {new string(marks.Skip(i).Take(100).Select(m => m.Mark).ToArray())}");
-		Console.WriteLine();
-		foreach (var kind in new[] { ('.', "good"), ('s', "slow"), ('X', "bad"), ('!', "read error") })
-			Console.WriteLine($"  {kind.Item2,-10} {marks.Count(m => m.Mark == kind.Item1),4} of {marks.Count} samples");
-		// Contiguous stretches that are not good.
-		long? from = null, to = null;
-		void Flush() { if (from is { } f) Console.WriteLine($"  not good: {f / 1e9:F2} GB to {(to!.Value + step) / 1e9:F2} GB"); from = null; }
-		foreach (var m in marks) {
-			if (m.Mark == '.') Flush();
-			else { from ??= m.Offset; to = m.Offset; }
+		Console.WriteLine("Marks: . good (2.5 MB/s or more), s slow (1.5 to 2.5), X bad (under 1.5), ! read error. Map (each mark is one sample; row = 100 samples):");
+		for (int i = 0; i < samples.Count; i += 100)
+			Console.WriteLine($"  {samples[i].Offset / 1e9,6:F2} GB  {new string(samples.Skip(i).Take(100).Select(Mark).ToArray())}");
+		Console.WriteLine($"  {samples.Count(s => Mark(s) == '.')} good, {samples.Count(s => Mark(s) == 's')} slow, {samples.Count(s => Mark(s) == 'X')} bad, " +
+						  $"{samples.Count(s => Mark(s) == '!')} read errors, of {samples.Count} samples; the scan took {total.Elapsed:m\\:ss}.");
+
+		var stretches = DiscHealthScanner.FindStretches(samples);
+		if (stretches.Count == 0) {
+			Console.WriteLine("No bad stretches.");
+			return;
 		}
-		Flush();
-		Console.WriteLine($"Scan took {total.Elapsed:m\\:ss}.");
+		Console.WriteLine($"{stretches.Count} bad stretch(es); the edges are only known to within one sample step:");
+		foreach (var s in stretches) Console.WriteLine("  " + Describe(s, scanner.Length));
+
+		long resolution = DiscHealthScanner.DefaultResolution;
+		var edges = DiscHealthScanner.Edges(stretches, resolution);
+		if (edges.Count == 0) return;
+		var estimate = DiscHealthScanner.EstimateRefine(stretches, samples, resolution);
+		bool go = refine ?? Ask($"Narrow the {edges.Count} edge(s) by halving? It takes about {Format(estimate)}. [y/N] ");
+		if (!go) return;
+		if (refine == true) Console.WriteLine($"Narrowing the {edges.Count} edge(s) by halving; about {Format(estimate)}.");
+
+		total.Restart();
+		var refined = new List<string>();
+		foreach (var s in stretches) {
+			double start = s.LastGoodBefore >= 0 ? Midpoint(scanner.Refine(s.LastGoodBefore, s.FirstBad, resolution)) : s.FirstBad;
+			double end = s.FirstGoodAfter >= 0 ? Midpoint(scanner.Refine(s.FirstGoodAfter, s.LastBad, resolution)) : s.LastBad + DiscHealthScanner.SampleBytes;
+			refined.Add($"bad from about {start / 1e9:F3} GB ({start / scanner.Length:P1}) to about {end / 1e9:F3} GB ({end / scanner.Length:P1}), " +
+						$"{(end - start) / 1e9:F2} GB long");
+		}
+		Console.WriteLine($"Narrowed to within {resolution / 1e6:F1} MB in {total.Elapsed:m\\:ss} (estimated {Format(estimate)}):");
+		foreach (var line in refined) Console.WriteLine("  " + line);
+	}
+
+	private static double Midpoint((long Good, long Bad) edge) => (edge.Good + edge.Bad) / 2.0;
+
+	private static string Describe(HealthStretch s, long length) =>
+		$"starts between {(s.LastGoodBefore < 0 ? "the beginning" : $"{s.LastGoodBefore / 1e9:F2}")} and {s.FirstBad / 1e9:F2} GB, " +
+		$"ends between {s.LastBad / 1e9:F2} and {(s.FirstGoodAfter < 0 ? "the end" : $"{s.FirstGoodAfter / 1e9:F2}")} GB " +
+		$"({(double)s.FirstBad / length:P0} to {(double)(s.FirstGoodAfter < 0 ? length : s.FirstGoodAfter) / length:P0} of the file)";
+
+	/// <summary>Rounded up to 10 seconds: "40 s", "2 min 10 s".</summary>
+	private static string Format(TimeSpan t) {
+		int s = Math.Max(10, (int)(Math.Ceiling(t.TotalSeconds / 10) * 10));
+		return s >= 60 ? $"{s / 60} min {s % 60:00} s" : $"{s} s";
+	}
+
+	private static bool Ask(string question) {
+		if (Console.IsInputRedirected) {
+			Console.WriteLine(question + "(no answer: input is redirected; pass -refine to do it)");
+			return false;
+		}
+		Console.Write(question);
+		return Console.ReadLine()?.Trim().StartsWith("y", StringComparison.OrdinalIgnoreCase) == true;
 	}
 }

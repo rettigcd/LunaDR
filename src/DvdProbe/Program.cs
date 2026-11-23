@@ -251,7 +251,7 @@ public static class Commands {
 		return 0;
 	}
 
-	[ProbeCommand("bdscan", "Health scan of a Blu-ray clip: times a short read every N MB (default 100) and maps good, slow, bad and unreadable parts. Args: <drive or folder> [clip] [-mb N] [-from GB] [-to GB]")]
+	[ProbeCommand("bdscan", "Health scan of a Blu-ray clip: times a short read every N MB (default 100) and maps good, slow, bad and unreadable parts. Args: <drive or folder> [clip] [-mb N] [-from GB] [-to GB] [-refine | -no-refine]. After the scan, bad stretches can have their edges narrowed by halving: asks first (with the time it takes) unless -refine or -no-refine is given")]
 	public static int BdScan(string[] args) {
 		string root = LunaDR.Core.Bluray.BdScanner.ResolveRoot(args[0]) ?? throw new IOException("No Blu-ray structure (BDMV/index.bdmv) found.");
 		double Opt(string name, double fallback) {
@@ -259,7 +259,8 @@ public static class Commands {
 			return i < 0 ? fallback : double.Parse(args[i + 1], System.Globalization.CultureInfo.InvariantCulture);
 		}
 		string? clip = args.Skip(1).Where((a, i) => !a.StartsWith('-') && !args[i].StartsWith('-')).FirstOrDefault();   // args[i] is the one before a
-		BlurayScanProbe.Scan(root, clip, (long)Opt("-mb", 100), Opt("-from", 0), Opt("-to", double.MaxValue));
+		BlurayScanProbe.Scan(root, clip, (long)Opt("-mb", 100), Opt("-from", 0), Opt("-to", double.MaxValue),
+			args.Contains("-refine") ? true : args.Contains("-no-refine") ? false : null);
 		return 0;
 	}
 

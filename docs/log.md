@@ -746,3 +746,18 @@ Short reads after a seek are slower than a streaming rip (about 3.5 MB/s on a he
 Result on Apollo 13 (before cleaning; clip 00010.m2ts, 39.57 GB, 397 samples, 5:47): no read errors; one stretch from 23.47 GB to about 29.5 GB (59% to 75%, about 1:23 to 1:44 into the movie) reads at 0.3 to 0.7 MB/s, slowly improving to 1 to 2 MB/s at its end; the rest reads normally.
 That matches where the rip slowed (23.4 GB) and why it never recovered: the slow stretch is about 6 GB, not a small spot.
 A first version of the probe used fixed limits copied from rip speeds and called almost every sample slow; fixed before this entry.
+
+## 2026-11-23 15:10
+
+Plan step 1 of the scan flow (owner: after the coarse scan finds problems, ask whether to narrow the edges, with the time it takes): the scan moved from the probe into Core as `DiscHealthScanner` (probe `bdscan` now uses it).
+It samples a clip, finds bad stretches (`FindStretches`; runs of bad samples with one or two slow-but-not-bad samples between are joined, and a bad first sample is ignored as drive spin-up), estimates the time to narrow their edges (`EstimateRefine`) and narrows them by halving (`Bisect`).
+The probe asks "Narrow the N edge(s) by halving? It takes about 40 s. [y/N]" and takes `-refine` / `-no-refine` for scripts.
+Findings from the first real runs on Apollo 13:
+- The scan read through the Windows file cache: a second scan of the same offsets said "all good" in under a second while the disc was as slow as before. The scanner now opens the file with FILE_FLAG_NO_BUFFERING (aligned buffer, `RandomAccess.Read`), so every sample comes from the disc.
+- Edges are fuzzy: the start of the slow part moved by about 0.3 GB between two scans (23.47 and 23.70 GB), so the default resolution is 8 samples (12.6 MB), not one sample (1.6 MB), and the estimate for narrowing was 1 min 10 s against 1 min 38 s when it was done on stretches split by a single slow sample; after joining such stretches it was 10 s against 10 s.
+- With the cache bypassed and stretches joined: one bad stretch from 23.406 GB to 28.143 GB (59.1% to 71.1% of the clip, 4.74 GB, no read errors).
+  The live rip had slowed at 23.406 GB too.
+Layer question (owner: MakeMKV says the disc has 2 layers): `fsutil file queryextents` shows the clip as two extents, the second starting at file offset 23.403 GB, which is where the slow part starts.
+That boundary is a file fragment break (768 sectors apart on the disc), not the layer break, which would be at about sector 12,219,392 if the first layer holds the usual 25.03 GB (not read from the drive), about 24.9 GB into the clip.
+The slow part reads equally slowly on both sides of that point and ends at 28.14 GB, while the rest of the clip, still on the second layer, reads normally; so the second layer is not slow as a whole.
+New tests (125 in all) for the stretch finding, joining, bisecting, estimate and a real file.
