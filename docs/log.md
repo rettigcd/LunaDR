@@ -649,3 +649,11 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 
 ## 2026-11-23 08:40
 	Brand images from the owner (made outside this repo): `assets/lunadr-logo.png` (with the DR subscript) and `assets/lunadr-icon.png` (without). The icon `assets/lunadr.ico` (16-256 px) is built from the second by `assets/make-icon.ps1` and is the icon of `lunadr.exe`, `lunadr-gui.exe` and the main window. The first is shown at the left of the GUI header (a 256 px copy, `lunadr-logo-256.png`, is built into the program; the 1.9 MB original is not). Checked: the header shows the logo; both exes carry the icon. 90 tests pass.
+
+## 2026-11-23 09:20
+	Time left, three changes at the owner's request (the countdown jumped, and fell faster than the clock):
+	(1) Smoothing: new `RemainingSmoother` (Ripping): the shown value counts down with the clock and is pulled toward each new estimate (time constant 30 s); used for the title and the all-titles time in `RipJob`.
+	(2) Whole seconds: new `TimeLeftText` formats `h:mm:ss` / `m:ss`, rounded to the second (the owner wants seconds, no fractions); used by the GUI and the CLI.
+	(3) Not fixed yet, data first: every Blu-ray rip writes a CSV progress log (`RipProgressLog`, folder `%APPDATA%\LunaDR\progress-logs`, `RipOptions.ProgressLogFolder`): a row about every 5 s of reading with elapsed, reading time, play item, bytes read/total/remaining, three speeds, the raw estimate, the old average-based estimate and the shown one, and a final row (done/cancelled/failed) with the total time and 0 bytes remaining. Plan: collect several rips, analyze, build a correcting heuristic (Next steps).
+	Also (owner): the disc without DR is a faint watermark (7% opacity, over the whole window, not clickable) on the GUI; `assets/make-icon.ps1` makes the 640 px copy. Checked in a screenshot: visible, does not hide the text.
+	Tests: 13 new (smoother, text format, log file); 103 pass. Build 0 warnings.

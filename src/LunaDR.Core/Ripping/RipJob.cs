@@ -57,12 +57,15 @@ public sealed class RipJob(string videoTsFolder, IReadOnlyList<RipJobItem> items
 		long sectorsReadBefore = 0;                // sectors read while ripping earlier titles
 		TimeSpan readingTimeBefore = TimeSpan.Zero;  // time spent reading earlier titles
 		var meter = new SpeedMeter();
+		var overallSmoother = new RemainingSmoother();
 
 		for (int index = 0; index < Items.Count; index++) {
 			cancel.ThrowIfCancellationRequested();
 			var item = Items[index];
 			TimeSpan? readingStartedAt = null;     // Elapsed of this title when its Ripping phase began
 			RipProgress? last = null;
+			var titleSmoother = new RemainingSmoother();
+			using var log = ProgressLogFor(item);
 
 			void OnProgress(RipProgress p) {
 				last = p;
@@ -77,14 +80,21 @@ public sealed class RipJob(string videoTsFolder, IReadOnlyList<RipJobItem> items
 				double titleFraction = p.Phase == RipPhase.Done ? 1 : titleTotal == 0 ? 0 : Math.Min(0.999, (double)p.SectorsDone / titleTotal);
 				long overallDone = finishedSectors + (long)(titleFraction * item.Sectors);
 				TimeSpan? Remaining(long sectors) => sectorsPerSecond > 0 ? TimeSpan.FromSeconds(Math.Max(0, sectors) / sectorsPerSecond) : null;
+				var titleRaw = Remaining(titleTotal - p.SectorsDone);
+				var overallRaw = Remaining(allSectors - overallDone);
+				var titleShown = titleSmoother.Next(reading, titleRaw);
+				var overallShown = overallSmoother.Next(reading, overallRaw);
+				log?.Sample(p, readingStartedAt is { } begun ? p.Elapsed - begun : TimeSpan.Zero, titleTotal, sectorsPerSecond, titleRaw, titleShown);
 
 				progress?.Invoke(new RipJobProgress(
 					index, Items.Count, item, p,
-					titleFraction, Remaining(titleTotal - p.SectorsDone),
-					allSectors == 0 ? 0 : (double)overallDone / allSectors, Remaining(allSectors - overallDone),
+					titleFraction, titleShown,
+					allSectors == 0 ? 0 : (double)overallDone / allSectors, overallShown,
 					sectorsPerSecond * 2048));
 			}
 
+			TimeSpan ItemReading() => readingStartedAt is { } begun && last is { } lp ? lp.Elapsed - begun : TimeSpan.Zero;
+			long ItemTotal() => last is { SectorsTotal: > 0 } tp ? tp.SectorsTotal : item.Sectors;
 			try {
 				RipResult result;
 				if (item.Playlist is { } playlist) {
@@ -93,11 +103,14 @@ public sealed class RipJob(string videoTsFolder, IReadOnlyList<RipJobItem> items
 					var ripper = item.Cells is { } cells ? TitleRipper.ForCells(videoTsFolder, cells) : new TitleRipper(videoTsFolder, item.TitleNumber);
 					result = ripper.Rip(item.OutputPath, OnProgress, options: options, cancel: cancel);
 				}
+				log?.Finish("done", last, ItemReading(), ItemTotal());
 				results.Add(new RipJobItemResult(item, result, null));
 				itemFinished?.Invoke(results[^1]);
 			} catch (OperationCanceledException) {
+				log?.Finish("cancelled", last, ItemReading(), ItemTotal());
 				throw;
 			} catch (Exception ex) when (ex is IOException or InvalidDataException or NotSupportedException or UnauthorizedAccessException or ArgumentException or KeyNotFoundException) {
+				log?.Finish("failed", last, ItemReading(), ItemTotal());
 				results.Add(new RipJobItemResult(item, null, ex));
 				itemFinished?.Invoke(results[^1]);
 			}
@@ -111,4 +124,11 @@ public sealed class RipJob(string videoTsFolder, IReadOnlyList<RipJobItem> items
 		}
 		return results;
 	}
+
+	/// <summary>A progress log for a Blu-ray item when the options ask for one (see <see cref="RipOptions.ProgressLogFolder"/>), else null.</summary>
+	private RipProgressLog? ProgressLogFor(RipJobItem item) =>
+		item.Playlist is { } playlist && options?.ProgressLogFolder is { } folder
+			? new RipProgressLog(folder, Path.GetFileNameWithoutExtension(item.OutputPath),
+				$"output {item.OutputPath}\nplaylist {playlist:00000}, {item.Sectors} sectors ({item.Sectors * 2048 / 1e9:F2} GB)\nTrueHD core track {options.TrueHdCore}")
+			: null;
 }

@@ -35,7 +35,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 	Output identical to the CLI's (Butterfly Effect titles 3 and 6; Beauty and the Beast cells 32,45 = title 5). Test mode `--screenshot file.png [--drive E] [--rip 3,6 | --cells 32,45] [--to folder] [--midshot file.png]`.
 	For a Blu-ray the map shows playlists against clip segments; "Rip selected cells" is DVD-only for now.
 - Probe `src/DvdProbe`: `drives`, `files`, `titles [-v]`, `scramble`, `crack` (old), `key`, `duration`, `bench`, `demux`, `mkvinfo [-dumptrack]`, `rip [-cells N] [-bad sectors]`, `cellmap`, `navwalk`, `copyright`, `canceltest`, `mkvcompare`.
-- **Unit tests** `tests/LunaDR.Core.Tests` (xUnit, `dotnet test LunaDR.slnx`, 90 tests, < 1 s, no disc needed): regression tests for every bug in the log that a test could catch
+- **Unit tests** `tests/LunaDR.Core.Tests` (xUnit, `dotnet test LunaDR.slnx`, 103 tests, < 1 s, no disc needed): regression tests for every bug in the log that a test could catch
 	(LPCM pointer, palette, duration, caption and pulldown timing, references, clusters, empty tracks, DTS channels, interleaved angles, angle chapters, audio gaps, read errors, sizes),
 	plus cell selection, naming, languages, duplicates/compilations, nav packs and the MKV writer.
 	Tests on real IFO files read git-ignored `tests/data/ifo/<disc>/` (now: Beauty and the Beast) and are skipped without it.
@@ -118,6 +118,10 @@ This file describes the present state only; the history is in [log.md](log.md).
 	Clicking a cell selects it (Ctrl+click adds/removes, Shift+click selects a range; click order = playback order); selected columns get a green band; "Rip selected cells" rips them.
 	During a rip: a strip above the cells fills green cell by cell (current cell partly), and the ripped title's blocks turn green.
 - Completion sound: the Windows default notification sound, for now (owner).
+- Time left (owner): shown in whole seconds (`3:21:20`, `12:05`), never fractions. The estimate is sectors left ÷ the speed of the last minute (`SpeedMeter`),
+	smoothed by `RemainingSmoother` (counts down with the clock, follows new estimates with a 30 s time constant).
+	Every Blu-ray rip also writes a CSV progress log (`%APPDATA%unadrprogress-logs`, a row per 5 s, final row with the total time) to analyze the estimate.
+- Branding (owner): `assets/` holds the logo with DR (shown in the GUI header) and the disc without DR (icon of both programs and the window; faint watermark over the GUI).
 
 ## Platform (Windows 11 now, Linux possible later)
 Target is Windows 11. Keep Linux possible by putting OS-specific code behind small interfaces in `LunaDR.Core`, with one implementation per OS.
@@ -131,6 +135,10 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 | GUI | WPF, Windows only (owner: the GUI will be Windows-only) | none for the CLI; the GUI would need porting (e.g. Avalonia) if ever wanted on Linux |
 
 ## Next steps
+**Time-left heuristic** (owner): the estimate still falls faster than the clock while the drive speeds up. Rip several Blu-rays (logs are written automatically),
+analyze them (true time left = final reading_s − reading_s of a row, against raw_remaining_s), then build a function that corrects the raw estimate.
+Possible extra data if needed: the clip file's disc address, layer changes, output write speed, retries.
+
 **Blu-ray** (owner, 2026-11-19). BR1-BR6 are done (log 2026-11-19): probes `bddrive`, `bdfiles`, `bdtitles`, `bdkey`, `bdpes`, `bdrip`;
 `LunaDR.Core/Bluray` (playlists, clip info, AACS with a key file, transport-stream demuxing, `BdTitleRipper`); the CLI's `info`/`mkv` and the GUI handle Blu-rays.
 Test disc: The Goonies (AACS 1, no bus encryption; VC-1, AC3, TrueHD, PGS). The drive (HL-DT-ST BP50NB40) works; MakeMKV failed only because its Blu-ray support is shareware.

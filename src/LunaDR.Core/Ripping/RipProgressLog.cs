@@ -1,0 +1,82 @@
+using System.Globalization;
+using System.Text;
+
+namespace LunaDR.Core.Ripping;
+
+/// <summary>
+/// A log of how one rip progressed, to find out why the "time left" is off (and to build a correction for it).
+/// One CSV file per ripped title: lines starting with # describe the rip, then one row about every <see cref="Interval"/> of reading,
+/// and a last row (row = done, cancelled or failed) with the total time; for "done" the bytes remaining are 0, so every earlier row's
+/// true time left is (final reading_s − its reading_s).
+/// Columns:
+///   row            sample or done/cancelled/failed
+///   wall_time      clock time of day
+///   elapsed_s      seconds since the title started (including unlocking the drive and finding keys)
+///   reading_s      seconds since reading began (what the speeds use)
+///   item_pos       the play item being read (0-based), item_fraction how far into it
+///   bytes_read, bytes_total, bytes_remaining   of the clip files the playlist reads
+///   rate_recent_MBps   speed since the previous row; rate_window_MBps the last minute (what the estimate uses); rate_avg_MBps since reading began
+///   raw_remaining_s    the estimate from the last-minute speed; avg_remaining_s the old estimate from the average speed
+///   shown_remaining_s  what the window showed after smoothing
+/// Failing to write the log never stops a rip.
+/// </summary>
+internal sealed class RipProgressLog : IDisposable {
+	public static readonly TimeSpan Interval = TimeSpan.FromSeconds(5);
+
+	private readonly StreamWriter? _writer;
+	private TimeSpan _lastRowReading = TimeSpan.MinValue;
+	private long _lastRowBytes;
+	private bool _finished;
+
+	/// <summary>The file written, or null if it could not be created.</summary>
+	public string? Path { get; }
+
+	public RipProgressLog(string folder, string title, string description) {
+		try {
+			Directory.CreateDirectory(folder);
+			string safe = string.Concat(title.Select(c => System.IO.Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
+			Path = System.IO.Path.Combine(folder, $"{DateTime.Now:yyyyMMdd-HHmmss} {safe}.csv");
+			_writer = new StreamWriter(Path, false, new UTF8Encoding(false)) { AutoFlush = true };
+			_writer.WriteLine("# LunaDR rip progress log");
+			_writer.WriteLine($"# started {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+			foreach (var line in description.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)) _writer.WriteLine("# " + line);
+			_writer.WriteLine("row,wall_time,elapsed_s,reading_s,item_pos,item_fraction,bytes_read,bytes_total,bytes_remaining," +
+							  "rate_recent_MBps,rate_window_MBps,rate_avg_MBps,raw_remaining_s,avg_remaining_s,shown_remaining_s");
+		} catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException) {
+			_writer = null;
+		}
+	}
+
+	/// <summary>Adds a row if <see cref="Interval"/> of reading has passed since the last one (the first reading always gets one).</summary>
+	public void Sample(RipProgress p, TimeSpan reading, long sectorsTotal, double windowSectorsPerSecond, TimeSpan? raw, TimeSpan? shown) {
+		if (_writer is null || _finished || p.Phase != RipPhase.Ripping) return;
+		if (_lastRowReading != TimeSpan.MinValue && reading - _lastRowReading < Interval) return;
+		Row("sample", p, reading, sectorsTotal, windowSectorsPerSecond, raw, shown);
+	}
+
+	/// <summary>Adds the last row. <paramref name="outcome"/> is done, cancelled or failed; for done the bytes remaining are 0.</summary>
+	public void Finish(string outcome, RipProgress? last, TimeSpan reading, long sectorsTotal) {
+		if (_writer is null || _finished) return;
+		var p = last ?? new RipProgress(RipPhase.Done, 0, sectorsTotal, TimeSpan.Zero);
+		if (outcome == "done") p = p with { SectorsDone = sectorsTotal };
+		Row(outcome, p, reading, sectorsTotal, 0, outcome == "done" ? TimeSpan.Zero : null, outcome == "done" ? TimeSpan.Zero : null);
+		_finished = true;
+	}
+
+	private void Row(string row, RipProgress p, TimeSpan reading, long total, double windowSps, TimeSpan? raw, TimeSpan? shown) {
+		long bytes = p.SectorsDone * 2048, totalBytes = total * 2048;
+		double sinceLast = _lastRowReading == TimeSpan.MinValue ? reading.TotalSeconds : (reading - _lastRowReading).TotalSeconds;
+		double recent = sinceLast > 0 ? (bytes - _lastRowBytes) / sinceLast / 1e6 : 0;
+		double avg = reading.TotalSeconds > 0 ? bytes / reading.TotalSeconds / 1e6 : 0;
+		double? avgRemaining = avg > 0 ? (totalBytes - bytes) / (avg * 1e6) : null;
+		var c = CultureInfo.InvariantCulture;
+		string S(double? v) => v is { } d ? d.ToString("F1", c) : "";
+		_writer!.WriteLine(string.Join(",", row, DateTime.Now.ToString("HH:mm:ss", c), S(p.Elapsed.TotalSeconds), S(reading.TotalSeconds),
+			p.CellPosition.ToString(c), p.CellFraction.ToString("F3", c), bytes.ToString(c), totalBytes.ToString(c), Math.Max(0, totalBytes - bytes).ToString(c),
+			S(recent), S(windowSps * 2048 / 1e6), S(avg), S(raw?.TotalSeconds), S(avgRemaining), S(shown?.TotalSeconds)));
+		_lastRowReading = reading;
+		_lastRowBytes = bytes;
+	}
+
+	public void Dispose() => _writer?.Dispose();
+}

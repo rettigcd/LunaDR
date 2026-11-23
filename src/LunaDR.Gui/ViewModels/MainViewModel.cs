@@ -471,7 +471,7 @@ public sealed class MainViewModel : ViewModelBase {
 		string videoTs = _videoTs!;   // both callers return early when no disc is scanned
 		bool cancelled = false;
 		try {
-			var options = new RipOptions { TrueHdCore = TrueHdCore };
+			var options = new RipOptions { TrueHdCore = TrueHdCore, ProgressLogFolder = RipOptions.DefaultProgressLogFolder };
 			var results = await Task.Run(() => new RipJob(videoTs, items, options).Run(progress.Report, _cancel.Token, finished.Report));
 			int failed = results.Count(r => r.Error is not null);
 			RipStatus = failed == 0
@@ -508,7 +508,7 @@ public sealed class MainViewModel : ViewModelBase {
 	}
 
 	private void OnRipProgress(RipJobProgress p) {
-		string Time(TimeSpan? t) => t is { } r ? $"{(int)r.TotalHours}:{r.Minutes:00}:{r.Seconds:00} left" : "estimating time…";
+		string Time(TimeSpan? t) => t is null ? "estimating time…" : TimeLeftText.Format(t) + " left";
 		string state = p.Title.Phase switch {
 			RipPhase.Unlocking => "unlocking the drive",
 			RipPhase.FindingKey => "finding the title key",

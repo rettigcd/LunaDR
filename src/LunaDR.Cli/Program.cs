@@ -98,6 +98,7 @@ public static class Program {
 						ClosedCaptions = !values.TryGetValue("captions", out var cc) || OnOff(cc!, "captions"),
 						Chapters = !values.TryGetValue("chapters", out var ch) || OnOff(ch!, "chapters"),
 						TrueHdCore = !values.TryGetValue("truehd-core", out var core) || OnOff(core!, "truehd-core"),
+						ProgressLogFolder = RipOptions.DefaultProgressLogFolder,
 					};
 					return Mkv(positional[1], positional[2], positional[3], minLength, values.GetValueOrDefault("name"), options,
 						overwrite: values.ContainsKey("overwrite"), dryRun: values.ContainsKey("dry-run"),
@@ -431,7 +432,7 @@ public static class Program {
 		return results.Any(r => r.Error is not null) ? 2 : 0;
 	}
 
-	private static string Remaining(TimeSpan? t) => t is { } r ? $"{(int)r.TotalHours}:{r.Minutes:00}:{r.Seconds:00}" : "-:--:--";
+	private static string Remaining(TimeSpan? t) => TimeLeftText.Format(t);
 
 	private static string Format(long ns) {
 		var ts = TimeSpan.FromTicks(ns / 100);

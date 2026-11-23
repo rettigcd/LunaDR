@@ -48,4 +48,9 @@ $logo = [System.Drawing.Image]::FromFile((Join-Path $Assets "lunadr-logo.png"))
 $small = Resize-Png $logo 256
 $small.Save((Join-Path $Assets "lunadr-logo-256.png"), [System.Drawing.Imaging.ImageFormat]::Png)
 $small.Dispose(); $logo.Dispose()
+# The watermark behind the app window: the disc without the "DR", 640 px (it is drawn very faint and large).
+$disc = [System.Drawing.Image]::FromFile((Join-Path $Assets "lunadr-icon.png"))
+$mark = Resize-Png $disc 640
+$mark.Save((Join-Path $Assets "lunadr-watermark-640.png"), [System.Drawing.Imaging.ImageFormat]::Png)
+$mark.Dispose(); $disc.Dispose()
 "done"

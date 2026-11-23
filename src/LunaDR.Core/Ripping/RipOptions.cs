@@ -19,6 +19,16 @@ public sealed class RipOptions {
 	/// </summary>
 	public bool TrueHdCore { get; init; } = true;
 
+	/// <summary>
+	/// Blu-ray: write a CSV log of the rip's progress here, one file per title (see <see cref="RipProgressLog"/>), to analyze the time-left estimate.
+	/// Null = no log.
+	/// </summary>
+	public string? ProgressLogFolder { get; init; }
+
+	/// <summary>Where the programs keep the progress logs: %APPDATA%\LunaDR\progress-logs.</summary>
+	public static string DefaultProgressLogFolder =>
+		Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "LunaDR", "progress-logs");
+
 	/// <summary>Write the disc's chapters.</summary>
 	public bool Chapters { get; init; } = true;
 
