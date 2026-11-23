@@ -87,6 +87,9 @@ public sealed class AacsDecryptor : IDisposable {
 
 	public IReadOnlyList<byte[]> UnitKeys => _unitKeys;
 
+	/// <summary>Set when the keys did not come from the disc's own key-file line (see <see cref="ForDisc"/>); to be shown to the user as a warning.</summary>
+	public string? KeyNote { get; private init; }
+
 	/// <summary>The encrypted unit keys stored in Unit_Key_RO.inf (libaacs: count at the table offset, keys at offset + 48, 48 bytes apart).</summary>
 	public static List<byte[]> EncryptedUnitKeys(byte[] unitKeyFile) {
 		int pos = (int)Mpls.Be32(unitKeyFile, 0);
@@ -114,13 +117,68 @@ public sealed class AacsDecryptor : IDisposable {
 		string discId = Convert.ToHexString(SHA1.HashData(ukfBytes));
 		keyFile ??= KeyDb.Find() ?? throw new FileNotFoundException(
 			"This Blu-ray is AACS-encrypted and no key file was found. Put a KEYDB.cfg (libaacs format) in one of: " + string.Join(", ", KeyDb.SearchPaths()));
-		var entry = KeyDb.Lookup(keyFile, discId) ?? throw new KeyNotFoundException($"The key file {keyFile} has no key for this disc (disc ID {discId}). LunaDR never downloads keys: " +
-			$"to rip this disc, add a line to that file in this form: 0x{discId} = <title> | V | 0x<the disc's VUK> " +
-			"(KEYDB.cfg format; to search a key list, look for the disc ID, the 40 characters after 0x).");
+		var entry = KeyDb.Lookup(keyFile, discId);
+		if (entry is null) {
+			// Other copies of the same release are listed under other disc IDs but share the unit keys: try those, and use a set only if it decrypts the disc.
+			var (found, tried) = SameTitleKeys(root, keyFile, ukfBytes);
+			if (found is not null) return found;
+			throw new KeyNotFoundException($"The key file {keyFile} has no key for this disc (disc ID {discId}). LunaDR never downloads keys: " +
+				$"to rip this disc, add a line to that file in this form: 0x{discId} = <title> | V | 0x<the disc's VUK> " +
+				"(KEYDB.cfg format; to search a key list, look for the disc ID, the 40 characters after 0x)." +
+				(tried > 0 ? $" The {tried} other unit-key set(s) listed for discs with this volume name did not decrypt this disc." : ""));
+		}
 		if (entry.UnitKeys.Count > 0 && entry.UnitKeys.All(k => k.Length == 16)) return new AacsDecryptor(entry.UnitKeys);
 		if (entry.Vuk is not null) return new AacsDecryptor(UnitKeysFromVuk(entry.Vuk, ukfBytes));
 		throw new KeyNotFoundException($"The key file's line for this disc (disc ID {discId}, in {keyFile}) has neither a VUK nor unit keys, so the disc can't be decrypted. " +
 		"Replace it with a line that has one.");
+	}
+
+	/// <summary>
+	/// Fallback when the disc's ID is not in the key file: the unit-key sets (same key count as the disc) of the lines whose title starts with the disc's volume name.
+	/// A set is used only if it decrypts sample units of the biggest stream file, so a different pressing's keys are never used by mistake.
+	/// Returns the decryptor (null if none worked) and how many different sets were tried.
+	/// </summary>
+	private static (AacsDecryptor? Found, int Tried) SameTitleKeys(string root, string keyFile, byte[] unitKeyFile) {
+		string label = BdScanner.VolumeName(root);
+		int count = EncryptedUnitKeys(unitKeyFile).Count;
+		if (label.Length == 0 || count == 0) return (null, 0);
+		var sets = new Dictionary<string, (List<byte[]> Keys, int Lines)>();
+		foreach (var line in File.ReadLines(keyFile)) {
+			if (KeyDb.ParseLine(line) is not { } e || e.UnitKeys.Count != count || e.UnitKeys.Any(k => k.Length != 16)) continue;
+			if (!e.Title.Split(' ', 2)[0].Equals(label, StringComparison.OrdinalIgnoreCase)) continue;
+			string signature = string.Join("|", e.UnitKeys.Select(Convert.ToHexString));
+			sets[signature] = sets.TryGetValue(signature, out var s) ? (s.Keys, s.Lines + 1) : (e.UnitKeys.ToList(), 1);
+		}
+		if (sets.Count == 0) return (null, 0);
+		var samples = SampleEncryptedUnits(root);
+		if (samples.Count == 0) return (null, sets.Count);   // nothing to check a guess against
+		foreach (var (keys, lines) in sets.Values) {
+			using var trial = new AacsDecryptor(keys);
+			if (!samples.All(s => trial.DecryptUnit(s.ToArray()))) continue;
+			return (new AacsDecryptor(keys) {
+				KeyNote = $"The key file has no line for this disc's ID; used the unit keys of {lines} other line(s) for \"{label}\", " +
+						  $"which decrypted all {samples.Count} sample units of the disc."
+			}, sets.Count);
+		}
+		return (null, sets.Count);
+	}
+
+	/// <summary>Up to 50 encrypted units spread over the biggest stream file.</summary>
+	private static List<byte[]> SampleEncryptedUnits(string root) {
+		var samples = new List<byte[]>();
+		string streams = Path.Combine(root, "BDMV", "STREAM");
+		if (!Directory.Exists(streams)) return samples;
+		string? file = Directory.GetFiles(streams, "*.m2ts").OrderByDescending(f => new FileInfo(f).Length).FirstOrDefault();
+		if (file is null) return samples;
+		using var fs = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read);
+		long units = fs.Length / UnitSize;
+		for (long u = 0; u < units && samples.Count < 50; u += Math.Max(1, units / 200)) {
+			var unit = new byte[UnitSize];
+			fs.Position = u * UnitSize;
+			fs.ReadExactly(unit);
+			if (IsEncrypted(unit)) samples.Add(unit);
+		}
+		return samples;
 	}
 
 	/// <summary>True if the unit is marked encrypted (copy-permission bits of its first packet).</summary>

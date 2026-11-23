@@ -56,7 +56,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 	are small internal classes (`VideoReferences`, `ClusterRule`, `RipTiming`, `AudioContinuity`) so they can be tested. Disc comparisons with MakeMKV stay the end-to-end check.
 - Blu-ray (code in `LunaDR.Core/Bluray`): read the disc's files through Windows' UDF file system; one title per playlist, numbered by its file (00000 = 0);
 	files named `<Disc name> - playlist NNNNN.mkv`; AACS decryption with a per-disc key from a `KEYDB.cfg` key file the owner supplies (next to the program,
-	`%APPDATA%\aacs` or `%LOCALAPPDATA%\aacs`), never downloaded. Tracks: video, the first play item's audio (TrueHD as two tracks, TrueHD and its AC3 core;
+	`%APPDATA%\aacs` or `%LOCALAPPDATA%\aacs`), never downloaded. If the disc ID has no line, the unit keys of other lines whose title starts with the disc's volume name are tried and one is used only if it decrypts sample units of the disc (a warning says so; owner, 2026-11-23). Tracks: video, the first play item's audio (TrueHD as two tracks, TrueHD and its AC3 core;
 	the core is an option, on by default (owner): `RipOptions.TrueHdCore`, CLI `--truehd-core=on|off`, GUI checkbox "AC3 copy of TrueHD" shown for Blu-rays, remembered),
 	PGS subtitles; chapters from the entry marks (a mark within 1 s of the end dropped). VC-1 is a VfW track with decode times plus the decoder delay.
 	PGS display sets without an END segment are closed 2 s after they start. UHD, BD+, 3D, menus and bus encryption are out of scope for now.
@@ -181,7 +181,6 @@ BR7 is done too: the whole movie (playlist 00000) decodes cleanly and the owner 
 	match the ripped titles to episodes (by order and running time), and name the output files with the episode titles.
 
 ## Open questions
-- **Key fallback by title.** When a Blu-ray's disc ID is not in KEYDB.cfg but lines for the same volume label are, try their unit keys and accept one only if sample units decrypt to valid packets. Tested with probe `bdkeyguess` on Apollo 13 (works: 200 of 200 units). Build it into the rip? libaacs and MakeMKV do not do this.
 Deferred by the owner (answer later):
 - **MakeMKV evaluation** ("not now", 2026-11-19). MakeMKV's Blu-ray support asks to start a 30-day evaluation; starting it would give MakeMKV rips to compare with.
 - **Episode naming: data source.** TheTVDB (paid per-user subscription PIN, has DVD order), or free TVmaze/TMDB (aired order), or TheTVDB with a free fallback? See [episode-matching-analysis.md](episode-matching-analysis.md).

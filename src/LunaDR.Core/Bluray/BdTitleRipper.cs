@@ -167,6 +167,7 @@ public sealed class BdTitleRipper {
 
 		Report(RipPhase.FindingKey);
 		using var aacs = AacsDecryptor.ForDisc(_root);
+		if (aacs?.KeyNote is { } keyNote) warnings.Add(keyNote);
 		var plan = BuildPlan(options, warnings);
 
 		Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(outputPath))!);

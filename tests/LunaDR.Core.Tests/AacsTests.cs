@@ -106,4 +106,72 @@ public class AacsTests {
 			Directory.Delete(root, recursive: true);
 		}
 	}
+
+	/// <summary>A made-up disc folder named <paramref name="label"/> with one unit key, whose stream file is encrypted with <see cref="UnitKey"/>.</summary>
+	private static string MakeDisc(string label) {
+		string root = Path.Combine(Path.GetTempPath(), "aacs-" + Guid.NewGuid().ToString("N"), label);
+		Directory.CreateDirectory(Path.Combine(root, "AACS"));
+		Directory.CreateDirectory(Path.Combine(root, "BDMV", "STREAM"));
+		var ukf = new byte[0x100 + 48 + 48];
+		ukf[2] = 0x01;   // key table at 0x100
+		ukf[0x101] = 1;
+		File.WriteAllBytes(Path.Combine(root, "AACS", "Unit_Key_RO.inf"), ukf);
+		using var stream = File.Create(Path.Combine(root, "BDMV", "STREAM", "00001.m2ts"));
+		for (int i = 0; i < 20; i++) {
+			var unit = PlainUnit();
+			AacsDecryptor.EncryptUnit(UnitKey, unit);
+			stream.Write(unit);
+		}
+		return root;
+	}
+
+	private static string KeyLine(string id, string title, byte[] unitKey) =>
+		$"0x{id} = {title} | D | 2020-01-01 | U | 1-0x{Convert.ToHexString(unitKey)} ; test";
+
+	[Fact]
+	public void MissingDiscId_UsesUnitKeysOfSameTitleLines_WhenTheyDecryptTheDisc() {
+		string root = MakeDisc("MY_DISC_X1");
+		try {
+			string keyFile = Path.Combine(root, "KEYDB.cfg");
+			File.WriteAllLines(keyFile, [
+				KeyLine(new string('A', 40), "OTHER_TITLE (other)", UnitKey),            // right keys, but another title: never tried
+				KeyLine(new string('B', 40), "MY_DISC_X1 (a pressing)", OtherKey),       // same title, wrong keys: rejected by the trial decryption
+				KeyLine(new string('C', 40), "MY_DISC_X1 (another copy)", UnitKey),      // same title, right keys
+			]);
+			using var aacs = AacsDecryptor.ForDisc(root, keyFile);
+			Assert.NotNull(aacs);
+			Assert.Equal([UnitKey], aacs.UnitKeys);
+			Assert.Contains("no line for this disc's ID", aacs.KeyNote);
+		} finally {
+			Directory.Delete(Path.GetDirectoryName(root)!, recursive: true);
+		}
+	}
+
+	[Fact]
+	public void MissingDiscId_SameTitleLinesWithWrongKeys_StillReportsNoKey() {
+		string root = MakeDisc("MY_DISC_X2");
+		try {
+			string keyFile = Path.Combine(root, "KEYDB.cfg");
+			File.WriteAllText(keyFile, KeyLine(new string('B', 40), "MY_DISC_X2 (a pressing)", OtherKey) + "\n");
+			var e = Assert.Throws<KeyNotFoundException>(() => AacsDecryptor.ForDisc(root, keyFile));
+			Assert.Contains("no key for this disc", e.Message);
+			Assert.Contains("1 other unit-key set(s)", e.Message);
+		} finally {
+			Directory.Delete(Path.GetDirectoryName(root)!, recursive: true);
+		}
+	}
+
+	[Fact]
+	public void DiscIdInKeyFile_NeedsNoNote() {
+		string root = MakeDisc("MY_DISC_X3");
+		try {
+			string id = Convert.ToHexString(SHA1.HashData(File.ReadAllBytes(Path.Combine(root, "AACS", "Unit_Key_RO.inf"))));
+			string keyFile = Path.Combine(root, "KEYDB.cfg");
+			File.WriteAllText(keyFile, KeyLine(id, "MY_DISC_X3", UnitKey) + "\n");
+			using var aacs = AacsDecryptor.ForDisc(root, keyFile);
+			Assert.Null(aacs!.KeyNote);
+		} finally {
+			Directory.Delete(Path.GetDirectoryName(root)!, recursive: true);
+		}
+	}
 }

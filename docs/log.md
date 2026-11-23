@@ -704,3 +704,14 @@ Experiment: Apollo 13 (APOLLO_13_GLO_G51) has a disc ID that is not in KEYDB.cfg
 New probe `bdkeyguess <drive> <text> [clip]` tries each distinct unit-key set of the lines whose title contains the text on sample units of the biggest clip (counts only, no keys printed).
 Result: all 15 lines carry one identical 7-key set, and it decrypted 200 of 200 sample units to valid packets.
 So a fallback "same title, other disc ID" is workable for this disc; whether to build it into the rip is the owner's decision (added to the plan's open questions).
+
+## 2026-11-23 13:10
+
+Question answered (owner: "build it into the rip"): when the disc's ID is not in KEYDB.cfg, `AacsDecryptor.ForDisc` now tries the unit keys of lines whose title starts with the disc's volume name (same key count as the disc).
+A key set is used only if it decrypts all of up to 50 sample units of the biggest stream file, so another pressing's keys are never used by mistake.
+The rip shows a warning ("The key file has no line for this disc's ID; used the unit keys of N other line(s) for ...").
+If no set works, the no-key error says how many other sets were tried.
+Reason: probe `bdkeyguess` showed 15 same-title lines with one shared key set that decrypted 200 of 200 units of the Apollo 13 disc; copies of one release have different disc IDs but the same keys.
+Decision: this goes beyond libaacs and MakeMKV, which look up the exact disc ID only; the trial decryption is what makes it safe.
+Three new tests (107 total): right keys under another ID and another title's keys ignored, wrong keys still "no key", own-ID line has no note.
+Checked on the real disc: a 30 MB rip of Apollo 13 playlist 0 worked and gave the warning.
