@@ -20,11 +20,15 @@ public sealed record RipProgress(RipPhase Phase, long SectorsDone, long SectorsT
 
 /// <summary>
 /// How well the disc is being read (Blu-ray rips; goes into the progress log).
-/// All counts are totals so far: reads of a block that failed, 6 KB units read again after a failure, units that still could not be read (left as zeros),
-/// and units that could not be decrypted. <see cref="LastReadMs"/> is how long the latest read took: a drive working through a damaged spot
-/// takes long without any error being reported, so slow reads show up here before (or without) any count.
+/// All counts are totals so far: reads of a block that failed, 6 KB units read again after a failure,
+/// units that still could not be read (left as zeros), and units that could not be decrypted.
+/// <see cref="LastReadMs"/> is how long the latest read took.
+/// A drive working through a damaged spot takes long without any error being reported, so slow reads show up here before (or without) any count.
+/// While a failed unit is being read again, <see cref="RetryAttempt"/> (1 to 3) is the attempt and <see cref="RetryPosition"/> its byte position in the clip;
+/// otherwise 0.
 /// </summary>
-public sealed record ReadHealth(long ReadErrors, long UnitRetries, long UnreadableUnits, long UndecryptableUnits, double LastReadMs);
+public sealed record ReadHealth(long ReadErrors, long UnitRetries, long UnreadableUnits, long UndecryptableUnits, double LastReadMs,
+	long RetryPosition = 0, int RetryAttempt = 0);
 
 /// <summary>Result of ripping one title.</summary>
 public sealed record RipResult(string OutputPath, long DurationNs, long Sectors, TimeSpan Elapsed, IReadOnlyList<string> Warnings);

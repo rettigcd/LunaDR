@@ -724,3 +724,15 @@ The progress CSV gets five more columns at the end: read_errors, unit_retries, u
 Reason for max_read_ms: a drive working through a damaged spot is slow without reporting an error, so the counts alone would show nothing; the read time shows it.
 The old per-rip counters in `BdTitleRipper` became one `ReadStats` object; the end-of-rip warnings are unchanged.
 New test checks the columns and that the slow read lands on the next row. 108 tests pass.
+
+## 2026-11-23 14:05
+
+Owner asked for a status that shows what the drive is dealing with while reading is slow ("attempt 1 of 3"), after the Apollo 13 rip fell to 0.6 MB/s at 59% (still 0.6 MB/s 14 minutes later).
+New `DriveStatusTracker` (Core) turns the read measurements into one line, or nothing when all is well: "Drive error: reading the unit at 23.69 GB again (attempt 2 of 3)", "Drive is slow: 0.6 MB/s for 7:00 (average so far 15.0 MB/s), at 23.69 GB (60%); 0 read error(s)", "Reading normally; N unit(s) of 6 KB skipped so far".
+Slow means under 2 MB/s over the last minute (after 20 s of reading) or a single read over 3 s.
+`ReadHealth` gained the unit being re-read and its attempt number; the Blu-ray reader reports progress at each retry attempt.
+`RipJobProgress.DriveStatus` carries the line; the GUI shows it in an amber line under the progress bars (selectable, hidden when empty) and the CLI appends it in brackets, cut to the console width.
+Not built: a timer thread to update the line during one stuck read.
+Reads are 196 KB, so at 0.6 MB/s the line still updates about three times a second, and the progress callbacks are not thread-safe.
+A drive's own retries happen inside one read and are not reported by Windows, so they show as slow reading, not as attempt numbers; the attempts shown are LunaDR's own (3 per 6 KB unit after a failed read).
+6 new tests (114 total). The GUI and CLI were compiled into temp folders (the rip was still running); not yet seen on screen.

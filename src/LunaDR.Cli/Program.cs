@@ -411,9 +411,13 @@ public static class Program {
 					RipPhase.Finishing => "finishing the file",
 					RipPhase.Done => "done",
 					_ => $"elapsed {Remaining(p.Elapsed)}  {p.TitleFraction,4:P0} ({Remaining(p.TitleRemaining)} left)  all: {p.OverallFraction,4:P0} ({Remaining(p.OverallRemaining)} left)  {p.BytesPerSecond / 1e6:F1} MB/s" +
-						(TimeLeftText.FinishText(DateTime.Now, p.OverallRemaining) is { } end ? $"  Est. Finished {end}" : ""),
+						(TimeLeftText.FinishText(DateTime.Now, p.OverallRemaining) is { } end ? $"  Est. Finished {end}" : "") +
+						(p.DriveStatus is { } drive ? $"  [{drive}]" : ""),
 				};
-				Console.Write($"\r  {status}".PadRight(100));
+				// One line only: a longer one (with a drive warning) would wrap, and \r only returns to the start of the last row.
+				int width = Console.IsOutputRedirected ? 160 : Math.Max(40, Console.BufferWidth - 1);
+				string line = $"  {status}".PadRight(100);
+				Console.Write("\r" + (line.Length > width ? line[..width] : line));
 			}, cancel.Token);
 		} catch (OperationCanceledException) {
 			Console.WriteLine("\nCancelled; the unfinished file was removed.");

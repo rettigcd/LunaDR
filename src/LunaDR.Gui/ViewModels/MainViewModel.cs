@@ -31,6 +31,7 @@ public sealed class MainViewModel : ViewModelBase {
 	private string _fileName = "";
 	private string _outputFolder;
 	private string _ripStatus = "";
+	private string _driveStatusText = "";
 	private CellMap? _cellMap;
 	private TitleRow? _selectedTitle;
 	private int? _selectedTitleNumber;
@@ -130,6 +131,8 @@ public sealed class MainViewModel : ViewModelBase {
 	/// <summary>All titles of the rip, 0..1 (weighted by size).</summary>
 	public double OverallProgress { get => _overallProgress; private set => Set(ref _overallProgress, value); }
 	public string OverallProgressText { get => _overallProgressText; private set => Set(ref _overallProgressText, value); }
+	/// <summary>What the drive is doing when something is wrong (slow, retrying, units skipped); empty when all is well.</summary>
+	public string DriveStatusText { get => _driveStatusText; private set => Set(ref _driveStatusText, value); }
 
 	/// <summary>Play the Windows notification sound when a rip finishes; remembered between runs.</summary>
 	public bool PlaySoundWhenDone {
@@ -461,6 +464,7 @@ public sealed class MainViewModel : ViewModelBase {
 		TitleProgress = OverallProgress = 0;
 		TitleProgressText = "Starting…";
 		OverallProgressText = $"All titles: 0 of {items.Count} done";
+		DriveStatusText = "";
 		ShowProgress = true;
 		RipStatus = items.Count == 1 ? $"Ripping {items[0].Name.ToLowerInvariant()}…" : $"Ripping {items.Count} titles…";
 		_lastOutputFolder = folder;
@@ -478,10 +482,12 @@ public sealed class MainViewModel : ViewModelBase {
 				? $"Done: {results.Count} title(s) ripped to {folder}."
 				: $"Done with errors: {results.Count - failed} ripped, {failed} failed (see the list).";
 			OverallProgress = 1;
+			DriveStatusText = "";
 			OverallProgressText = $"All titles: {results.Count - failed} of {items.Count} ripped" + (failed > 0 ? $", {failed} failed" : "");
 		} catch (OperationCanceledException) {
 			cancelled = true;
 			RipStatus = "Cancelled; the unfinished file was removed.";
+			DriveStatusText = "";
 			TitleProgressText = "Cancelled";
 		} finally {
 			IsRipping = false;
@@ -535,6 +541,7 @@ public sealed class MainViewModel : ViewModelBase {
 		}
 		OverallProgress = p.OverallFraction;
 		string? finish = TimeLeftText.FinishText(DateTime.Now, p.OverallRemaining);
+		DriveStatusText = p.DriveStatus ?? "";
 		OverallProgressText = $"All titles ({p.Index + 1} of {p.Count}): {p.OverallFraction:P0}   ·   " +
 			$"{TimeLeftText.Format(p.Elapsed)} elapsed   ·   {Time(p.OverallRemaining)}" + (finish is null ? "" : $"   ·   Est. Finished {finish}");
 	}

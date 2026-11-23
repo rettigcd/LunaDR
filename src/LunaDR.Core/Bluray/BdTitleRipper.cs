@@ -348,7 +348,7 @@ public sealed class BdTitleRipper {
 					cancel.ThrowIfCancellationRequested();
 					int want = (int)Math.Min(buffer.Length, clipBytes - position);
 					var readTimer = System.Diagnostics.Stopwatch.StartNew();
-					int got = ReadAt(fs, position, buffer.AsSpan(0, want), health);
+					int got = ReadAt(fs, position, buffer.AsSpan(0, want), health, () => Report(RipPhase.Ripping));
 					health.LastReadMs = readTimer.Elapsed.TotalMilliseconds;
 					for (int u = 0; u + AacsDecryptor.UnitSize <= got; u += AacsDecryptor.UnitSize) {
 						var unit = buffer.AsSpan(u, AacsDecryptor.UnitSize);
@@ -408,7 +408,7 @@ public sealed class BdTitleRipper {
 	/// Reads at a position; on a read error retries each 6 KB unit up to 3 times and leaves units that still fail as zeros (counted), so a damaged
 	/// spot costs only those units, as the DVD reader skips to the next VOBU.
 	/// </summary>
-	private static int ReadAt(FileStream fs, long position, Span<byte> buffer, ReadStats health) {
+	private static int ReadAt(FileStream fs, long position, Span<byte> buffer, ReadStats health, Action retrying) {
 		try {
 			fs.Position = position;
 			return fs.ReadAtLeast(buffer, buffer.Length, throwOnEndOfStream: false);
@@ -420,6 +420,9 @@ public sealed class BdTitleRipper {
 			bool ok = false;
 			for (int attempt = 0; attempt < 3 && !ok; attempt++) {
 				health.UnitRetries++;
+				health.RetryPosition = position + u;
+				health.RetryAttempt = attempt + 1;
+				retrying();
 				try {
 					fs.Position = position + u;
 					fs.ReadExactly(unit);
@@ -432,14 +435,16 @@ public sealed class BdTitleRipper {
 				health.Unreadable++;
 			}
 		}
+		health.RetryAttempt = 0;
 		return buffer.Length;
 	}
 }
 
 /// <summary>Counters for how the disc reads (see <see cref="ReadHealth"/>).</summary>
 internal sealed class ReadStats {
-	public long ReadErrors, UnitRetries, Unreadable, Undecryptable;
+	public long ReadErrors, UnitRetries, Unreadable, Undecryptable, RetryPosition;
+	public int RetryAttempt;
 	public double LastReadMs;
 
-	public ReadHealth Snapshot() => new(ReadErrors, UnitRetries, Unreadable, Undecryptable, LastReadMs);
+	public ReadHealth Snapshot() => new(ReadErrors, UnitRetries, Unreadable, Undecryptable, LastReadMs, RetryPosition, RetryAttempt);
 }
