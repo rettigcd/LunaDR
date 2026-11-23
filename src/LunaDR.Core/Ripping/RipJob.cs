@@ -22,12 +22,14 @@ public sealed record RipJobItem(int TitleNumber, string OutputPath, long Sectors
 /// <summary>
 /// Progress of a job: the title being ripped (index of count) and its own progress, plus the job as a whole.
 /// Remaining times are null until enough has been read to measure the drive's speed.
+/// <see cref="Elapsed"/> is the time since the job started.
 /// </summary>
 public sealed record RipJobProgress(
 	int Index, int Count, RipJobItem Item, RipProgress Title,
 	double TitleFraction, TimeSpan? TitleRemaining,
 	double OverallFraction, TimeSpan? OverallRemaining,
-	double BytesPerSecond);
+	double BytesPerSecond,
+	TimeSpan Elapsed = default);
 
 /// <summary>What happened to one item: its result, or the error that stopped it.</summary>
 public sealed record RipJobItemResult(RipJobItem Item, RipResult? Result, Exception? Error);
@@ -57,6 +59,7 @@ public sealed class RipJob(string videoTsFolder, IReadOnlyList<RipJobItem> items
 		long sectorsReadBefore = 0;                // sectors read while ripping earlier titles
 		TimeSpan readingTimeBefore = TimeSpan.Zero;  // time spent reading earlier titles
 		var meter = new SpeedMeter();
+		var jobClock = System.Diagnostics.Stopwatch.StartNew();
 		var overallSmoother = new RemainingSmoother();
 
 		for (int index = 0; index < Items.Count; index++) {
@@ -90,7 +93,7 @@ public sealed class RipJob(string videoTsFolder, IReadOnlyList<RipJobItem> items
 					index, Items.Count, item, p,
 					titleFraction, titleShown,
 					allSectors == 0 ? 0 : (double)overallDone / allSectors, overallShown,
-					sectorsPerSecond * 2048));
+					sectorsPerSecond * 2048, jobClock.Elapsed));
 			}
 
 			TimeSpan ItemReading() => readingStartedAt is { } begun && last is { } lp ? lp.Elapsed - begun : TimeSpan.Zero;

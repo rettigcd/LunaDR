@@ -49,6 +49,16 @@ public class TimeLeftTests {
 	}
 
 	[Fact]
+	public void FinishText_IsAClockTimeAndNamesTheDayWhenNotToday() {
+		var c = System.Globalization.CultureInfo.InvariantCulture;
+		var now = new DateTime(2026, 11, 23, 22, 0, 0);   // a Monday
+		Assert.Null(TimeLeftText.FinishText(now, null, c));
+		Assert.Equal("11:30 PM", TimeLeftText.FinishText(now, TimeSpan.FromMinutes(90), c));
+		Assert.Equal("tomorrow 1:15 AM", TimeLeftText.FinishText(now, TimeSpan.FromMinutes(195), c));
+		Assert.Equal("Wed 1:00 AM", TimeLeftText.FinishText(now, TimeSpan.FromHours(27), c));
+	}
+
+	[Fact]
 	public void TimeLeftText_RoundsFractionsOfASecond() {
 		Assert.Equal("0:02", TimeLeftText.Format(TimeSpan.FromSeconds(1.6)));
 		Assert.Equal("0:01", TimeLeftText.Format(TimeSpan.FromSeconds(1.4)));

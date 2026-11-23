@@ -534,6 +534,8 @@ public sealed class MainViewModel : ViewModelBase {
 			RipCellFraction = p.Title.CellFraction;
 		}
 		OverallProgress = p.OverallFraction;
-		OverallProgressText = $"All titles ({p.Index + 1} of {p.Count}): {p.OverallFraction:P0}   ·   {Time(p.OverallRemaining)}";
+		string? finish = TimeLeftText.FinishText(DateTime.Now, p.OverallRemaining);
+		OverallProgressText = $"All titles ({p.Index + 1} of {p.Count}): {p.OverallFraction:P0}   ·   {Time(p.OverallRemaining)}   ·   " +
+			$"{TimeLeftText.Format(p.Elapsed)} elapsed" + (finish is null ? "" : $"   ·   done about {finish}");
 	}
 }

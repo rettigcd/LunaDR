@@ -410,7 +410,8 @@ public static class Program {
 					RipPhase.FindingKey => "finding the title key",
 					RipPhase.Finishing => "finishing the file",
 					RipPhase.Done => "done",
-					_ => $"{p.TitleFraction,4:P0} ({Remaining(p.TitleRemaining)} left)  all: {p.OverallFraction,4:P0} ({Remaining(p.OverallRemaining)} left)  {p.BytesPerSecond / 1e6:F1} MB/s",
+					_ => $"{p.TitleFraction,4:P0} ({Remaining(p.TitleRemaining)} left)  all: {p.OverallFraction,4:P0} ({Remaining(p.OverallRemaining)} left)  {p.BytesPerSecond / 1e6:F1} MB/s  " +
+						$"elapsed {Remaining(p.Elapsed)}" + (TimeLeftText.FinishText(DateTime.Now, p.OverallRemaining) is { } end ? $"  done about {end}" : ""),
 				};
 				Console.Write($"\r  {status}".PadRight(100));
 			}, cancel.Token);
