@@ -684,3 +684,10 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 
 ## 2026-11-23 10:40
 	Progress line wording (owner): elapsed time comes first, before the time left, and "done about" is now "Est. Finished". GUI: `All titles (1 of 1): 12% · 0:25:10 elapsed · 3:21:20 left · Est. Finished 2:35 PM`; the CLI status line starts with `elapsed` and ends with `Est. Finished`. 104 tests pass; GUI and CLI compiled into a temporary folder.
+
+## 2026-11-23 12:00
+
+Owner hit a Blu-ray with no key and could not copy the disc ID out of the message.
+The result rows (where a failed title's error is listed) and the status line under the title table are now read-only TextBoxes instead of TextBlocks, so their text can be selected and copied (Ctrl+C, right-click).
+Result rows use a DockPanel so long errors wrap to the window width.
+Compiled the GUI into a temp folder (the app was running); not yet seen on screen.
