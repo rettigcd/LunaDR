@@ -11,6 +11,7 @@
 		<Nullable>enable</Nullable>
 		<AssemblyName>lunadr</AssemblyName>
 		<RootNamespace>LunaDR.Cli</RootNamespace>
+		<ApplicationIcon>..\..\assets\lunadr.ico</ApplicationIcon>
 	</PropertyGroup>
 
 </Project>

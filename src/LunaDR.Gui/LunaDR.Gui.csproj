@@ -8,9 +8,16 @@
 		<Nullable>enable</Nullable>
 		<AssemblyName>lunadr-gui</AssemblyName>
 		<RootNamespace>LunaDR.Gui</RootNamespace>
+		<ApplicationIcon>..\..\assets\lunadr.ico</ApplicationIcon>
 		<!-- WPF0001: the Fluent theme (ThemeMode) is still marked experimental in .NET 10. -->
 		<NoWarn>$(NoWarn);WPF0001</NoWarn>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- Built into the program: the window icon and the picture in the header (made from the images in assets/; see assets/README.md). -->
+		<Resource Include="..\..\assets\lunadr.ico" Link="Assets\lunadr.ico" />
+		<Resource Include="..\..\assets\lunadr-logo-256.png" Link="Assets\lunadr-logo-256.png" />
+	</ItemGroup>
 
 	<ItemGroup>
 		<ProjectReference Include="..\LunaDR.Core\LunaDR.Core.csproj" />

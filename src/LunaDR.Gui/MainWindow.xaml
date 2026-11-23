@@ -3,7 +3,7 @@
 		xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 		xmlns:c="clr-namespace:LunaDR.Gui.Controls"
 		xmlns:g="clr-namespace:LunaDR.Gui"
-		Title="LunaDR" Width="1120" Height="640" FontSize="12" MinWidth="800" MinHeight="480">
+		Title="LunaDR" Icon="Assets/lunadr.ico" Width="1120" Height="640" FontSize="12" MinWidth="800" MinHeight="480">
 	<Window.Resources>
 		<g:NotConverter x:Key="Not" />
 		<BooleanToVisibilityConverter x:Key="Visible" />
@@ -23,6 +23,7 @@
 
 		<!-- Phase 1: pick the drive; scanning starts by itself when a disc is inserted. -->
 		<DockPanel Grid.Row="0" Margin="0,0,0,10" LastChildFill="True">
+			<Image Source="Assets/lunadr-logo-256.png" Height="40" Margin="0,0,12,0" RenderOptions.BitmapScalingMode="HighQuality" ToolTip="LunaDR" />
 			<TextBlock Text="Drive" VerticalAlignment="Center" Margin="0,0,8,0" />
 			<ComboBox Width="240" ItemsSource="{Binding Drives}" SelectedItem="{Binding SelectedDrive}" DisplayMemberPath="Display" />
 			<Button Content="Scan" Command="{Binding ScanCommand}" Margin="8,0,0,0" MinWidth="80" />

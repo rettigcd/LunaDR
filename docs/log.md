@@ -646,3 +646,6 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 
 ## 2026-11-21 17:08
 	Owner: the README still said rip-dvd. Removed "(Formerly rip-dvd.)" from the README and the old repo-folder remarks from CLAUDE.md and the plan. The default branch on GitHub (main) still has the old README until blu-ray is merged into it. Pushed to https://github.com/rettigcd/LunaDR (private) on 2026-11-21.
+
+## 2026-11-23 08:40
+	Brand images from the owner (made outside this repo): `assets/lunadr-logo.png` (with the DR subscript) and `assets/lunadr-icon.png` (without). The icon `assets/lunadr.ico` (16-256 px) is built from the second by `assets/make-icon.ps1` and is the icon of `lunadr.exe`, `lunadr-gui.exe` and the main window. The first is shown at the left of the GUI header (a 256 px copy, `lunadr-logo-256.png`, is built into the program; the 1.9 MB original is not). Checked: the header shows the logo; both exes carry the icon. 90 tests pass.
