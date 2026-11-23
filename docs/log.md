@@ -657,3 +657,6 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 	(3) Not fixed yet, data first: every Blu-ray rip writes a CSV progress log (`RipProgressLog`, folder `%APPDATA%\LunaDR\progress-logs`, `RipOptions.ProgressLogFolder`): a row about every 5 s of reading with elapsed, reading time, play item, bytes read/total/remaining, three speeds, the raw estimate, the old average-based estimate and the shown one, and a final row (done/cancelled/failed) with the total time and 0 bytes remaining. Plan: collect several rips, analyze, build a correcting heuristic (Next steps).
 	Also (owner): the disc without DR is a faint watermark (7% opacity, over the whole window, not clickable) on the GUI; `assets/make-icon.ps1` makes the 640 px copy. Checked in a screenshot: visible, does not hide the text.
 	Tests: 13 new (smoother, text format, log file); 103 pass. Build 0 warnings.
+
+## 2026-11-23 09:23
+	Watermark opacity raised from 7% to 15% (owner: too faint). Checked in a screenshot with a full title table: the disc is clearly visible and the text stays readable (dimmed rows a little less so).
