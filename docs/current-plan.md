@@ -122,6 +122,7 @@ This file describes the present state only; the history is in [log.md](log.md).
 	smoothed by `RemainingSmoother` (counts down with the clock, follows new estimates with a 30 s time constant).
 	Every Blu-ray rip also writes a CSV progress log (`%APPDATA%unadrprogress-logs`, a row per 5 s, final row with the total time) to analyze the estimate.
 - Branding (owner): `assets/` holds the logo with DR (shown in the GUI header) and the disc without DR (icon of both programs and the window).
+	(Colors, owner: always the light Fluent theme; moon-white window, a moon-blue band across the top and a moon-blue title bar on Windows 11, so the window is easy to spot when alt-tabbing.)
 
 ## Platform (Windows 11 now, Linux possible later)
 Target is Windows 11. Keep Linux possible by putting OS-specific code behind small interfaces in `LunaDR.Core`, with one implementation per OS.

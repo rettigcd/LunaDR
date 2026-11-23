@@ -2,10 +2,19 @@
 			 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 			 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 			 xmlns:sys="clr-namespace:System;assembly=System.Runtime"
-			 ThemeMode="System">
-	<!-- ThemeMode="System": WPF's built-in Fluent (Windows 11) theme, following Windows' light/dark setting. -->
+			 ThemeMode="Light">
+	<!-- ThemeMode="Light": WPF's built-in Fluent (Windows 11) theme, always light, so the moon colors below look the same on every PC (owner: recognizable window). -->
 	<Application.Resources>
 		<!-- Text one notch smaller than the theme's 14 (owner): the theme's control styles read their size from this resource. -->
 		<sys:Double x:Key="ControlContentThemeFontSize">12</sys:Double>
+		<!-- The moon palette (from the logo): moon white for the window, moon blue for the header band and the title bar. -->
+		<Color x:Key="MoonWhite">#EEF3FA</Color>
+		<Color x:Key="MoonBlue">#3F6FB5</Color>
+		<Color x:Key="MoonBlueDark">#2E5A9C</Color>
+		<SolidColorBrush x:Key="MoonWhiteBrush" Color="{StaticResource MoonWhite}" />
+		<LinearGradientBrush x:Key="MoonBandBrush" StartPoint="0,0" EndPoint="1,0">
+			<GradientStop Color="#2E5A9C" Offset="0" />
+			<GradientStop Color="#5B8CCF" Offset="1" />
+		</LinearGradientBrush>
 	</Application.Resources>
 </Application>

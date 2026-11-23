@@ -3,7 +3,7 @@
 		xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 		xmlns:c="clr-namespace:LunaDR.Gui.Controls"
 		xmlns:g="clr-namespace:LunaDR.Gui"
-		Title="LunaDR" Icon="Assets/lunadr.ico" Width="1120" Height="640" FontSize="12" MinWidth="800" MinHeight="480">
+		Title="LunaDR" Background="{StaticResource MoonWhiteBrush}" Icon="Assets/lunadr.ico" Width="1120" Height="640" FontSize="12" MinWidth="800" MinHeight="480">
 	<Window.Resources>
 		<g:NotConverter x:Key="Not" />
 		<BooleanToVisibilityConverter x:Key="Visible" />
@@ -22,14 +22,17 @@
 		</Grid.RowDefinitions>
 
 		<!-- Phase 1: pick the drive; scanning starts by itself when a disc is inserted. -->
-		<DockPanel Grid.Row="0" Margin="0,0,0,10" LastChildFill="True">
-			<Image Source="Assets/lunadr-logo-256.png" Height="40" Margin="0,0,12,0" RenderOptions.BitmapScalingMode="HighQuality" ToolTip="LunaDR" />
-			<TextBlock Text="Drive" VerticalAlignment="Center" Margin="0,0,8,0" />
-			<ComboBox Width="240" ItemsSource="{Binding Drives}" SelectedItem="{Binding SelectedDrive}" DisplayMemberPath="Display" />
-			<Button Content="Scan" Command="{Binding ScanCommand}" Margin="8,0,0,0" MinWidth="80" />
-			<TextBlock Text="{Binding DiscName}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" Margin="20,0,0,0"
-					   TextTrimming="CharacterEllipsis" />
-		</DockPanel>
+		<!-- The moon-blue band across the top (with the title bar, it makes the window easy to spot when alt-tabbing). -->
+		<Border Grid.Row="0" Margin="-12,-12,-12,10" Padding="12,8" Background="{StaticResource MoonBandBrush}" TextElement.Foreground="White">
+			<DockPanel LastChildFill="True">
+				<Image Source="Assets/lunadr-logo-256.png" Height="40" Margin="0,0,12,0" RenderOptions.BitmapScalingMode="HighQuality" ToolTip="LunaDR" />
+				<TextBlock Text="Drive" VerticalAlignment="Center" Margin="0,0,8,0" />
+				<ComboBox Width="240" ItemsSource="{Binding Drives}" SelectedItem="{Binding SelectedDrive}" DisplayMemberPath="Display" />
+				<Button Content="Scan" Command="{Binding ScanCommand}" Margin="8,0,0,0" MinWidth="80" />
+				<TextBlock Text="{Binding DiscName}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" Margin="20,0,0,0"
+						   TextTrimming="CharacterEllipsis" />
+			</DockPanel>
+		</Border>
 
 		<!-- One table at a time (owner): the title list, or the cell map (on a Blu-ray: playlists vs clip segments). The ripping area below serves both. -->
 		<TabControl Grid.Row="1" SelectedIndex="{Binding SelectedTab}">

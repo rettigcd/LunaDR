@@ -669,3 +669,6 @@ Append-only. Newest entries at the bottom. See [CLAUDE.md](../CLAUDE.md) for the
 
 ## 2026-11-23 09:29
 	The watermark is removed (owner: did not like the look): the Image in MainWindow.xaml, its resource, `assets/lunadr-watermark-640.png`, its part of `make-icon.ps1`, README and plan mentions. The logo in the header and the icons stay. Full rebuild 0 warnings, 103 tests pass, screenshot checked.
+
+## 2026-11-23 09:41
+	Moon color scheme (owner: an identifiable window, easy to find when alt-tabbing): the GUI theme is now always light (`ThemeMode="Light"`, so the colors do not depend on the PC's dark/light setting); window background moon white #EEF3FA; a moon-blue gradient band (#2E5A9C to #5B8CCF) across the top holding the logo, drive picker and disc name in white; on Windows 11 the title bar is colored #2E5A9C with white text (`DwmSetWindowAttribute`, ignored on older Windows), so the title bar and the band read as one blue block. Checked in a full-window capture. Not done: the buttons, check marks and selection keep the system accent blue; overriding SystemAccentColor in the app resources had no effect, so those entries were removed. 103 tests pass.

@@ -18,6 +18,10 @@ public partial class MainWindow : Window {
 	private const int DbtDevtypVolume = 2;
 	private const short DbtfMedia = 0x0001;   // the volume change is a disc (media), not a drive
 
+	// Windows 11 only (22000+): DWMWA_CAPTION_COLOR and DWMWA_TEXT_COLOR, as 0x00BBGGRR.
+	private const int DwmwaCaptionColor = 35, DwmwaTextColor = 36;
+	[DllImport("dwmapi.dll")] private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+
 	private readonly MainViewModel _vm = new();
 	private readonly string? _screenshotPath;
 	private readonly (int[] Titles, string Folder)? _testRip;
@@ -51,8 +55,17 @@ public partial class MainWindow : Window {
 		};
 		_screenshotPath = screenshotPath;
 		if (startDrive is not null) _vm.SelectDrive(startDrive);
+		SourceInitialized += (_, _) => ColorTitleBar();
 		SourceInitialized += (_, _) => HwndSource.FromHwnd(new WindowInteropHelper(this).Handle)?.AddHook(WndProc);
 		if (_screenshotPath is not null) ContentRendered += (_, _) => _ = SaveScreenshotWhenScannedAsync();
+	}
+
+	/// <summary>The title bar in moon blue with white text (Windows 11); older Windows ignores it and keeps its usual bar.</summary>
+	private void ColorTitleBar() {
+		var hwnd = new WindowInteropHelper(this).Handle;
+		int caption = 0x009C5A2E, text = 0x00FFFFFF;   // #2E5A9C and white
+		DwmSetWindowAttribute(hwnd, DwmwaCaptionColor, ref caption, sizeof(int));
+		DwmSetWindowAttribute(hwnd, DwmwaTextColor, ref text, sizeof(int));
 	}
 
 	/// <summary>Windows broadcasts WM_DEVICECHANGE when a disc is inserted or removed; the volume's drive letters are in a bit mask.</summary>
