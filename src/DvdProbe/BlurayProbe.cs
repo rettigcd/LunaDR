@@ -233,6 +233,32 @@ internal static class BlurayRipProbe {
 	}
 }
 
+internal static class BlurayDecryptProbe {
+	/// <summary>
+	/// Writes a stretch of a clip, AACS-decrypted, to a loose .m2ts (units that cannot be decrypted are skipped and counted),
+	/// so another program (ffmpeg) can read exactly what LunaDR reads from the disc.
+	/// </summary>
+	public static void Run(string root, string clip, string output, long fromMb, long maxMb) {
+		using var aacs = AacsDecryptor.ForDisc(root);
+		using var fs = new FileStream(Path.Combine(root, "BDMV", "STREAM", clip + ".m2ts"), FileMode.Open, FileAccess.Read, FileShare.Read, 1);
+		using var outFile = new FileStream(output, FileMode.Create, FileAccess.Write, FileShare.Read, 1 << 20);
+		fs.Position = fromMb * 1_000_000 / AacsDecryptor.UnitSize * AacsDecryptor.UnitSize;
+		long end = maxMb > 0 ? Math.Min(fs.Length, fs.Position + maxMb * 1_000_000) : fs.Length;
+		var unit = new byte[AacsDecryptor.UnitSize];
+		long written = 0, failed = 0;
+		while (fs.Position + unit.Length <= end) {
+			fs.ReadExactly(unit);
+			if (aacs is not null && !aacs.DecryptUnit(unit)) {
+				failed++;
+				continue;
+			}
+			outFile.Write(unit);
+			written++;
+		}
+		Console.WriteLine($"Wrote {written:N0} units ({written * unit.Length / 1e6:F1} MB) to {output}; {failed:N0} could not be decrypted.");
+	}
+}
+
 internal static class BlurayPesProbe {
 	/// <summary>Lists the PES packets of one PID in a clip (decrypted): PTS/DTS in seconds, the first payload bytes, and the newest video PTS seen when it arrived.</summary>
 	public static void Print(string root, string clip, int pid, int videoPid, long maxMb, int max) {

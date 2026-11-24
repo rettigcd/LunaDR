@@ -148,7 +148,8 @@ since the speed peak moved between 45 and 65 percent of the clip. Rows with a sl
 
 **Unsupported discs: say so early and say what to do** (owner, 2026-11-23). Today an unsupported disc is found out late (after Start) or not at all:
 1. A disc check at scan time, with a banner above the title list saying what the disc is. Detect from files we already read: UHD (AACS version, HEVC clips),
-	BD+ (the `BDSVM` folder), 3D (stereoscopic stream files), a missing `KEYDB.cfg`, and a disc ID the key file has no key for (reported at once, not after Start).
+	3D (stereoscopic stream files), a missing `KEYDB.cfg`, and a disc ID the key file has no key for (reported at once, not after Start).
+	(BD+ is done: `BdScanner.HasBdPlus`, shown in the GUI status line and `lunadr-cli info`, and in the rip's warnings. It still needs the banner.)
 2. Messages that say what to add, e.g. "UHD Blu-ray (AACS 2, HEVC) is not supported. LunaDR handles DVD and standard Blu-ray with a key file you supply."
 	Plain "not supported yet" texts (video codec, 20/24-bit LPCM) get the same treatment, and warn before the rip.
 3. A "Copy disc details" button: disc ID, AACS version, codecs, the first error (for a bug report).
@@ -187,5 +188,6 @@ BR7 is done too: the whole movie (playlist 00000) decodes cleanly and the owner 
 ## Open questions
 Deferred by the owner (answer later):
 - **MakeMKV evaluation** ("not now", 2026-11-19). MakeMKV's Blu-ray support asks to start a 30-day evaluation; starting it would give MakeMKV rips to compare with.
+	On 2026-11-24 `makemkvcon64` could not open the Return of the Jedi disc for that reason (it only offers the evaluation in the GUI), so the comparison was done with ffmpeg instead (see the log).
 - **Episode naming: data source.** TheTVDB (paid per-user subscription PIN, has DVD order), or free TVmaze/TMDB (aired order), or TheTVDB with a free fallback? See [episode-matching-analysis.md](episode-matching-analysis.md).
 - **Episode naming: file names.** Plex-library style `sNNeMM - Episode name.mkv`, optionally in `Series (year)/Season N/` folders?

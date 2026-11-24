@@ -272,6 +272,17 @@ public static class Commands {
 		return 0;
 	}
 
+	[ProbeCommand("bddecrypt", "Write a stretch of a Blu-ray clip, AACS-decrypted but otherwise untouched, to a loose .m2ts (for ffmpeg). Args: <drive or folder> <clip> <out.m2ts> [-from MB] [-mb N]")]
+	public static int BdDecrypt(string[] args) {
+		string root = LunaDR.Core.Bluray.BdScanner.ResolveRoot(args[0]) ?? throw new IOException("No Blu-ray structure (BDMV/index.bdmv) found.");
+		long Opt(string name, long fallback) {
+			int i = Array.IndexOf(args, name);
+			return i < 0 ? fallback : long.Parse(args[i + 1]);
+		}
+		BlurayDecryptProbe.Run(root, args[1], args[2], Opt("-from", 0), Opt("-mb", 0));
+		return 0;
+	}
+
 	[ProbeCommand("bdpes", "List one PID's PES packets in a Blu-ray clip (decrypted): PTS, DTS, newest video PTS on arrival, first bytes. Args: <drive> <clip> <pid hex> [-mb N] [-n max] [-video pid hex]")]
 	public static int BdPes(string[] args) {
 		string root = LunaDR.Core.Bluray.BdScanner.ResolveRoot(args[0]) ?? throw new IOException("No Blu-ray structure (BDMV/index.bdmv) found.");

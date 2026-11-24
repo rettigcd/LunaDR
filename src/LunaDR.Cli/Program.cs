@@ -306,6 +306,7 @@ public static class Program {
 			string? keyFile = KeyDb.Find();
 			Console.WriteLine($"\nAACS-encrypted. Key file: {keyFile ?? "none found (needed to rip; see 'lunadr-cli help mkv')"}");
 		}
+		if (disc.HasBdPlus) Console.WriteLine("\n" + BdScanner.BdPlusNote);
 		return 0;
 	}
 

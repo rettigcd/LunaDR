@@ -383,7 +383,8 @@ public sealed class MainViewModel : ViewModelBase {
 		Status = $"Blu-ray: {Titles.Count} playlists (the Title column is the playlist number)" +
 				 (shortCount > 0 ? $"; {shortCount} shorter than {MinimumLength.TotalSeconds:0} s (dimmed)" : "") +
 				 (repeats > 0 ? $"; {repeats} repeat an earlier playlist" : "") +
-				 (Directory.Exists(Path.Combine(root, "AACS")) && KeyDb.Find() is null ? "; AACS-encrypted and no key file found (KEYDB.cfg)" : "") + ".";
+				 (Directory.Exists(Path.Combine(root, "AACS")) && KeyDb.Find() is null ? "; AACS-encrypted and no key file found (KEYDB.cfg)" : "") +
+					 (disc.HasBdPlus ? "; " + BdScanner.BdPlusNote : "") + ".";
 	}
 
 	/// <summary>Test mode: check exactly these titles and use this output folder without saving it in the settings.</summary>

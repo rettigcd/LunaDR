@@ -12,7 +12,7 @@ Status: **Done**, **Partial**, **Missing**, **Out of scope** (decided not to do 
 |---|---|---|
 | CSS (DVD) | Done | port of libdvdcss, plus the drive handshake |
 | AACS 1 (Blu-ray) | Done | per-disc key from the `KEYDB.cfg` the owner supplies; keys are never downloaded |
-| BD+ | Out of scope | needs a virtual machine to run the disc's program |
+| BD+ | Out of scope; detected and reported | needs a virtual machine to run the disc's program; without it the video has artifacts (Return of the Jedi and Empire Strikes Back discs) |
 | AACS 2 (UHD) | Out of scope | also needs HEVC video |
 | LibreDrive (low-level drive access) | Missing | only matters for UHD and some firmware; the owner's drive works without it |
 | Key database integration | Partial | reads `KEYDB.cfg`; no download (by design) |

@@ -18,6 +18,9 @@ public sealed record BdTitle(
 }
 
 public sealed record BdDiscSummary(string Root, string VolumeName, IReadOnlyList<BdTitle> Titles) {
+	/// <summary>True if the disc has BD+ copy protection (see <see cref="BdScanner.HasBdPlus"/>).</summary>
+	public bool HasBdPlus { get; init; }
+
 	/// <summary>Which playlists play which parts of which clips (the Blu-ray version of the DVD cell map); rows longest playlist first.</summary>
 	public CellMap? Segments { get; init; }
 }
@@ -92,8 +95,32 @@ public static class BdScanner {
 			playlists.Add((number, mpls));
 		}
 		var longestFirst = playlists.Zip(titles).OrderByDescending(p => p.Second.DurationNs).Select(p => p.First);
-		return new BdDiscSummary(root, VolumeName(root), titles) { Segments = BdSegmentMap.Build(longestFirst) };
+		return new BdDiscSummary(root, VolumeName(root), titles) { Segments = BdSegmentMap.Build(longestFirst), HasBdPlus = HasBdPlus(root) };
 	}
+
+	/// <summary>
+	/// True if the disc has BD+ copy protection: a BDSVM folder whose files start with "BDSVM_CC" (the BD+ virtual machine's code).
+	/// A BD+ disc has parts of its video (and sometimes audio) deliberately damaged, which the BD+ virtual machine repairs while playing.
+	/// Decrypting with AACS alone, as LunaDR does, leaves the damage: artifacts through the whole feature.
+	/// </summary>
+	public static bool HasBdPlus(string root) {
+		try {
+			string folder = Path.Combine(root, "BDSVM");
+			if (!Directory.Exists(folder)) return false;
+			var magic = "BDSVM_CC"u8;
+			var head = new byte[magic.Length];
+			foreach (var file in Directory.EnumerateFiles(folder, "*.svm")) {
+				using var fs = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 1);
+				if (fs.Read(head) == head.Length && head.AsSpan().SequenceEqual(magic)) return true;
+			}
+		} catch (IOException) {
+		} catch (UnauthorizedAccessException) {
+		}
+		return false;
+	}
+
+	/// <summary>The text that says a BD+ disc cannot be ripped cleanly (shown when the disc is scanned and again with the rip's warnings).</summary>
+	public const string BdPlusNote = "BD+ copy protection: LunaDR cannot remove it, so the video will have artifacts (and some audio may be damaged) through the feature. MakeMKV can rip BD+ discs.";
 
 	private static BdTitle Describe(int number, Mpls mpls, Func<string, (long Bytes, long Ticks)> clip) {
 		long size = 0;

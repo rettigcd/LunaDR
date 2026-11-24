@@ -791,3 +791,29 @@ The Empire Strikes Back rip (video full of artifacts, one audio track damaged) h
 So the damage is probably in how LunaDR processes the streams, not on the disc; the log could not say more because the rip's warnings were not in it.
 Built: the progress log now has the rip's warnings just before its last row (`# warning: ...` lines, or `# warnings: none`), and `# error: ...` for a rip that failed.
 New test (139 in all) that notes come before the last row and none after it.
+
+## 2026-11-24 09:00
+Owner (away for the day): the Return of the Jedi rip (playlist 00800) has video artifacts throughout and the dialog is missing from the sound; find out why, using MakeMKV rips of sections for comparison.
+(The Empire Strikes Back rip from the evening before had the same artifacts.)
+MakeMKV could not be used: `makemkvcon64 info disc:0` says "This functionality is shareware ... start evaluation period now?" and then "Failed to open disc".
+The evaluation is only offered in the GUI, and the owner had deferred it ("not now", 2026-11-19), so it was not started.
+Instead ffmpeg (BtbN build, downloaded to the scratchpad; development check only) was used to decode the files and the raw decrypted disc data.
+
+**Findings**
+- The disc has BD+ copy protection: `E:\BDSVM` holds six 20 MB files that start with the magic `BDSVM_CC`.
+  BD+ deliberately damages parts of the stream on the disc; the BD+ virtual machine repairs them while playing.
+  AACS decryption alone, which is all LunaDR does, leaves the damage.
+- Video: ffmpeg finds 100 to 180 decode errors per minute through the whole feature (14 sample points, 424 at one), none in the first clip (00300, 2:23) and none in the first seconds of the main clip.
+  The same pattern is in the Empire file.
+  The Fellowship, Shawshank and Apollo 13 rips decode with 0 errors at the same kind of check, so the pipeline is not at fault.
+- LunaDR is not the cause: a new probe command `bddecrypt` writes the AACS-decrypted clip untouched to a loose .m2ts; ffmpeg decodes that with the same errors (94 in the first 300 MB of clip 00301) at the same macroblock positions and bytestream offsets as the MKV LunaDR makes from it (`bdclip`), and 1,277 of 1,398 frames are bit-identical (the other 121 differ in how the decoder hides the errors).
+  The disc read itself was clean (progress log: no read errors, retries or undecryptable units).
+- Audio: no decode errors in any of the 7 audio tracks at 14 sample points.
+  The center channel (the dialog) is present at -16 to -31 dB RMS in the DTS-HD MA track, the AC3 track and the core of the DTS; the DTS-HD MA audio decodes to PCM identical to the raw disc data.
+  So the dialog is in the file; the missing dialog was not reproduced and is probably the player.
+  One thing to look at: the English DTS-HD MA track is 6.1 (7 channels) but the MKV says 6 channels and names it "Surround 5.1".
+  Not changed, because it cannot be checked against a MakeMKV file.
+
+**Built:** BD+ detection, `BdScanner.HasBdPlus` (BDSVM files starting with `BDSVM_CC`), shown in the GUI status line and `lunadr-cli info`, and added to the rip's warnings: "BD+ copy protection: LunaDR cannot remove it ...".
+Probe `bddecrypt`. Three tests (142 in all).
+Decision: BD+ stays out of scope (it needs an implementation of the BD+ virtual machine); the disc is reported instead of ripped silently.
