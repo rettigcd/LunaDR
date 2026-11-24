@@ -340,6 +340,7 @@ public sealed class BdTitleRipper {
 
 				string path = ClipPath(item.ClipId);
 				using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 1);
+				using var direct = new UnbufferedFile(path);
 				long clipBytes = Math.Min(fs.Length, maxBytes / AacsDecryptor.UnitSize * AacsDecryptor.UnitSize);
 				var buffer = new byte[AacsDecryptor.UnitSize * UnitsPerRead];
 				long position = 0;
@@ -353,10 +354,8 @@ public sealed class BdTitleRipper {
 					for (int u = 0; u + AacsDecryptor.UnitSize <= got; u += AacsDecryptor.UnitSize) {
 						var unit = buffer.AsSpan(u, AacsDecryptor.UnitSize);
 						if (unit.IndexOfAnyExcept((byte)0) < 0) continue;   // an unreadable unit (left as zeros)
-						if (aacs is not null && !aacs.DecryptUnit(unit)) {
-							health.Undecryptable++;
+						if (aacs is not null && !UnitRecovery.Decrypt(aacs, unit, position + u, health, direct.TryRead, () => Report(RipPhase.Ripping)))
 							continue;
-						}
 						for (int p = 0; p < AacsDecryptor.UnitSize; p += AacsDecryptor.PacketSize) demux.Feed(unit.Slice(p + 4, 188));
 					}
 					foreach (var pes in demux.TakeReady()) Handle(pes);
@@ -387,8 +386,13 @@ public sealed class BdTitleRipper {
 			if (health.Unreadable > 0)
 				warnings.Add($"Damaged spot on the disc: {health.Unreadable:N0} unit(s) of 6 KB could not be read and were skipped; the picture and sound may jump there.");
 			if (lateSubtitles > 0) warnings.Add($"{lateSubtitles:N0} subtitle display set(s) came too late in the stream to be placed and were left out ({firstLate}).");
+			if (health.Recovered > 0)
+				warnings.Add($"{health.Recovered:N0} unit(s) of 6 KB were read as corrupted data at first and came out right when read again.");
 			if (health.Undecryptable > 0)
-				warnings.Add($"{health.Undecryptable:N0} unit(s) of 6 KB could not be decrypted with the disc's key and were left out (wrong key in the key file?).");
+				warnings.Add($"Damaged or dirty disc: {health.Undecryptable:N0} unit(s) of 6 KB were read as corrupted data and were left out"
+					+ (health.GaveUpRereading ? " (re-reading was given up after many in a row failed)" : $" (even after re-reading each up to {UnitRecovery.Attempts} times)")
+					+ "; the picture and sound will break up there. Cleaning the disc and ripping again may help."
+					+ " (Only if most of the disc fails is the key file's key likely wrong.)");
 
 			long durationNs = RipTiming.DurationNs(plan.Tracks);
 			mkv.Finish(durationNs);
@@ -443,6 +447,13 @@ public sealed class BdTitleRipper {
 /// <summary>Counters for how the disc reads (see <see cref="ReadHealth"/>).</summary>
 internal sealed class ReadStats {
 	public long ReadErrors, UnitRetries, Unreadable, Undecryptable, RetryPosition;
+
+	/// <summary>Units that failed decryption at first and decrypted after a re-read.</summary>
+	public long Recovered;
+
+	/// <summary>Units in a row that failed all their re-reads, and whether re-reading was given up (see <see cref="UnitRecovery.GiveUpAfter"/>).</summary>
+	public int FailedInARow;
+	public bool GaveUpRereading;
 	public int RetryAttempt;
 	public double LastReadMs;
 

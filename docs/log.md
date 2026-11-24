@@ -761,3 +761,15 @@ Layer question (owner: MakeMKV says the disc has 2 layers): `fsutil file queryex
 That boundary is a file fragment break (768 sectors apart on the disc), not the layer break, which would be at about sector 12,219,392 if the first layer holds the usual 25.03 GB (not read from the drive), about 24.9 GB into the clip.
 The slow part reads equally slowly on both sides of that point and ends at 28.14 GB, while the rest of the clip, still on the second layer, reads normally; so the second layer is not slow as a whole.
 New tests (125 in all) for the stretch finding, joining, bisecting, estimate and a real file.
+
+## 2026-11-23 19:00
+Apollo 13 rip finished (2 h 44 min, 4.0 MB/s average): 0 read errors, 0 unreadable units, but 27,880 units (171 MB, about 3% of the slow stretch) failed decryption and were dropped.
+The owner watched the damaged part: the picture kept cutting out and there was no sound.
+A unit is 32 transport packets, so losing 3 in every 100 breaks nearly every frame; the earlier guess of "brief glitches" was wrong.
+Built: a unit that fails decryption is read again straight from the disc (new `UnbufferedFile`, past the Windows cache, which would return the same bad bytes), up to 3 times, keeping the first read that decrypts (`UnitRecovery`).
+After 50 units in a row that fail all their re-reads, re-reading is given up for the rest of the rip, since each re-read of a bad spot is slow; a recovery resets the count.
+The drive-status line shows the re-read attempt as it does for read errors.
+The end-of-rip warnings no longer blame the key: "Damaged or dirty disc: N unit(s) ... corrupted data ...", plus a line for units that came out right after a re-read.
+Limit noted: only damage in the first 16 bytes of a unit (which make its key) or a wrong key is detected; damage later in a unit passes the sync-byte check unseen.
+New tests (132 in all) for the re-read, giving up, and the unbuffered read.
+Not yet tried on the real disc.
