@@ -118,4 +118,26 @@ public class TimeLeftTests {
 			if (Directory.Exists(folder)) Directory.Delete(folder, true);
 		}
 	}
+
+	[Fact]
+	public void ProgressLog_NotesComeBeforeTheLastRow_AndNotAfterIt() {
+		string folder = Path.Combine(Path.GetTempPath(), "lunadr-log-test-" + Guid.NewGuid().ToString("N"));
+		try {
+			string? file;
+			using (var log = new RipProgressLog(folder, "Notes test", "output x.mkv")) {
+				file = log.Path;
+				var p = new RipProgress(RipPhase.Ripping, 1_000, 100_000, TimeSpan.FromSeconds(1));
+				log.Sample(p, TimeSpan.FromSeconds(1), 100_000, 1_000, null, null);
+				log.Note("warning: first thing\nwarning: second thing");
+				log.Finish("done", p, TimeSpan.FromSeconds(2), 100_000);
+				log.Note("warning: too late");
+			}
+			var lines = File.ReadAllLines(file!);
+			Assert.Equal(["# warning: first thing", "# warning: second thing"], lines.Where(l => l.Contains("warning")));
+			Assert.StartsWith("done,", lines[^1]);
+			Assert.StartsWith("# warning: second thing", lines[^2]);
+		} finally {
+			if (Directory.Exists(folder)) Directory.Delete(folder, true);
+		}
+	}
 }

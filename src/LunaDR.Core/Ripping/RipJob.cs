@@ -114,6 +114,7 @@ public sealed class RipJob(string videoTsFolder, IReadOnlyList<RipJobItem> items
 					var ripper = item.Cells is { } cells ? TitleRipper.ForCells(videoTsFolder, cells) : new TitleRipper(videoTsFolder, item.TitleNumber);
 					result = ripper.Rip(item.OutputPath, OnProgress, options: options, cancel: cancel);
 				}
+				log?.Note(result.Warnings.Count == 0 ? "warnings: none" : string.Join("\n", result.Warnings.Select(w => "warning: " + w.Replace('\n', ' '))));
 				log?.Finish("done", last, ItemReading(), ItemTotal());
 				results.Add(new RipJobItemResult(item, result, null));
 				itemFinished?.Invoke(results[^1]);
@@ -121,6 +122,7 @@ public sealed class RipJob(string videoTsFolder, IReadOnlyList<RipJobItem> items
 				log?.Finish("cancelled", last, ItemReading(), ItemTotal());
 				throw;
 			} catch (Exception ex) when (ex is IOException or InvalidDataException or NotSupportedException or UnauthorizedAccessException or ArgumentException or KeyNotFoundException) {
+				log?.Note("error: " + ex.Message.Replace('\n', ' '));
 				log?.Finish("failed", last, ItemReading(), ItemTotal());
 				results.Add(new RipJobItemResult(item, null, ex));
 				itemFinished?.Invoke(results[^1]);

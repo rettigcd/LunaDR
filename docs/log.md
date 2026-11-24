@@ -785,3 +785,9 @@ The layer break itself is still not read from the drive; with the volume size an
 Also fixed the mangled log-folder path in current-plan.md.
 New tests (138 in all) for the curve (an exact-curve rip is estimated within 3 percent, limits, no correction at the start or end) and the layout line.
 Not yet tried on a real disc.
+
+## 2026-11-24 08:30
+The Empire Strikes Back rip (video full of artifacts, one audio track damaged) had a perfectly clean disc read in its progress log: no read errors, retries, unreadable or undecryptable units, and no slow reads after the first 73 s.
+So the damage is probably in how LunaDR processes the streams, not on the disc; the log could not say more because the rip's warnings were not in it.
+Built: the progress log now has the rip's warnings just before its last row (`# warning: ...` lines, or `# warnings: none`), and `# error: ...` for a rip that failed.
+New test (139 in all) that notes come before the last row and none after it.

@@ -24,7 +24,8 @@ namespace LunaDR.Core.Ripping;
 ///   unit_retries       6 KB units read again after such a failure; unreadable_units those that still failed (left as zeros); undecryptable_units those that could not be decrypted
 ///   max_read_ms        the longest single read since the previous row: a drive working through a damaged spot is slow without reporting any error
 ///   (the four counts are totals so far)
-/// Lines starting with # between the rows say where the clip being read lies on the disc (volume size and the file's extents).
+/// Lines starting with # between the rows say where the clip being read lies on the disc (volume size and the file's extents);
+/// just before the last row come the rip's warnings (one "# warning: ..." line each, or "# warnings: none"), or "# error: ..." if the rip failed.
 /// Failing to write the log never stops a rip.
 /// </summary>
 internal sealed class RipProgressLog : IDisposable {
