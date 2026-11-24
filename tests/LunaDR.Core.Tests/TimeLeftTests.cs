@@ -108,12 +108,12 @@ public class TimeLeftTests {
 				}
 			}
 			var lines = File.ReadAllLines(file!);
-			Assert.EndsWith("read_errors,unit_retries,unreadable_units,undecryptable_units,max_read_ms", lines.Single(l => l.StartsWith("row,")));
+			Assert.EndsWith("read_errors,unit_retries,unreadable_units,undecryptable_units,max_read_ms,flat_remaining_s", lines.Single(l => l.StartsWith("row,")));
 			var rows = lines.Where(l => !l.StartsWith('#') && !l.StartsWith("row,")).Select(l => l.Split(',')).ToList();
 			Assert.Equal(2, rows.Count);   // reading at 0 s, and at 5 s
-			Assert.Equal(["0", "0", "0", "0", "30"], rows[0][^5..]);
+			Assert.Equal(["0", "0", "0", "0", "30"], rows[0][^6..^1]);
 			// The slow read at 2 s falls between the two rows: it must show on the second one, with the totals at 5 s.
-			Assert.Equal(["2", "6", "1", "0", "4200"], rows[1][^5..]);
+			Assert.Equal(["2", "6", "1", "0", "4200"], rows[1][^6..^1]);
 		} finally {
 			if (Directory.Exists(folder)) Directory.Delete(folder, true);
 		}

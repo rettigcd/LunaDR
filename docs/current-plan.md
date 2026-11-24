@@ -120,7 +120,10 @@ This file describes the present state only; the history is in [log.md](log.md).
 - Completion sound: the Windows default notification sound, for now (owner).
 - Time left (owner): shown in whole seconds (`3:21:20`, `12:05`), never fractions. The estimate is sectors left ÷ the speed of the last minute (`SpeedMeter`),
 	smoothed by `RemainingSmoother` (counts down with the clock, follows new estimates with a 30 s time constant).
-	Every Blu-ray rip also writes a CSV progress log (`%APPDATA%unadrprogress-logs`, a row per 5 s, final row with the total time) to analyze the estimate.
+	For Blu-ray it is first multiplied by a factor from the usual speed curve (`SpeedCurve`: slow start, fastest at 45 to 65 percent, slower again), learned from three healthy rips;
+	DVDs keep the plain estimate.
+	Every Blu-ray rip also writes a CSV progress log (`%APPDATA%\LunaDR\progress-logs`, a row per 5 s, final row with the total time) to analyze the estimate;
+	it has the plain estimate (`flat_remaining_s`) next to the corrected one (`raw_remaining_s`) and notes where the clip lies on the disc.
 - Elapsed and finish time (owner): the all-titles progress line also shows the time elapsed since the job started (first, before the time left) and "Est. Finished 2:35 PM" (12-hour with AM / PM always;
 	"tomorrow 1:15 AM" or "Wed 1:00 AM" when not today); the CLI status line shows the same. The finish time is now + the smoothed time left.
 - Branding (owner): `assets/` holds the logo with DR (shown in the GUI header) and the disc without DR (icon of both programs and the window).
@@ -138,9 +141,10 @@ Target is Windows 11. Keep Linux possible by putting OS-specific code behind sma
 | GUI | WPF, Windows only (owner: the GUI will be Windows-only) | none for the CLI; the GUI would need porting (e.g. Avalonia) if ever wanted on Linux |
 
 ## Next steps
-**Time-left heuristic** (owner): the estimate still falls faster than the clock while the drive speeds up. Rip several Blu-rays (logs are written automatically),
-analyze them (true time left = final reading_s − reading_s of a row, against raw_remaining_s), then build a function that corrects the raw estimate.
-Possible extra data if needed: the clip file's disc address, layer changes, output write speed, retries.
+**Time-left heuristic** (owner): a first speed-curve correction is built (see Design decisions); tune it with more rips (logs are written automatically).
+After about five more healthy Blu-ray rips: compare flat_remaining_s and raw_remaining_s against the true time left (final reading_s − reading_s of a row),
+re-learn the curve, and try anchoring it to the disc layout (the `# disc layout:` lines of the log give the volume size and the clip's disc sectors) instead of the clip's percentage,
+since the speed peak moved between 45 and 65 percent of the clip. Rows with a slow read (max_read_ms high) mean a damaged disc and do not fit the curve.
 
 **Unsupported discs: say so early and say what to do** (owner, 2026-11-23). Today an unsupported disc is found out late (after Start) or not at all:
 1. A disc check at scan time, with a banner above the title list saying what the disc is. Detect from files we already read: UHD (AACS version, HEVC clips),

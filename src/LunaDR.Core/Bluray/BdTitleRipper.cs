@@ -164,7 +164,12 @@ public sealed class BdTitleRipper {
 		int itemIndex = -1;
 		double itemFraction = 0;
 		var health = new ReadStats();
-		void Report(RipPhase phase) => progress?.Invoke(new RipProgress(phase, done, total, DateTime.UtcNow - started, itemIndex, itemFraction, health.Snapshot()));
+		string? pendingNote = null;   // a line for the progress log (where the clip lies on the disc), sent with the next report
+		void Report(RipPhase phase) {
+			var note = pendingNote;
+			pendingNote = null;
+			progress?.Invoke(new RipProgress(phase, done, total, DateTime.UtcNow - started, itemIndex, itemFraction, health.Snapshot(), note));
+		}
 
 		Report(RipPhase.FindingKey);
 		using var aacs = AacsDecryptor.ForDisc(_root);
@@ -341,6 +346,7 @@ public sealed class BdTitleRipper {
 				string path = ClipPath(item.ClipId);
 				using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 1);
 				using var direct = new UnbufferedFile(path);
+				if (progress is not null) pendingNote = DiscLayout.Describe(_root, path);
 				long clipBytes = Math.Min(fs.Length, maxBytes / AacsDecryptor.UnitSize * AacsDecryptor.UnitSize);
 				var buffer = new byte[AacsDecryptor.UnitSize * UnitsPerRead];
 				long position = 0;

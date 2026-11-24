@@ -86,11 +86,15 @@ public sealed class RipJob(string videoTsFolder, IReadOnlyList<RipJobItem> items
 				double titleFraction = p.Phase == RipPhase.Done ? 1 : titleTotal == 0 ? 0 : Math.Min(0.999, (double)p.SectorsDone / titleTotal);
 				long overallDone = finishedSectors + (long)(titleFraction * item.Sectors);
 				TimeSpan? Remaining(long sectors) => sectorsPerSecond > 0 ? TimeSpan.FromSeconds(Math.Max(0, sectors) / sectorsPerSecond) : null;
-				var titleRaw = Remaining(titleTotal - p.SectorsDone);
-				var overallRaw = Remaining(allSectors - overallDone);
+				var titleFlat = Remaining(titleTotal - p.SectorsDone);
+				var overallFlat = Remaining(allSectors - overallDone);
+				// A Blu-ray rip's speed follows a usual curve (slow start, fastest around the middle), which corrects "bytes left ÷ current speed".
+				var titleRaw = item.Playlist is null ? titleFlat : SpeedCurve.Remaining(p.SectorsDone, titleTotal, sectorsPerSecond, SpeedMeter.Window);
+				var overallRaw = item.Playlist is null ? overallFlat : titleRaw is { } t ? t + (Remaining(allSectors - finishedSectors - item.Sectors) ?? TimeSpan.Zero) : null;
 				var titleShown = titleSmoother.Next(reading, titleRaw);
 				var overallShown = overallSmoother.Next(reading, overallRaw);
-				log?.Sample(p, readingStartedAt is { } begun ? p.Elapsed - begun : TimeSpan.Zero, titleTotal, sectorsPerSecond, titleRaw, titleShown);
+				if (p.LogNote is { } note) log?.Note(note);
+				log?.Sample(p, readingStartedAt is { } begun ? p.Elapsed - begun : TimeSpan.Zero, titleTotal, sectorsPerSecond, titleRaw, titleShown, titleFlat);
 
 				progress?.Invoke(new RipJobProgress(
 					index, Items.Count, item, p,

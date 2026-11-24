@@ -14,7 +14,7 @@ public enum RipPhase { Unlocking, FindingKey, Ripping, Finishing, Done }
 /// While ripping, <see cref="CellPosition"/> is the cell being read (0-based position in the title's playlist, or in the chosen cells)
 /// and <see cref="CellFraction"/> how far into it; -1 and 0 before the first cell.
 /// </summary>
-public sealed record RipProgress(RipPhase Phase, long SectorsDone, long SectorsTotal, TimeSpan Elapsed, int CellPosition = -1, double CellFraction = 0, ReadHealth? Health = null) {
+public sealed record RipProgress(RipPhase Phase, long SectorsDone, long SectorsTotal, TimeSpan Elapsed, int CellPosition = -1, double CellFraction = 0, ReadHealth? Health = null, string? LogNote = null) {
 	public double Fraction => SectorsTotal == 0 ? 0 : (double)SectorsDone / SectorsTotal;
 }
 

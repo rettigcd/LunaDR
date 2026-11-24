@@ -773,3 +773,15 @@ The end-of-rip warnings no longer blame the key: "Damaged or dirty disc: N unit(
 Limit noted: only damage in the first 16 bytes of a unit (which make its key) or a wrong key is detected; damage later in a unit passes the sync-byte check unseen.
 New tests (132 in all) for the re-read, giving up, and the unbuffered read.
 Not yet tried on the real disc.
+
+## 2026-11-23 23:10
+Question (owner): do we have enough statistics for a better time estimate?
+Data: three complete healthy Blu-ray rips (Fellowship 2,032 s, Shawshank 1,628 s, Empire Strikes Back 1,981 s); the Apollo rip is damaged and does not count.
+All three show the same shape: the rate climbs until 45 to 65 percent of the clip and then falls, so "bytes left ÷ last-minute speed" is 15 to 35 percent too short early and 10 to 35 percent too long late... (true time is longer than the estimate in the second half).
+Leave-one-out test (curve learned from two rips, tested on the third at 10, 30, 50, 70 and 90 percent): average error about 14 percent for the plain estimate against about 8 percent with the curve; worst 33 against 18.
+Decision (owner: "build whatever additional data you need"): build the curve correction for Blu-ray now (`SpeedCurve`, 20 bins of relative time per 5 percent of the clip, factor limited to 0.6 to 1.8, applied to titles and to the all-titles total; DVDs unchanged), and log what is needed to improve it.
+The progress log gets a `flat_remaining_s` column (the plain estimate, to compare with the corrected `raw_remaining_s`) and `# disc layout:` lines with the volume size and the clip's extents as file sector : disc sector : length (`DiscLayout`, Windows FSCTL_GET_RETRIEVAL_POINTERS; checked on an NTFS file in a test).
+The layer break itself is still not read from the drive; with the volume size and the clip's disc sectors it can be estimated from the logs.
+Also fixed the mangled log-folder path in current-plan.md.
+New tests (138 in all) for the curve (an exact-curve rip is estimated within 3 percent, limits, no correction at the start or end) and the layout line.
+Not yet tried on a real disc.
